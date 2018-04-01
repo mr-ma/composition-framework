@@ -161,9 +161,9 @@ void ConflictGraph::reduce() {
 			case INSTRUCTION:
 				if (m_Graph.fanin(it) == 0 && m_Graph.fanout(it) == 0) {
 					it = m_Graph.erase(it);
-				} else {
-					it++;
+					break;
 				}
+				it++;
 				break;
 		}
 	}
