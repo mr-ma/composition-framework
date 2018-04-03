@@ -1,4 +1,4 @@
-#include "ConflictGraph.h"
+#include "constraints/ConflictGraph.h"
 
 using namespace llvm;
 

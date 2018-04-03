@@ -1,21 +1,18 @@
-PROJECT(constraint-handler C CXX)
+PROJECT(constraints C CXX)
+
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_library(ConstraintHandlerPass MODULE
             ConstraintAnalysisPass.cpp
-            ConflictGraph.cpp ConflictGraph.h)
+            ConflictGraph.cpp
+            ${INCLUDE_DIR_HEADERS})
 
 set_target_properties(ConstraintHandlerPass PROPERTIES CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror")
 set_target_properties(ConstraintHandlerPass PROPERTIES CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror")
 
-
-if ($ENV{CLION_IDE})
-	include_directories("/usr/include/llvm-3.9/")
-	include_directories("/usr/include/llvm-c-3.9/")
-endif ()
-
-add_subdirectory(third_party/stlplus)
 target_link_libraries(ConstraintHandlerPass stlplus)
-target_include_directories(ConstraintHandlerPass PUBLIC third_party/)
 # LLVM is (typically) built with no C++ RTTI. We need to match that.
 set_target_properties(ConstraintHandlerPass PROPERTIES COMPILE_FLAGS "-fno-rtti -g")
 # Get proper shared-library behavior (where symbols are not necessarily

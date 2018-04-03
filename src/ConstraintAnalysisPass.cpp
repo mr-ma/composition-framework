@@ -4,7 +4,7 @@
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Module.h"
-#include "ConflictGraph.h"
+#include "constraints/ConflictGraph.h"
 
 using namespace llvm;
 
