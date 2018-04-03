@@ -68,16 +68,11 @@ private:
 	uintptr_t m_ProtectionID;
 	std::unordered_map<uintptr_t, Protection> m_Protections;
 
-	std::unordered_map<Node, uint> printNodes();
-
-	void printEdges(std::unordered_map<Node, uint> map);
-
 	stlplus::digraph<Node, Edge>::iterator insertNode(llvm::Value *node, NodeType type);
 
 	void expandBasicBlock(stlplus::digraph<Node, Edge>::iterator B, llvm::BasicBlock *pBlock);
 public:
-
-	void dump_dot();
+	const stlplus::digraph<Node, Edge> &getGraph() const;
 
 	template<typename T, typename S>
 	uintptr_t addProtection(std::string name, T protector, S protectee) {

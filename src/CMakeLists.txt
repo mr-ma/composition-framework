@@ -7,6 +7,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_library(ConstraintHandlerPass MODULE
             ConstraintAnalysisPass.cpp
             ConflictGraph.cpp
+            GraphPrinter.cpp
             ${INCLUDE_DIR_HEADERS})
 
 set_target_properties(ConstraintHandlerPass PROPERTIES CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror")

@@ -1,3 +1,4 @@
+#include <constraints/GraphPrinter.h>
 #include "llvm/Pass.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/LegacyPassManager.h"
@@ -5,6 +6,7 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Module.h"
 #include "constraints/ConflictGraph.h"
+#include "constraints/GraphPrinter.h"
 
 using namespace llvm;
 
@@ -56,7 +58,7 @@ bool ConstraintAnalysisPass::doInitialization(Module &module) {
 bool ConstraintAnalysisPass::doFinalization(Module &module) {
 	c.expand();
 	c.reduce();
-	c.dump_dot();
+	GraphPrinter(c.getGraph()).dump_dot();
 	return Pass::doFinalization(module);
 }
 
