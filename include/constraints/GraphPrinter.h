@@ -6,14 +6,14 @@
 
 class GraphPrinter {
 private:
-	stlplus::digraph<Node, Edge> m_Graph;
+	Graph m_Graph;
 private:
-	void printEdges(std::unordered_map<Node, uint> map);
+	void printEdges(std::unordered_map<Vertex, uint> map);
 
-	std::unordered_map<Node, uint> printNodes();
+	std::unordered_map<Vertex, uint> printNodes();
 
 public:
-	explicit GraphPrinter(stlplus::digraph<Node, Edge> m_Graph) {
+	explicit GraphPrinter(Graph m_Graph) {
 		this->m_Graph = m_Graph;
 	}
 

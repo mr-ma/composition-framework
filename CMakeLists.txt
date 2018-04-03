@@ -14,7 +14,5 @@ if ($ENV{CLION_IDE})
 	include_directories("/usr/include/llvm-c-3.9/")
 endif ()
 include_directories(${INCLUDE_DIR})
-include_directories(${CMAKE_SOURCE_DIR}/third_party)
 
-add_subdirectory(third_party/stlplus)
 add_subdirectory(src)

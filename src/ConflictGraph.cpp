@@ -2,7 +2,7 @@
 
 using namespace llvm;
 
-stlplus::digraph<Node, Edge>::iterator ConflictGraph::insertNode(llvm::Value *input, NodeType type) {
+unsigned long ConflictGraph::insertNode(llvm::Value *input, NodeType type) {
 	auto id = reinterpret_cast<uintptr_t>(input);
 
 	auto result = m_Nodes.find(id);
@@ -10,22 +10,25 @@ stlplus::digraph<Node, Edge>::iterator ConflictGraph::insertNode(llvm::Value *in
 		return result->second;
 	}
 
-	m_Nodes[id] = m_Graph.insert(Node{id, input->getName().str(), type});
+	m_Nodes[id] = boost::add_vertex(Vertex{id, input->getName().str(), type}, m_Graph);
 	return m_Nodes[id];
 }
 
 void ConflictGraph::removeProtection(uintptr_t protectionID) {
 	m_Protections.erase(protectionID);
 
-	for (auto it = m_Graph.arc_begin(); it != m_Graph.arc_end();) {
-		if (it->type == PROTECTION) {
-			if (it->protectionID == protectionID) {
-				it = m_Graph.arc_erase(it);
-				continue;
+	boost::graph_traits<Graph>::edge_iterator vi, vi_end, next;
+	std::tie(vi, vi_end) = boost::edges(m_Graph);
+	for (next = vi; next != vi_end; vi = next) {
+		++next;
+		auto v = m_Graph[*vi];
+
+		if (v.type == PROTECTION) {
+
+			if (v.protectionID == protectionID) {
+				boost::remove_edge(*vi, m_Graph);
 			}
 		}
-
-		it++;
 	}
 }
 
@@ -33,18 +36,20 @@ void ConflictGraph::expand() {
 	// 1) Loop over all nodes
 	// 2) If node is not an instruction -> Resolve instructions and add to graph
 	// 3) Add edge for all edges to instructions
-	for (auto it = m_Graph.begin(); it != m_Graph.end(); it++) {
-		switch (it->type) {
+	boost::graph_traits<Graph>::vertex_iterator vi, vi_end;
+	for (std::tie(vi, vi_end) = boost::vertices(m_Graph); vi != vi_end; vi++) {
+		Vertex v = m_Graph[*vi];
+		switch (v.type) {
 			case FUNCTION: {
-				auto func = reinterpret_cast<llvm::Function *>(it->ID);
+				auto func = reinterpret_cast<llvm::Function *>(v.ID);
 				for (auto &B : *func) {
-					this->expandBasicBlock(it, &B);
+					this->expandBasicBlock(vi, &B);
 				}
 			}
 				break;
 			case BASICBLOCK: {
-				auto B = reinterpret_cast<llvm::BasicBlock *>(it->ID);
-				this->expandBasicBlock(it, B);
+				auto B = reinterpret_cast<llvm::BasicBlock *>(v.ID);
+				this->expandBasicBlock(vi, B);
 			}
 				break;
 			case INSTRUCTION:
@@ -53,47 +58,64 @@ void ConflictGraph::expand() {
 	}
 }
 
-void ConflictGraph::expandBasicBlock(stlplus::digraph<Node, Edge>::iterator it, llvm::BasicBlock *B) {
+void ConflictGraph::expandBasicBlock(boost::range_detail::integer_iterator<unsigned long> it, llvm::BasicBlock *B) {
 	for (auto &I : *B) {
 		auto node = this->insertNode(&I, INSTRUCTION);
-		auto inputs = m_Graph.inputs(it);
-		auto outputs = m_Graph.outputs(it);
-		for (auto arc_it = inputs.begin(); arc_it != inputs.end(); arc_it++) {
-			auto value = *arc_it;
-			if (value->type != PROTECTION) continue;
-			auto input_node = m_Graph.arc_from(value);
-			m_Graph.arc_insert(input_node, node, *value);
+
+		{
+			boost::graph_traits<Graph>::in_edge_iterator vi, vi_end;
+			for (std::tie(vi, vi_end) = boost::in_edges(*it, m_Graph); vi != vi_end; vi++) {
+				auto v = m_Graph[*vi];
+				if (v.type != PROTECTION) continue;
+
+				auto from = boost::source(*vi, m_Graph);
+				boost::add_edge(from, node, v, m_Graph);
+			}
 		}
 
-		for (auto arc_it = outputs.begin(); arc_it != outputs.end(); arc_it++) {
-			auto value = *arc_it;
-			if (value->type != PROTECTION) continue;
-			auto output_node = m_Graph.arc_to(value);
-			m_Graph.arc_insert(node, output_node, *value);
+
+		{
+			boost::graph_traits<Graph>::out_edge_iterator vi, vi_end;
+			for (std::tie(vi, vi_end) = boost::out_edges(*it, m_Graph); vi != vi_end; vi++) {
+				auto v = m_Graph[*vi];
+				if (v.type != PROTECTION) continue;
+
+				auto to = boost::target(*vi, m_Graph);
+				boost::add_edge(node, to, v, m_Graph);
+			}
 		}
 	}
 }
 
 void ConflictGraph::reduce() {
-	for (auto it = m_Graph.begin(); it != m_Graph.end();) {
-		switch (it->type) {
+	//TODO: This algorithm is O(N!), fix that asap.
+	boost::graph_traits<Graph>::vertex_iterator vi, vi_end, next;
+	std::tie(vi, vi_end) = boost::vertices(m_Graph);
+	for (next = vi; vi != vi_end; vi = next) {
+		++next;
+		auto it = m_Graph[*vi];
+		switch (it.type) {
 			case FUNCTION:
-				it = m_Graph.erase(it);
+				boost::clear_vertex(*vi, m_Graph);
+				boost::remove_vertex(*vi, m_Graph);
+				std::tie(next, vi_end) = boost::vertices(m_Graph);
 				break;
 			case BASICBLOCK:
-				it = m_Graph.erase(it);
+				boost::clear_vertex(*vi, m_Graph);
+				boost::remove_vertex(*vi, m_Graph);
+				std::tie(next, vi_end) = boost::vertices(m_Graph);
 				break;
-			case INSTRUCTION:
-				if (m_Graph.fanin(it) == 0 && m_Graph.fanout(it) == 0) {
-					it = m_Graph.erase(it);
-					break;
+			case INSTRUCTION: {
+				if (boost::out_degree(*vi, m_Graph) == 0 && boost::in_degree(*vi, m_Graph) == 0) {
+					boost::remove_vertex(*vi, m_Graph);
+					std::tie(next, vi_end) = boost::vertices(m_Graph);
 				}
-				it++;
 				break;
+			}
 		}
 	}
 }
 
-const stlplus::digraph<Node, Edge> &ConflictGraph::getGraph() const {
+const Graph &ConflictGraph::getGraph() const {
 	return m_Graph;
 }

@@ -3,10 +3,11 @@
 
 #include <string>
 #include <unordered_map>
+#include <stack>
 #include <llvm/IR/Function.h>
 #include "llvm/ADT/Twine.h"
 #include "llvm/Support/Debug.h"
-#include "stlplus/digraph.hpp"
+#include "boost/graph/adjacency_list.hpp"
 
 enum NodeType {
 	FUNCTION,
@@ -14,12 +15,12 @@ enum NodeType {
 	INSTRUCTION
 };
 
-struct Node {
+struct Vertex {
 	uintptr_t ID;
 	std::string name;
 	NodeType type;
 
-	bool operator==(const Node &other) const {
+	bool operator==(const Vertex &other) const {
 		return (ID == other.ID);
 	}
 };
@@ -44,8 +45,8 @@ struct Protection {
 
 namespace std {
 	template<>
-	struct hash<Node> {
-		size_t operator()(const Node &pt) const {
+	struct hash<Vertex> {
+		size_t operator()(const Vertex &pt) const {
 			return pt.ID;
 		}
 	};
@@ -60,19 +61,24 @@ struct TypeToNodeType<llvm::BasicBlock *> { static constexpr NodeType value = BA
 template<>
 struct TypeToNodeType<llvm::Instruction *> { static constexpr NodeType value = INSTRUCTION; };
 
+typedef boost::adjacency_list<boost::listS , boost::vecS, boost::bidirectionalS, Vertex, Edge> Graph;
+using vertex_t = boost::graph_traits<Graph>::vertex_descriptor;
+using edge_t   = boost::graph_traits<Graph>::edge_descriptor;
 
 class ConflictGraph {
 private:
-	std::unordered_map<uintptr_t, stlplus::digraph<Node, Edge>::iterator> m_Nodes;
-	stlplus::digraph<Node, Edge> m_Graph;
+	std::unordered_map<uintptr_t, unsigned long> m_Nodes;
+	Graph m_Graph;
 	uintptr_t m_ProtectionID;
 	std::unordered_map<uintptr_t, Protection> m_Protections;
 
-	stlplus::digraph<Node, Edge>::iterator insertNode(llvm::Value *node, NodeType type);
+private:
+	unsigned long insertNode(llvm::Value *node, NodeType type);
 
-	void expandBasicBlock(stlplus::digraph<Node, Edge>::iterator B, llvm::BasicBlock *pBlock);
+	void expandBasicBlock(boost::range_detail::integer_iterator<unsigned long> B, llvm::BasicBlock *pBlock);
+
 public:
-	const stlplus::digraph<Node, Edge> &getGraph() const;
+	const Graph &getGraph() const;
 
 	template<typename T, typename S>
 	uintptr_t addProtection(std::string name, T protector, S protectee) {
@@ -80,7 +86,8 @@ public:
 		// The direction is from the protectee to the protector to indicate the information flow.
 		auto dstNode = this->insertNode(protector, TypeToNodeType<T>().value);
 		auto srcNode = this->insertNode(protectee, TypeToNodeType<S>().value);
-		m_Graph.arc_insert(srcNode, dstNode, Edge{m_ProtectionID, name, PROTECTION});
+
+		boost::add_edge(srcNode, dstNode, Edge{m_ProtectionID, name, PROTECTION}, m_Graph);
 		m_Protections[m_ProtectionID] = Protection{protector, TypeToNodeType<T>().value, protectee, TypeToNodeType<S>().value};
 		return m_ProtectionID++;
 	}
@@ -89,7 +96,7 @@ public:
 	void addHierarchy(T parent, S child) {
 		auto srcNode = this->insertNode(parent, TypeToNodeType<T>().value);
 		auto dstNode = this->insertNode(child, TypeToNodeType<S>().value);
-		m_Graph.arc_insert(srcNode, dstNode, Edge{UINTPTR_MAX, "", HIERARCHY});
+		boost::add_edge(srcNode, dstNode, Edge{UINTPTR_MAX, "", HIERARCHY}, m_Graph);
 	}
 
 	void removeProtection(uintptr_t protectionID);

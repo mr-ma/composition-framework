@@ -36,11 +36,10 @@ namespace {
 			for (auto &B2 : F) {
 				if (b_saved != &B2) {
 					c.addProtection("cfi", b_saved, &B2);
+					break;
 				}
 			}
 
-			c.removeProtection(2);
-			c.removeProtection(0);
 			return false;
 		}
 	};
@@ -53,7 +52,9 @@ bool ConstraintAnalysisPass::doInitialization(Module &module) {
 }
 
 bool ConstraintAnalysisPass::doFinalization(Module &module) {
+	GraphPrinter(c.getGraph()).dump_dot();
 	c.expand();
+	GraphPrinter(c.getGraph()).dump_dot();
 	c.reduce();
 	GraphPrinter(c.getGraph()).dump_dot();
 	return Pass::doFinalization(module);
