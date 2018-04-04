@@ -8,7 +8,7 @@
 #include "llvm/ADT/Twine.h"
 #include "llvm/Support/Debug.h"
 #include "boost/graph/adjacency_list.hpp"
-
+#include <boost/graph/strong_components.hpp>
 enum NodeType {
 	FUNCTION,
 	BASICBLOCK,
@@ -61,21 +61,21 @@ struct TypeToNodeType<llvm::BasicBlock *> { static constexpr NodeType value = BA
 template<>
 struct TypeToNodeType<llvm::Instruction *> { static constexpr NodeType value = INSTRUCTION; };
 
-typedef boost::adjacency_list<boost::listS , boost::vecS, boost::bidirectionalS, Vertex, Edge> Graph;
+typedef boost::adjacency_list<boost::listS , boost::listS, boost::bidirectionalS, boost::property<boost::vertex_index_t, int, Vertex>, Edge> Graph;
 using vertex_t = boost::graph_traits<Graph>::vertex_descriptor;
 using edge_t   = boost::graph_traits<Graph>::edge_descriptor;
 
 class ConflictGraph {
 private:
-	std::unordered_map<uintptr_t, unsigned long> m_Nodes;
+	std::unordered_map<uintptr_t, Graph::vertex_descriptor> m_Nodes;
 	Graph m_Graph;
 	uintptr_t m_ProtectionID;
 	std::unordered_map<uintptr_t, Protection> m_Protections;
 
 private:
-	unsigned long insertNode(llvm::Value *node, NodeType type);
+	Graph::vertex_descriptor insertNode(llvm::Value *node, NodeType type);
 
-	void expandBasicBlock(boost::range_detail::integer_iterator<unsigned long> B, llvm::BasicBlock *pBlock);
+	void expandBasicBlock(Graph::vertex_descriptor B, llvm::BasicBlock *pBlock);
 
 public:
 	const Graph &getGraph() const;
@@ -104,6 +104,8 @@ public:
 	void expand();
 
 	void reduce();
+
+	void SCC();
 };
 
 

@@ -10,35 +10,56 @@ using namespace llvm;
 
 namespace {
 
-	struct ConstraintAnalysisPass : public FunctionPass {
+	struct ConstraintAnalysisPass : public ModulePass {
 		static char ID;
 		ConflictGraph c{};
 
-		ConstraintAnalysisPass() : FunctionPass(ID) {}
+		ConstraintAnalysisPass() : ModulePass(ID) {}
 
 		bool doInitialization(Module &module) override;
 
 		bool doFinalization(Module &module) override;
 
-		bool runOnFunction(Function &F) override {
+		bool runOnModule(Module &M) override {
 			llvm::BasicBlock *b_saved = nullptr;
+			llvm::Function *f_saved = nullptr;
 			uint bb = 0;
-			for (auto &B : F) {
-				B.setName(std::to_string(bb));
-				c.addHierarchy(&F, &B);
-				for (auto &I : B) {
-					c.addHierarchy(&B, &I);
+			uint ff = 4;
+			for (auto &F : M) {
+				if(ff == 0){
+					f_saved = &F;
 				}
-				b_saved = &B;
-				bb++;
+				for (auto &B : F) {
+					B.setName(std::to_string(bb));
+					c.addHierarchy(&F, &B);
+					for (auto &I : B) {
+						c.addHierarchy(&B, &I);
+					}
+					b_saved = &B;
+					bb++;
+					ff--;
+				}
 			}
-
-			for (auto &B2 : F) {
-				if (b_saved != &B2) {
-					c.addProtection("cfi", b_saved, &B2);
+			ff = 3;
+			for (auto &F : M) {
+				if(ff == 0) {
+					c.addProtection("sc", f_saved, &F);
+					c.addProtection("cfi",  &F, f_saved);
 					break;
 				}
+				ff--;
+
 			}
+
+			for(auto &F : M) {
+				for (auto &B2 : F) {
+					if (b_saved != &B2) {
+						c.addProtection("cfi", b_saved, &B2);
+						goto stop;
+					}
+				}
+			}
+			stop:
 
 			return false;
 		}
@@ -56,6 +77,9 @@ bool ConstraintAnalysisPass::doFinalization(Module &module) {
 	c.expand();
 	GraphPrinter(c.getGraph()).dump_dot();
 	c.reduce();
+	GraphPrinter(c.getGraph()).dump_dot();
+	c.SCC();
+	c.removeProtection(1);
 	GraphPrinter(c.getGraph()).dump_dot();
 	return Pass::doFinalization(module);
 }
