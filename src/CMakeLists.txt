@@ -33,3 +33,10 @@ if(Boost_FOUND)
 	include_directories(${Boost_INCLUDE_DIRS})
 	target_link_libraries(ConstraintHandlerPass ${Boost_LIBRARIES})
 endif()
+
+install(DIRECTORY ./ DESTINATION /usr/local/include/constraints
+        FILES_MATCHING PATTERN "*.h")
+install(TARGETS ConstraintHandlerPass
+        ARCHIVE DESTINATION lib
+        LIBRARY DESTINATION lib
+        RUNTIME DESTINATION bin)

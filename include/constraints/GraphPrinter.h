@@ -6,15 +6,15 @@
 
 class GraphPrinter {
 private:
-	Graph m_Graph;
+	graph_t Graph;
 private:
 	void printEdges(std::unordered_map<Vertex, uint> map);
 
 	std::unordered_map<Vertex, uint> printNodes();
 
 public:
-	explicit GraphPrinter(Graph m_Graph) {
-		this->m_Graph = m_Graph;
+	explicit GraphPrinter (graph_t graph) {
+		this->Graph = graph;
 	}
 
 	void dump_dot();

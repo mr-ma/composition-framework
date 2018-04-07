@@ -61,24 +61,24 @@ struct TypeToNodeType<llvm::BasicBlock *> { static constexpr NodeType value = BA
 template<>
 struct TypeToNodeType<llvm::Instruction *> { static constexpr NodeType value = INSTRUCTION; };
 
-typedef boost::adjacency_list<boost::listS , boost::listS, boost::bidirectionalS, boost::property<boost::vertex_index_t, int, Vertex>, Edge> Graph;
-using vertex_t = boost::graph_traits<Graph>::vertex_descriptor;
-using edge_t   = boost::graph_traits<Graph>::edge_descriptor;
+typedef boost::adjacency_list<boost::listS , boost::listS, boost::bidirectionalS, boost::property<boost::vertex_index_t, int, Vertex>, Edge> graph_t;
+using vertex_t = boost::graph_traits<graph_t>::vertex_descriptor;
+using edge_t   = boost::graph_traits<graph_t>::edge_descriptor;
 
 class ConflictGraph {
 private:
-	std::unordered_map<uintptr_t, Graph::vertex_descriptor> m_Nodes;
-	Graph m_Graph;
-	uintptr_t m_ProtectionID;
-	std::unordered_map<uintptr_t, Protection> m_Protections;
+	std::unordered_map<uintptr_t, graph_t::vertex_descriptor> Nodes;
+	graph_t Graph;
+	uintptr_t ProtectionIdx;
+	std::unordered_map<uintptr_t, Protection> Protections;
 
 private:
-	Graph::vertex_descriptor insertNode(llvm::Value *node, NodeType type);
+	graph_t::vertex_descriptor insertNode(llvm::Value *node, NodeType type);
 
-	void expandBasicBlock(Graph::vertex_descriptor B, llvm::BasicBlock *pBlock);
+	void expandBasicBlock(graph_t::vertex_descriptor B, llvm::BasicBlock *pBlock);
 
 public:
-	const Graph &getGraph() const;
+	const graph_t &getGraph() const;
 
 	template<typename T, typename S>
 	uintptr_t addProtection(std::string name, T protector, S protectee) {
@@ -87,16 +87,16 @@ public:
 		auto dstNode = this->insertNode(protector, TypeToNodeType<T>().value);
 		auto srcNode = this->insertNode(protectee, TypeToNodeType<S>().value);
 
-		boost::add_edge(srcNode, dstNode, Edge{m_ProtectionID, name, PROTECTION}, m_Graph);
-		m_Protections[m_ProtectionID] = Protection{protector, TypeToNodeType<T>().value, protectee, TypeToNodeType<S>().value};
-		return m_ProtectionID++;
+		boost::add_edge(srcNode, dstNode, Edge{ProtectionIdx, name, PROTECTION}, Graph);
+		Protections[ProtectionIdx] = Protection{protector, TypeToNodeType<T>().value, protectee, TypeToNodeType<S>().value};
+		return ProtectionIdx++;
 	}
 
 	template<typename T, typename S>
 	void addHierarchy(T parent, S child) {
 		auto srcNode = this->insertNode(parent, TypeToNodeType<T>().value);
 		auto dstNode = this->insertNode(child, TypeToNodeType<S>().value);
-		boost::add_edge(srcNode, dstNode, Edge{UINTPTR_MAX, "", HIERARCHY}, m_Graph);
+		boost::add_edge(srcNode, dstNode, Edge{UINTPTR_MAX, "", HIERARCHY}, Graph);
 	}
 
 	void removeProtection(uintptr_t protectionID);
