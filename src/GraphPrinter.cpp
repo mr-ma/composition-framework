@@ -1,4 +1,4 @@
-#include "constraints/GraphPrinter.h"
+#include "constraints/GraphPrinter.hpp"
 
 using namespace llvm;
 

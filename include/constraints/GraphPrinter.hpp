@@ -1,7 +1,7 @@
 #ifndef PROJECT_GRAPH_PRINTER_H
 #define PROJECT_GRAPH_PRINTER_H
 
-#include "constraints/ConflictGraph.h"
+#include "constraints/ConflictGraph.hpp"
 #include "llvm/Support/Debug.h"
 
 class GraphPrinter {
