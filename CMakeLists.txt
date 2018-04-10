@@ -15,7 +15,8 @@ add_library(ConstraintHandlerPass SHARED
             src/AnalysisPass.cpp
             src/ConflictGraph.cpp
             src/GraphPrinter.cpp
-            src/GraphPass.cpp)
+            src/GraphPass.cpp
+            src/MMap.h)
 
 # LLVM is (typically) built with no C++ RTTI. We need to match that.
 target_compile_options(ConstraintHandlerPass
@@ -51,7 +52,7 @@ endif (APPLE)
 INSTALL(
 		DIRECTORY ${CMAKE_SOURCE_DIR}/include/
 		DESTINATION include
-		FILES_MATCHING PATTERN "*.h*")
+		FILES_MATCHING PATTERN "*.hpp")
 install(TARGETS ConstraintHandlerPass EXPORT ConstraintHandlerPass
         ARCHIVE DESTINATION lib
         LIBRARY DESTINATION lib

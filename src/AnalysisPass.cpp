@@ -5,13 +5,13 @@ using namespace llvm;
 char AnalysisPass::ID = 0;
 
 bool AnalysisPass::doFinalization(Module &module) {
-	GraphPrinter(c.getGraph()).dump_dot();
+	GraphPrinter(c.getGraph()).dump_dot(dbgs());
 	c.expand();
-	GraphPrinter(c.getGraph()).dump_dot();
+	GraphPrinter(c.getGraph()).dump_dot(dbgs());
 	c.reduce();
-	GraphPrinter(c.getGraph()).dump_dot();
+	GraphPrinter(c.getGraph()).dump_dot(dbgs());
 	c.SCC();
-	GraphPrinter(c.getGraph()).dump_dot();
+	GraphPrinter(c.getGraph()).dump_dot(dbgs());
 	return false;
 }
 
@@ -20,8 +20,9 @@ void AnalysisPass::getAnalysisUsage(AnalysisUsage &AU) const {
 	AU.addRequired<GraphPass>();
 }
 
-bool AnalysisPass::doInitialization(Module &module) {
-	c = getAnalysis<GraphPass>().getGraph();
+bool AnalysisPass::runOnModule(llvm::Module &M) {
+	//c = getAnalysis<GraphPass>().getGraph();
+
 	return false;
 }
 

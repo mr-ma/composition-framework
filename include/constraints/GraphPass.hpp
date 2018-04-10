@@ -12,7 +12,7 @@ public:
 public:
 	GraphPass() : ImmutablePass(ID) {}
 
-	const ConflictGraph &getGraph() const;
+	ConflictGraph &getGraph();
 };
 
 

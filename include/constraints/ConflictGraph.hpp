@@ -9,6 +9,7 @@
 #include "llvm/Support/Debug.h"
 #include "boost/graph/adjacency_list.hpp"
 #include <boost/graph/strong_components.hpp>
+
 enum NodeType {
 	FUNCTION,
 	BASICBLOCK,
@@ -22,6 +23,10 @@ struct Vertex {
 
 	bool operator==(const Vertex &other) const {
 		return (ID == other.ID);
+	}
+
+	bool operator<(const Vertex &other) const {
+		return (ID < other.ID);
 	}
 };
 
@@ -61,7 +66,7 @@ struct TypeToNodeType<llvm::BasicBlock *> { static constexpr NodeType value = BA
 template<>
 struct TypeToNodeType<llvm::Instruction *> { static constexpr NodeType value = INSTRUCTION; };
 
-typedef boost::adjacency_list<boost::listS , boost::listS, boost::bidirectionalS, boost::property<boost::vertex_index_t, int, Vertex>, Edge> graph_t;
+typedef boost::adjacency_list<boost::listS, boost::listS, boost::bidirectionalS, boost::property<boost::vertex_index_t, int, Vertex>, Edge> graph_t;
 using vertex_t = boost::graph_traits<graph_t>::vertex_descriptor;
 using edge_t   = boost::graph_traits<graph_t>::edge_descriptor;
 
@@ -78,6 +83,10 @@ private:
 	void expandBasicBlock(graph_t::vertex_descriptor B, llvm::BasicBlock *pBlock);
 
 public:
+	ConflictGraph() = default;
+
+	ConflictGraph(const ConflictGraph &that) = delete;
+
 	const graph_t &getGraph() const;
 
 	template<typename T, typename S>

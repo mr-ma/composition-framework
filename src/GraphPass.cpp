@@ -1,6 +1,6 @@
 #include "constraints/GraphPass.hpp"
 
-const ConflictGraph &GraphPass::getGraph() const {
+ConflictGraph &GraphPass::getGraph() {
 	return Graph;
 }
 
