@@ -6,7 +6,7 @@ graph_t::vertex_descriptor ConflictGraph::insertNode(llvm::Value *input, NodeTyp
 	auto id = reinterpret_cast<uintptr_t>(input);
 
 	auto result = Nodes.find(id);
-	if (result != Nodes.end()) {
+	if (result != std::end(Nodes)) {
 		return result->second;
 	}
 

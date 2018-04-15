@@ -42,7 +42,7 @@ std::unordered_map<Vertex, uint> GraphPrinter::printNodes(raw_ostream &stream) {
 	}
 
 	std::string last;
-	for(auto it = clusterMap.begin(); it != clusterMap.end(); it++ ) {
+	for(auto it = std::begin(clusterMap), it_end = std::end(clusterMap); it != it_end; it++ ) {
 		if(last.empty()) {
 			stream << "subgraph cluster_" + it->first << " {\n";
 			stream << "node [style=filled];\n";
