@@ -38,7 +38,7 @@ std::unordered_map<Vertex, uint> GraphPrinter::printNodes(raw_ostream &stream) {
 			}
 		}
 
-		stream << std::to_string(i) << " [label=\"" << label << "\"];\n";
+		stream << std::to_string(idxMap[it]) << " [label=\"" << label << "\"];\n";
 	}
 
 	std::string last;
@@ -96,8 +96,12 @@ void GraphPrinter::printEdges(std::unordered_map<Vertex, uint> map, raw_ostream 
 		auto fromID = map[from];
 		auto toID = map[to];
 
-		stream << std::to_string(fromID) << " -> " << std::to_string(toID) << ";\n";
-		//stream << " [label=\"" << "#" << std::to_string(it.protectionID) << " " << it.name << "\"]\n";
+		dbgs() << from.name << " -> " << to.name << "\n";
+		dbgs() << std::to_string(fromID) << " -> " << std::to_string(toID) << "\n";
+
+
+		stream << std::to_string(fromID) << " -> " << std::to_string(toID);
+		stream << " [label=\"" << "#" << std::to_string(it.protectionID) << " " << it.name << "\"];\n";
 	}
 	stream << "}\n";
 }

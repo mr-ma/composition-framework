@@ -6,9 +6,9 @@ char AnalysisPass::ID = 0;
 
 bool AnalysisPass::doFinalization(Module &module) {
 	GraphPrinter(c.getGraph()).dump_dot(dbgs());
-	c.expand();
+	c.expandToInstructions();
 	GraphPrinter(c.getGraph()).dump_dot(dbgs());
-	c.reduce();
+	c.reduceToInstructions();
 	GraphPrinter(c.getGraph()).dump_dot(dbgs());
 	c.SCC();
 	GraphPrinter(c.getGraph()).dump_dot(dbgs());

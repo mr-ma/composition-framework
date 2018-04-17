@@ -80,7 +80,17 @@ private:
 private:
 	graph_t::vertex_descriptor insertNode(llvm::Value *node, NodeType type);
 
-	void expandBasicBlock(graph_t::vertex_descriptor B, llvm::BasicBlock *pBlock);
+	void expandBasicBlockToInstructions(graph_t::vertex_descriptor B, llvm::BasicBlock *pBlock);
+
+	void expandInstructionToFunction(graph_t::vertex_descriptor it, llvm::Instruction *I);
+
+	void expandBasicBlockToFunction(graph_t::vertex_descriptor it, llvm::BasicBlock *B);
+
+	void replaceTarget(graph_t::vertex_descriptor src, graph_t::vertex_descriptor dst);
+
+	void replaceTargetIncomingEdges(graph_t::vertex_descriptor src, graph_t::vertex_descriptor dst);
+
+	void replaceTargetOutgoingEdges(graph_t::vertex_descriptor src, graph_t::vertex_descriptor dst);
 
 public:
 	ConflictGraph() = default;
@@ -110,9 +120,13 @@ public:
 
 	void removeProtection(uintptr_t protectionID);
 
-	void expand();
+	void expandToInstructions();
 
-	void reduce();
+	void reduceToInstructions();
+
+	void expandToFunctions();
+
+	void reduceToFunctions();
 
 	void SCC();
 };
