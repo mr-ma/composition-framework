@@ -18,11 +18,9 @@ public:
 public:
 	AnalysisPass() : ModulePass(ID) {}
 
-	bool doFinalization(llvm::Module &module) override;
-
 	bool runOnModule(llvm::Module &M) override;
 
-	void getAnalysisUsage(llvm::AnalysisUsage &usage) const override;
+	void getAnalysisUsage(llvm::AnalysisUsage &AU) const override;
 };
 
 #endif //PROJECT_ANALYSISPASS_H

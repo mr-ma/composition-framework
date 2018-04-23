@@ -4,15 +4,19 @@
 #include "llvm/Pass.h"
 #include "constraints/ConflictGraph.hpp"
 
-class GraphPass : public llvm::ImmutablePass {
+class GraphPass : public llvm::ModulePass {
 private:
 	ConflictGraph Graph{};
 public:
 	static char ID;
 public:
-	GraphPass() : ImmutablePass(ID) {}
+	GraphPass() : ModulePass(ID) {}
 
 	ConflictGraph &getGraph();
+
+	void getAnalysisUsage(llvm::AnalysisUsage &usage) const override;
+
+	bool runOnModule(llvm::Module &module) override;
 };
 
 

@@ -9,12 +9,7 @@
 #include "llvm/Support/Debug.h"
 #include "boost/graph/adjacency_list.hpp"
 #include <boost/graph/strong_components.hpp>
-
-enum NodeType {
-	FUNCTION,
-	BASICBLOCK,
-	INSTRUCTION
-};
+#include "composition/Manifest.hpp"
 
 struct Vertex {
 	uintptr_t ID;
@@ -56,15 +51,6 @@ namespace std {
 		}
 	};
 }
-
-template<typename T>
-struct TypeToNodeType;
-template<>
-struct TypeToNodeType<llvm::Function *> { static constexpr NodeType value = FUNCTION; };
-template<>
-struct TypeToNodeType<llvm::BasicBlock *> { static constexpr NodeType value = BASICBLOCK; };
-template<>
-struct TypeToNodeType<llvm::Instruction *> { static constexpr NodeType value = INSTRUCTION; };
 
 typedef boost::adjacency_list<boost::listS, boost::listS, boost::bidirectionalS, boost::property<boost::vertex_index_t, int, Vertex>, Edge> graph_t;
 using vertex_t = boost::graph_traits<graph_t>::vertex_descriptor;

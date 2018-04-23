@@ -37,7 +37,7 @@ set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
 find_package(Boost 1.58 REQUIRED graph)
 find_package(LLVM REQUIRED CONFIG)
-
+find_package(composition-framework REQUIRED)
 ##
 ## TARGET
 ## create target and add include path
@@ -48,10 +48,12 @@ add_library(${CONSTRAINT_HANDLER_TARGET_NAME} MODULE
             include/constraints/ConflictGraph.hpp
             include/constraints/GraphPrinter.hpp
             include/constraints/GraphPass.hpp
+            include/constraints/ProtectionPass.hpp
             src/AnalysisPass.cpp
             src/ConflictGraph.cpp
             src/GraphPrinter.cpp
             src/GraphPass.cpp
+            src/ProtectionPass.cpp
             src/MMap.h)
 add_library(${PROJECT_NAME}::${CONSTRAINT_HANDLER_TARGET_NAME} ALIAS ${CONSTRAINT_HANDLER_TARGET_NAME})
 target_compile_features(${CONSTRAINT_HANDLER_TARGET_NAME} PUBLIC cxx_std_14)
@@ -65,6 +67,7 @@ target_include_directories(
 		PRIVATE
 		${Boost_INCLUDE_DIRS}
 		${LLVM_INCLUDE_DIRS}
+		${composition-framework_INCLUDE_DIR}
 		/usr/include/llvm-3.9/
 		/usr/include/llvm-c-3.9/
 )
