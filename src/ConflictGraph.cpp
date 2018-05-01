@@ -1,6 +1,7 @@
 #include "constraints/ConflictGraph.hpp"
 
 using namespace llvm;
+using namespace composition;
 
 graph_t::vertex_descriptor ConflictGraph::insertNode(llvm::Value *input, NodeType type) {
 	auto id = reinterpret_cast<uintptr_t>(input);

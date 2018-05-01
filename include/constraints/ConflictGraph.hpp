@@ -14,7 +14,7 @@
 struct Vertex {
 	uintptr_t ID;
 	std::string name;
-	NodeType type;
+	composition::NodeType type;
 
 	bool operator==(const Vertex &other) const {
 		return (ID == other.ID);
@@ -38,9 +38,9 @@ struct Edge {
 
 struct Protection {
 	llvm::Value *from;
-	NodeType fromType;
+	composition::NodeType fromType;
 	llvm::Value *to;
-	NodeType toType;
+	composition::NodeType toType;
 };
 
 namespace std {
@@ -58,13 +58,13 @@ using edge_t   = boost::graph_traits<graph_t>::edge_descriptor;
 
 class ConflictGraph {
 private:
-	std::unordered_map<uintptr_t, graph_t::vertex_descriptor> Nodes;
-	graph_t Graph;
-	uintptr_t ProtectionIdx;
-	std::unordered_map<uintptr_t, Protection> Protections;
+	std::unordered_map<uintptr_t, graph_t::vertex_descriptor> Nodes{};
+	graph_t Graph{};
+	uintptr_t ProtectionIdx{};
+	std::unordered_map<uintptr_t, Protection> Protections{};
 
 private:
-	graph_t::vertex_descriptor insertNode(llvm::Value *node, NodeType type);
+	graph_t::vertex_descriptor insertNode(llvm::Value *node, composition::NodeType type);
 
 	void expandBasicBlockToInstructions(graph_t::vertex_descriptor B, llvm::BasicBlock *pBlock);
 
@@ -83,24 +83,39 @@ public:
 
 	ConflictGraph(const ConflictGraph &that) = delete;
 
+	ConflictGraph(const ConflictGraph &&that) noexcept : Nodes(std::move(that.Nodes)),
+	                                                     ProtectionIdx(std::move(that.ProtectionIdx)),
+	                                                     Protections(std::move(that.Protections)) {
+		Graph = that.Graph;
+	};
+
+	ConflictGraph &operator=(ConflictGraph &&) = default;
+
 	const graph_t &getGraph() const;
 
 	template<typename T, typename S>
 	uintptr_t addProtection(std::string name, T protector, S protectee) {
 		// Two functions, a protector and a protectee form an edge
 		// The direction is from the protectee to the protector to indicate the information flow.
-		auto dstNode = this->insertNode(protector, TypeToNodeType<T>().value);
-		auto srcNode = this->insertNode(protectee, TypeToNodeType<S>().value);
+		return addProtection(name, protector, composition::TypeToNodeType<T>().value, protectee, protectee, composition::TypeToNodeType<S>().value);
+	}
+
+	uintptr_t
+	addProtection(std::string name, llvm::Value *protector, composition::NodeType protectorType, llvm::Value *protectee, composition::NodeType protecteeType) {
+		// Two functions, a protector and a protectee form an edge
+		// The direction is from the protectee to the protector to indicate the information flow.
+		auto dstNode = this->insertNode(protector, protectorType);
+		auto srcNode = this->insertNode(protectee, protecteeType);
 
 		boost::add_edge(srcNode, dstNode, Edge{ProtectionIdx, name, PROTECTION}, Graph);
-		Protections[ProtectionIdx] = Protection{protector, TypeToNodeType<T>().value, protectee, TypeToNodeType<S>().value};
+		Protections[ProtectionIdx] = Protection{protector, protectorType, protectee, protecteeType};
 		return ProtectionIdx++;
 	}
 
 	template<typename T, typename S>
 	void addHierarchy(T parent, S child) {
-		auto srcNode = this->insertNode(parent, TypeToNodeType<T>().value);
-		auto dstNode = this->insertNode(child, TypeToNodeType<S>().value);
+		auto srcNode = this->insertNode(parent, composition::TypeToNodeType<T>().value);
+		auto dstNode = this->insertNode(child, composition::TypeToNodeType<S>().value);
 		boost::add_edge(srcNode, dstNode, Edge{UINTPTR_MAX, "", HIERARCHY}, Graph);
 	}
 

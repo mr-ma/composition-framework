@@ -1,5 +1,9 @@
 #include <constraints/GraphPass.hpp>
 #include "constraints/ProtectionPass.hpp"
+#include "composition/ManifestRegistry.hpp"
+
+using namespace llvm;
+using namespace composition;
 
 void ProtectionPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
 	AU.setPreservesAll();
@@ -7,6 +11,16 @@ void ProtectionPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
 }
 
 bool ProtectionPass::runOnModule(llvm::Module &M) {
+	dbgs() << "ProtectionPass running\n";
+
+	auto && pass = getAnalysis<GraphPass>();
+	std::vector<Manifest> manifests = pass.GetManifestsInOrder();
+
+	auto patchers = *ManifestRegistry::GetAllManifestPatchers();
+	for (auto m : manifests) {
+		auto p = ManifestRegistry::GetPatcher(m);
+		p(m);
+	}
 	return false;
 }
 

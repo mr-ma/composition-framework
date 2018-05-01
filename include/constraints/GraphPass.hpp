@@ -12,7 +12,7 @@ public:
 public:
 	GraphPass() : ModulePass(ID) {}
 
-	ConflictGraph &getGraph();
+	std::vector<composition::Manifest> GetManifestsInOrder();
 
 	void getAnalysisUsage(llvm::AnalysisUsage &usage) const override;
 

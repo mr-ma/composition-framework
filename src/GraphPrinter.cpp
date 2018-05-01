@@ -2,6 +2,7 @@
 #include "MMap.h"
 
 using namespace llvm;
+using namespace composition;
 
 std::unordered_map<Vertex, uint> GraphPrinter::printNodes(raw_ostream &stream) {
 	std::unordered_map<Vertex, uint> idxMap;

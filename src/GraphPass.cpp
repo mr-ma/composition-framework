@@ -1,10 +1,8 @@
 #include <constraints/AnalysisPass.hpp>
+#include <composition/ManifestRegistry.hpp>
 
 using namespace llvm;
-
-ConflictGraph &GraphPass::getGraph() {
-	return Graph;
-}
+using namespace composition;
 
 void GraphPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
 	AU.setPreservesAll();
@@ -12,16 +10,20 @@ void GraphPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
 }
 
 bool GraphPass::runOnModule(llvm::Module &module) {
-	GraphPrinter(Graph.getGraph()).dump_dot("graph_raw.dot");
-	Graph.expandToFunctions();
-	GraphPrinter(Graph.getGraph()).dump_dot("graph_expanded.dot");
-	Graph.reduceToFunctions();
-	GraphPrinter(Graph.getGraph()).dump_dot("graph_reduced.dot");
+	dbgs() << "GraphPass running\n";
+
+	auto && pass = getAnalysis<AnalysisPass>();
+	Graph = std::move(pass.getGraph());
+	dbgs() << "GraphPass SCC\n";
 	Graph.SCC();
 	return false;
 }
 
 char GraphPass::ID = 0;
+
+std::vector<Manifest> GraphPass::GetManifestsInOrder() {
+	return std::vector<Manifest>(*ManifestRegistry::GetAll());
+}
 
 
 static llvm::RegisterPass<GraphPass> X("constraint-graph", "Constraint Graph Pass",

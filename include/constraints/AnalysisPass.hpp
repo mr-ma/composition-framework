@@ -12,11 +12,13 @@
 
 class AnalysisPass : public llvm::ModulePass {
 private:
-	ConflictGraph c{};
+	ConflictGraph Graph{};
 public:
 	static char ID;
 public:
 	AnalysisPass() : ModulePass(ID) {}
+
+	ConflictGraph &getGraph();
 
 	bool runOnModule(llvm::Module &M) override;
 
