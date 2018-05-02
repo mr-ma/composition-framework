@@ -16,6 +16,12 @@ bool GraphPass::runOnModule(llvm::Module &module) {
 	Graph = std::move(pass.getGraph());
 	dbgs() << "GraphPass SCC\n";
 	Graph.SCC();
+
+	//TODO modify SCC to remove cycles according to strategy
+
+	//TODO topological sort graph according to strategy
+
+	//TODO create postpatching manifest order/export to json
 	return false;
 }
 
