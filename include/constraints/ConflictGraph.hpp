@@ -130,6 +130,8 @@ public:
 	void reduceToFunctions();
 
 	void SCC();
+
+	void handleCycle(std::vector<int> matches);
 };
 
 

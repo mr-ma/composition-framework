@@ -25,7 +25,7 @@ bool AnalysisPass::runOnModule(llvm::Module &M) {
 
 	auto manifests = *ManifestRegistry::GetAll();
 	for (Manifest m : manifests) {
-		Graph.addProtection(m.protection, m.from, m.fromType, m.to, m.toType);
+		m.idx = Graph.addProtection(m.protection, m.from, m.fromType, m.to, m.toType);
 	}
 
 	GraphPrinter(Graph.getGraph()).dump_dot("graph_raw.dot");
