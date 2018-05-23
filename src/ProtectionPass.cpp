@@ -1,6 +1,6 @@
-#include <constraints/GraphPass.hpp>
-#include "constraints/ProtectionPass.hpp"
-#include "composition/ManifestRegistry.hpp"
+#include <composition/GraphPass.hpp>
+#include <composition/ProtectionPass.hpp>
+#include <composition/ManifestRegistry.hpp>
 
 using namespace llvm;
 using namespace composition;

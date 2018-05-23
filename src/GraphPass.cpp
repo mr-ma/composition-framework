@@ -1,4 +1,5 @@
-#include <constraints/AnalysisPass.hpp>
+#include <composition/GraphPass.hpp>
+#include <composition/AnalysisPass.hpp>
 #include <composition/ManifestRegistry.hpp>
 
 using namespace llvm;

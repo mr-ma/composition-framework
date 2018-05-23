@@ -1,5 +1,5 @@
-#ifndef PROJECT_MMAP_H
-#define PROJECT_MMAP_H
+#ifndef COMPOSITION_FRAMEWORK_MMAP_H
+#define COMPOSITION_FRAMEWORK_MMAP_H
 
 #include <set>
 
@@ -20,4 +20,4 @@ struct MMapComp {
 	}
 };
 
-#endif //PROJECT_MMAP_H
+#endif //COMPOSITION_FRAMEWORK_MMAP_H

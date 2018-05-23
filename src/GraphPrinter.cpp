@@ -1,34 +1,36 @@
-#include "constraints/GraphPrinter.hpp"
+#include <composition/GraphPrinter.hpp>
 #include "MMap.h"
 
 using namespace llvm;
 using namespace composition;
 
-std::unordered_map<Vertex, uint> GraphPrinter::printNodes(raw_ostream &stream) {
-	std::unordered_map<Vertex, uint> idxMap;
-	MMap<std::string, Vertex, MMapComp<std::pair<std::string, Vertex>>> clusterMap;
+std::unordered_map<vd, uint> GraphPrinter::printNodes(raw_ostream &stream) {
+	std::unordered_map<vd, uint> idxMap;
+	MMap<std::string, vd, MMapComp<std::pair<std::string, vd>>> clusterMap;
 	uint i = 0;
 
-	boost::graph_traits<graph_t>::vertex_iterator vi, vi_end;
+	graph_t::vertex_iterator vi, vi_end;
 	for (std::tie(vi, vi_end) = boost::vertices(Graph); vi != vi_end; vi++) {
-		Vertex it = Graph[*vi];
-
-		idxMap[it] = i;
+		idxMap[*vi] = i;
 		i++;
 
-		if (it.type == INSTRUCTION) {
-			auto &&instr = reinterpret_cast<Instruction *>(it.ID);
+		auto idx = get_vertex_property(boost::vertex_index, *vi, Graph);
+		auto name = get_vertex_property(boost::vertex_name, *vi, Graph);
+		auto type = get_vertex_property(boost::vertex_type, *vi, Graph);
+
+		if (type == INSTRUCTION) {
+			auto &&instr = reinterpret_cast<Instruction *>(idx);
 			auto funcName = instr->getParent()->getParent()->getName().str();
-			clusterMap.insert({funcName, it});
+			clusterMap.insert({funcName, *vi});
 			continue;
 		}
 
-		auto label = it.name;
-		if (it.name.empty()) {
-			switch (it.type) {
+		auto label = name;
+		if (name.empty()) {
+			switch (type) {
 				case BASICBLOCK: {
-					auto &&b = reinterpret_cast<BasicBlock *>(it.ID);
-					label = b->getParent()->getName().str() + "_bb_" + std::to_string(it.ID);
+					auto &&b = reinterpret_cast<BasicBlock *>(idx);
+					label = b->getParent()->getName().str() + "_bb_" + std::to_string(idx);
 				}
 					break;
 				case FUNCTION:
@@ -39,12 +41,12 @@ std::unordered_map<Vertex, uint> GraphPrinter::printNodes(raw_ostream &stream) {
 			}
 		}
 
-		stream << std::to_string(idxMap[it]) << " [label=\"" << label << "\"];\n";
+		stream << std::to_string(idxMap[*vi]) << " [label=\"" << label << "\"];\n";
 	}
 
 	std::string last;
-	for(auto it = std::begin(clusterMap), it_end = std::end(clusterMap); it != it_end; it++ ) {
-		if(last.empty()) {
+	for (auto it = std::begin(clusterMap), it_end = std::end(clusterMap); it != it_end; it++) {
+		if (last.empty()) {
 			stream << "subgraph cluster_" + it->first << " {\n";
 			stream << "node [style=filled];\n";
 			stream << "label = \"" << it->first << "\";\n";
@@ -56,27 +58,28 @@ std::unordered_map<Vertex, uint> GraphPrinter::printNodes(raw_ostream &stream) {
 			stream << "label = \"" << it->first << "\";\n";
 			last = it->first;
 		}
-		auto label = "i_" + std::to_string(it->second.ID);
+		auto label = "i_" + std::to_string(get_vertex_property(boost::vertex_index, it->second, Graph));
 		stream << std::to_string(idxMap[it->second]) << " [label=\"" << label << "\"];\n";
 	}
-	if(!last.empty()) {
+	if (!last.empty()) {
 		stream << "};\n";
 	}
 
 	return idxMap;
 }
 
-void GraphPrinter::printEdges(std::unordered_map<Vertex, uint> map, raw_ostream &stream) {
+void GraphPrinter::printEdges(std::unordered_map<vd, uint> map, raw_ostream &stream) {
 	stream << "{\n";
 	stream << "edge [color=black];\n";
 
-	boost::graph_traits<graph_t>::edge_iterator vi, vi_end;
+	graph_t::edge_iterator vi, vi_end;
 	for (std::tie(vi, vi_end) = boost::edges(Graph); vi != vi_end; vi++) {
-		Edge it = Graph[*vi];
-		if (it.type != HIERARCHY) continue;
+		auto type = get_edge_property(boost::edge_type, *vi, Graph);
 
-		auto from = Graph[boost::source(*vi, Graph)];
-		auto to = Graph[boost::target(*vi, Graph)];
+		if (type != HIERARCHY) continue;
+
+		auto from = boost::source(*vi, Graph);
+		auto to = boost::target(*vi, Graph);
 
 		auto fromID = map[from];
 		auto toID = map[to];
@@ -89,20 +92,24 @@ void GraphPrinter::printEdges(std::unordered_map<Vertex, uint> map, raw_ostream 
 	stream << "edge [color=red];\n";
 
 	for (std::tie(vi, vi_end) = boost::edges(Graph); vi != vi_end; vi++) {
-		Edge it = Graph[*vi];
-		if (it.type != PROTECTION) continue;
-		auto from = Graph[boost::source(*vi, Graph)];
-		auto to = Graph[boost::target(*vi, Graph)];
+		auto idx = get_edge_property(boost::edge_index, *vi, Graph);
+		auto type = get_edge_property(boost::edge_type, *vi, Graph);
+		auto name = get_edge_property(boost::edge_name, *vi, Graph);
 
+		if (type != PROTECTION) continue;
+		auto from = boost::source(*vi, Graph);
 		auto fromID = map[from];
-		auto toID = map[to];
+		auto fromName = get_vertex_property(boost::vertex_name, from, Graph);
 
-		dbgs() << from.name << " -> " << to.name << "\n";
+		auto to = boost::target(*vi, Graph);
+		auto toID = map[to];
+		auto toName = get_vertex_property(boost::vertex_name, to, Graph);
+
+		dbgs() << fromName << " -> " << toName << "\n";
 		dbgs() << std::to_string(fromID) << " -> " << std::to_string(toID) << "\n";
 
-
 		stream << std::to_string(fromID) << " -> " << std::to_string(toID);
-		stream << " [label=\"" << "#" << std::to_string(it.protectionID) << " " << it.name << "\"];\n";
+		stream << " [label=\"" << "#" << std::to_string(idx) << " " << name << "\"];\n";
 	}
 	stream << "}\n";
 }

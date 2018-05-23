@@ -1,6 +1,6 @@
-#include "constraints/AnalysisPass.hpp"
-#include "composition/AnalysisRegistry.hpp"
-#include "composition/ManifestRegistry.hpp"
+#include <composition/AnalysisPass.hpp>
+#include <composition/AnalysisRegistry.hpp>
+#include <composition/ManifestRegistry.hpp>
 
 using namespace llvm;
 using namespace composition;
@@ -37,7 +37,7 @@ bool AnalysisPass::runOnModule(llvm::Module &M) {
 	return false;
 }
 
-ConflictGraph &AnalysisPass::getGraph() {
+ProtectionGraph &AnalysisPass::getGraph() {
 	return Graph;
 }
 
