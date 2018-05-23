@@ -21,6 +21,7 @@ namespace composition {
 		                                                                                                                 toType(toType) {
 
 		}
+		//TODO metadata if postpatching is needed - and its direction (from, to, both)
 
 		bool operator==(const Manifest &other) const {
 			return (protection == other.protection && reinterpret_cast<uintptr_t>(from) == reinterpret_cast<uintptr_t>(other.from) &&

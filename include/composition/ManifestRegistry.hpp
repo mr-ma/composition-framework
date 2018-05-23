@@ -8,7 +8,7 @@
 
 namespace composition {
 
-	typedef std::function<void(Manifest)> PatchFunction;
+	typedef std::function<void(Manifest)> PatchFunction; //TODO ApplyManifestCallback
 
 	class ManifestRegistry {
 	public:
