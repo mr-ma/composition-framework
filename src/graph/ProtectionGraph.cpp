@@ -110,15 +110,15 @@ void ProtectionGraph::SCC() {
 	unsigned long vertices = boost::num_vertices(Graph);
 	while (num != vertices) {
 		int idx = 0;
-		/*boost::graph_traits<graph_t>::vertex_iterator vi, vi_end;
+		boost::graph_traits<graph_t>::vertex_iterator vi, vi_end;
 		for (std::tie(vi, vi_end) = boost::vertices(Graph); vi != vi_end; vi++) {
-			boost::put(boost::vertex_index, Graph, *vi, idx++);
-		}*/
+			set_vertex_property(boost::vertex_index, *vi, idx++, Graph);
+		}
 
 
-		std::vector<int> component(boost::num_vertices(Graph)), discover_time(boost::num_vertices(Graph));
-		std::vector<boost::default_color_type> color(boost::num_vertices(Graph));
-		std::vector<graph_t::vertex_descriptor> root(boost::num_vertices(Graph));
+		std::vector<int> component(vertices), discover_time(vertices);
+		std::vector<boost::default_color_type> color(vertices);
+		std::vector<graph_t::vertex_descriptor> root(vertices);
 		num = static_cast<unsigned long>(boost::strong_components(Graph, boost::make_iterator_property_map(component.begin(), get(boost::vertex_index, Graph)),
 		                                                          root_map(boost::make_iterator_property_map(root.begin(), get(boost::vertex_index, Graph))).
 				                                                          discover_time_map(boost::make_iterator_property_map(discover_time.begin(),
@@ -129,7 +129,7 @@ void ProtectionGraph::SCC() {
 		dbgs() << "Total number of components: " << std::to_string(num) << "\n";
 		for (auto i = 0; i != num; i++) {
 			std::vector<int> matches;
-			for (auto j = 0; j != component.size(); j++) {
+			for (auto j = 0; j != vertices; j++) {
 				if (component[j] == i) {
 					matches.push_back(j);
 				}
@@ -141,7 +141,7 @@ void ProtectionGraph::SCC() {
 			}
 		}
 
-		for (auto i = 0; i != component.size(); ++i) {
+		for (auto i = 0; i != vertices; ++i) {
 			auto str = get_vertex_property(boost::vertex_name, find_first_vertex_with_property(boost::vertex_index, i, Graph), Graph);
 			dbgs() << "Vertex " << std::to_string(i) << " " << str << " is in component " << std::to_string(component[i]) << "\n";
 		}
