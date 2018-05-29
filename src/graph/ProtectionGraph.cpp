@@ -270,10 +270,11 @@ void ProtectionGraph::reduceToFunctions() {
 			case INSTRUCTION: {
 				boost::clear_vertex(*vi, Graph);
 				boost::remove_vertex(*vi, Graph);
-				break;
-				case VALUE:
-					break;
 			}
+				break;
+			case VALUE:
+				break;
+
 		}
 	}
 }
