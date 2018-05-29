@@ -2,6 +2,7 @@
 #include <composition/AnalysisRegistry.hpp>
 #include <composition/ManifestRegistry.hpp>
 #include <composition/trace/TraceableValue.hpp>
+#include <composition/PreservedValueRegistry.hpp>
 
 using namespace llvm;
 using namespace composition;
