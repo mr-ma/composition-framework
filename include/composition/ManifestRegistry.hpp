@@ -3,7 +3,6 @@
 
 #include <string>
 #include <unordered_map>
-#include <llvm/Support/Debug.h>
 #include <composition/Manifest.hpp>
 
 namespace composition {

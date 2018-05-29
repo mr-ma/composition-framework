@@ -1,6 +1,9 @@
+#include <llvm/Support/Debug.h>
+
 #include <composition/GraphPass.hpp>
 #include <composition/ProtectionPass.hpp>
 #include <composition/ManifestRegistry.hpp>
+#include <composition/PreservedValueRegistry.hpp>
 
 using namespace llvm;
 using namespace composition;
@@ -21,6 +24,8 @@ bool ProtectionPass::runOnModule(llvm::Module &M) {
 		auto p = ManifestRegistry::GetPatcher(m);
 		p(m);
 	}
+
+	PreservedValueRegistry::Clear();
 	return false;
 }
 

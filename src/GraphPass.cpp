@@ -1,3 +1,5 @@
+#include <llvm/Support/Debug.h>
+
 #include <composition/GraphPass.hpp>
 #include <composition/AnalysisPass.hpp>
 #include <composition/ManifestRegistry.hpp>

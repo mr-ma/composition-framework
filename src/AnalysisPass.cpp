@@ -1,6 +1,7 @@
 #include <composition/AnalysisPass.hpp>
 #include <composition/AnalysisRegistry.hpp>
 #include <composition/ManifestRegistry.hpp>
+#include <composition/trace/TraceableValue.hpp>
 
 using namespace llvm;
 using namespace composition;

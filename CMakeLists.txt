@@ -49,6 +49,8 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
             include/composition/graph/ProtectionGraph.hpp
             include/composition/graph/protection.hpp
 
+            include/composition/trace/TraceableValue.hpp
+
             include/composition/Analysis.hpp
             include/composition/AnalysisPass.hpp
             include/composition/AnalysisRegistry.hpp
@@ -58,11 +60,14 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
             include/composition/Manifest.hpp
             include/composition/ManifestRegistry.hpp
             include/composition/Pass.hpp
+            include/composition/PreservedValueRegistry.hpp
             include/composition/Protection.hpp
             include/composition/ProtectionPass.hpp
             include/composition/ProtectionRegistry.hpp
 
             src/graph/ProtectionGraph.cpp
+
+            src/trace/TraceableValue.cpp
 
             src/AnalysisPass.cpp
             src/GraphPrinter.cpp
@@ -70,7 +75,7 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
             src/ProtectionPass.cpp
             src/MMap.h)
 add_library(${PROJECT_NAME}::${COMPOSITION_FRAMEWORK_TARGET_NAME} ALIAS ${COMPOSITION_FRAMEWORK_TARGET_NAME})
-target_compile_features(${COMPOSITION_FRAMEWORK_TARGET_NAME} PUBLIC cxx_std_14)
+target_compile_features(${COMPOSITION_FRAMEWORK_TARGET_NAME} PUBLIC cxx_std_17)
 
 
 target_include_directories(

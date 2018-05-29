@@ -7,6 +7,7 @@
 #include <composition/Manifest.hpp>
 #include <composition/ManifestRegistry.hpp>
 #include <composition/graph/vertex_type.hpp>
+#include <composition/PreservedValueRegistry.hpp>
 
 namespace composition {
 	template<typename T>
@@ -19,6 +20,10 @@ namespace composition {
 
 		void addProtection(Manifest m, PatchFunction p) {
 			ManifestRegistry::Add(m, p);
+		}
+
+		void addPreserved(llvm::Value* value) {
+			PreservedValueRegistry::Register(value);
 		}
 
 	protected:

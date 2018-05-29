@@ -1,6 +1,7 @@
+#include <llvm/Support/Debug.h>
+#include <boost/graph/strong_components.hpp>
 #include <composition/graph/ProtectionGraph.hpp>
 #include <composition/ManifestRegistry.hpp>
-#include <boost/graph/strong_components.hpp>
 
 using namespace llvm;
 using namespace composition;
