@@ -1,6 +1,7 @@
 #ifndef COMPOSITION_FRAMEWORK_TRACEABLEVALUE_HPP
 #define COMPOSITION_FRAMEWORK_TRACEABLEVALUE_HPP
 
+#include <map>
 #include <llvm/IR/Value.h>
 #include <llvm/IR/GlobalValue.h>
 #include <llvm/IR/ValueMap.h>
@@ -10,10 +11,10 @@ class TraceableValueState {
 		enum { FollowRAUW = true };
 
 		template<typename ExtraDataT>
-		static void onRAUW(const ExtraDataT & /*Data*/, llvm::Value * /*Old*/, llvm::Value * /*New*/);
+		static void onRAUW(const ExtraDataT &data, llvm::Value *oldValue, llvm::Value *newValue);
 
 		template<typename ExtraDataT>
-		static void onDelete(const ExtraDataT &/*Data*/, llvm::Value * /*Old*/);
+		static void onDelete(const ExtraDataT &data, llvm::Value *oldValue);
 	};
 
 	// Each GlobalValue is mapped to an identifier. The Config ensures when RAUW
@@ -21,15 +22,17 @@ class TraceableValueState {
 	using ValueNumberMap = llvm::ValueMap<llvm::Value *, uint64_t, Config>;
 	ValueNumberMap GlobalNumbers;
 
+	static std::map<llvm::Value *, std::string> ValueNameMap;
+
 	// The next unused serial number to assign to a global.
 	uint64_t NextNumber = 0;
 
 public:
 	TraceableValueState() = default;
 
-	uint64_t getNumber(llvm::Value *Global);
+	uint64_t getNumber(std::string name, llvm::Value *v);
 
-	void erase(llvm::Value *Global);
+	void erase(llvm::Value *v);
 
 	void clear();
 };

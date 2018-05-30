@@ -50,6 +50,7 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
             include/composition/graph/protection.hpp
 
             include/composition/trace/TraceableValue.hpp
+            include/composition/trace/PreservedValueRegistry.hpp
 
             include/composition/Analysis.hpp
             include/composition/AnalysisPass.hpp
@@ -60,7 +61,6 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
             include/composition/Manifest.hpp
             include/composition/ManifestRegistry.hpp
             include/composition/Pass.hpp
-            include/composition/PreservedValueRegistry.hpp
             include/composition/Protection.hpp
             include/composition/ProtectionPass.hpp
             include/composition/ProtectionRegistry.hpp
@@ -68,6 +68,7 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
             src/graph/ProtectionGraph.cpp
 
             src/trace/TraceableValue.cpp
+            src/trace/PreservedValueRegistry.cpp
 
             src/AnalysisPass.cpp
             src/GraphPrinter.cpp

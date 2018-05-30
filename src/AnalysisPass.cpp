@@ -2,7 +2,7 @@
 #include <composition/AnalysisRegistry.hpp>
 #include <composition/ManifestRegistry.hpp>
 #include <composition/trace/TraceableValue.hpp>
-#include <composition/PreservedValueRegistry.hpp>
+#include <composition/trace/PreservedValueRegistry.hpp>
 
 using namespace llvm;
 using namespace composition;
@@ -22,7 +22,6 @@ void AnalysisPass::getAnalysisUsage(AnalysisUsage &AU) const {
 }
 
 bool AnalysisPass::runOnModule(llvm::Module &M) {
-	//c = getAnalysis<GraphPass>().getGraph();
 	dbgs() << "AnalysisPass running\n";
 
 	auto manifests = *ManifestRegistry::GetAll();

@@ -7,7 +7,7 @@
 #include <composition/Manifest.hpp>
 #include <composition/ManifestRegistry.hpp>
 #include <composition/graph/vertex_type.hpp>
-#include <composition/PreservedValueRegistry.hpp>
+#include <composition/trace/PreservedValueRegistry.hpp>
 
 namespace composition {
 	template<typename T>
@@ -22,8 +22,8 @@ namespace composition {
 			ManifestRegistry::Add(m, p);
 		}
 
-		void addPreserved(llvm::Value* value) {
-			PreservedValueRegistry::Register(value);
+		void addPreserved(std::string name, llvm::Value *value) {
+			PreservedValueRegistry::Register(name, value);
 		}
 
 	protected:

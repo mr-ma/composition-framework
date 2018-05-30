@@ -3,7 +3,7 @@
 #include <composition/GraphPass.hpp>
 #include <composition/ProtectionPass.hpp>
 #include <composition/ManifestRegistry.hpp>
-#include <composition/PreservedValueRegistry.hpp>
+#include <composition/trace/PreservedValueRegistry.hpp>
 
 using namespace llvm;
 using namespace composition;
