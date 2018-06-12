@@ -45,7 +45,7 @@ find_package(LLVM REQUIRED CONFIG)
 add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
             include/composition/filter/FunctionFilter.hpp
             include/composition/filter/FunctionInfo.hpp
-            include/composition/filter/GlobalValueInfo.hpp
+            include/composition/filter/ValueInfo.hpp
             include/composition/filter/FilterInfo.hpp
 
             include/composition/graph/vertex_type.hpp
@@ -72,9 +72,6 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
             include/composition/util/functions.hpp
 
             src/filter/FunctionFilter.cpp
-            src/filter/FunctionInfo.cpp
-            src/filter/GlobalValueInfo.cpp
-            src/filter/FilterInfo.cpp
 
             src/graph/ProtectionGraph.cpp
 

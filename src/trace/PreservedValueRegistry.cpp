@@ -1,3 +1,5 @@
+#include <utility>
+
 #include <string>
 #include <composition/trace/PreservedValueRegistry.hpp>
 
@@ -5,7 +7,7 @@ using namespace llvm;
 
 bool PreservedValueRegistry::Register(std::string name, llvm::Value *v) {
 	dbgs() << "Registering preserved value: " << v->getName() << "\n";
-	TraceableValues()->getNumber(name, v);
+	TraceableValues()->getNumber(std::move(name), v);
 	return true;
 }
 

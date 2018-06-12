@@ -9,7 +9,7 @@
 using namespace llvm;
 using namespace composition;
 
-static cl::opt<std::string> FilterFile("filter-file", cl::Hidden, cl::desc("Path to function filter file"));
+static cl::opt<std::string> FilterFile("filter-files", cl::Hidden, cl::desc("Path to function filter file"));
 
 //FunctionFilterPass
 void FunctionFilterPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
@@ -17,13 +17,6 @@ void FunctionFilterPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
 }
 
 char FunctionFilterPass::ID = 0;
-
-void extract_function_name(std::string &full_name) {
-	auto name_end = full_name.find_first_of("(");
-	if (name_end != std::string::npos) {
-		full_name = full_name.substr(0, name_end);
-	}
-}
 
 void FunctionFilterPass::loadFile(llvm::Module &M, std::string file_name) {
 	std::ifstream functions_strm(file_name);
@@ -60,7 +53,7 @@ void FunctionFilterPass::loadFile(llvm::Module &M, std::string file_name) {
 		}
 		dbgs() << "\n";
 		dbgs() << "Filter functions:\n";
-		for (std::string S: functionNames) {
+		for (const std::string &S: functionNames) {
 			dbgs() << S << "\t";
 		}
 		dbgs() << "\n";
@@ -72,7 +65,7 @@ void FunctionFilterPass::loadFile(llvm::Module &M, std::string file_name) {
 bool FunctionFilterPass::runOnModule(llvm::Module &M) {
 	dbgs() << "In  filter function pass " << "\n";
 	if (!FilterFile.empty()) {
-		loadFile(M, FilterFile);
+		loadFile(M, FilterFile.getValue());
 	}
 	return false;
 }
@@ -81,4 +74,4 @@ FunctionInformation *FunctionFilterPass::getFunctionsInfo() {
 	return &(this->FunctionsInfo);
 }
 
-static llvm::RegisterPass<FunctionFilterPass> X("filter-func", "Include functions in a given file in any transformation");
+static llvm::RegisterPass<FunctionFilterPass> X("filter-funcs", "Include functions in a given file in any transformation");

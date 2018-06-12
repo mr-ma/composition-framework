@@ -3,20 +3,10 @@
 
 #include <unordered_set>
 #include <llvm/IR/Function.h>
+#include <composition/filter/FilterInfo.hpp>
 
 namespace composition {
-	class FunctionInformation {
-	public:
-		void add(llvm::Function *F) noexcept;
-
-		bool has(llvm::Function *F) const noexcept;
-
-		const std::unordered_set<llvm::Function *> &all() const noexcept;
-
-		size_t size() const noexcept;
-
-	private:
-		std::unordered_set<llvm::Function *> Functions{};
+	class FunctionInformation : public FilterInfo<llvm::Function *> {
 	};
 }
 

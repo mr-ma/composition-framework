@@ -16,11 +16,11 @@ void ProtectionPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
 bool ProtectionPass::runOnModule(llvm::Module &M) {
 	dbgs() << "ProtectionPass running\n";
 
-	auto && pass = getAnalysis<GraphPass>();
+	auto &pass = getAnalysis<GraphPass>();
 	std::vector<Manifest> manifests = pass.GetManifestsInOrder();
 
 	auto patchers = *ManifestRegistry::GetAllManifestPatchers();
-	for (auto m : manifests) {
+	for (const auto &m : manifests) {
 		auto p = ManifestRegistry::GetPatcher(m);
 		p(m);
 	}

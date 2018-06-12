@@ -15,7 +15,7 @@ void GraphPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
 bool GraphPass::runOnModule(llvm::Module &module) {
 	dbgs() << "GraphPass running\n";
 
-	auto && pass = getAnalysis<AnalysisPass>();
+	auto &pass = getAnalysis<AnalysisPass>();
 	Graph = std::move(pass.getGraph());
 	dbgs() << "GraphPass SCC\n";
 	Graph.SCC();
