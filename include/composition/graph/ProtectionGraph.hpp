@@ -59,7 +59,7 @@ namespace composition {
 			assert(edge.second);
 			set_edge_property(boost::edge_index, edge.first, ProtectionIdx, Graph);
 			set_edge_property(boost::edge_name, edge.first, name, Graph);
-			set_edge_property(boost::edge_type, edge.first, PROTECTION, Graph);
+			set_edge_property(boost::edge_type, edge.first, DEPENDENCY, Graph);
 			Protections[ProtectionIdx] = Protection(protector, protectee);
 			return ProtectionIdx++;
 		}
@@ -71,7 +71,7 @@ namespace composition {
 
 			auto edge = boost::add_edge(srcNode, dstNode, Graph);
 			assert(edge.second);
-			set_edge_property(boost::edge_type, edge.first, HIERARCHY, Graph);
+			set_edge_property(boost::edge_type, edge.first, CFG, Graph);
 		}
 
 		void removeProtection(uintptr_t protectionID);

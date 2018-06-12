@@ -29,7 +29,7 @@ void ProtectionGraph::removeProtection(uintptr_t protectionID) {
 		++next;
 
 		auto type = get_edge_property(boost::edge_type, *vi, Graph);
-		if (type == PROTECTION) {
+		if (type == DEPENDENCY) {
 			auto idx = get_edge_property(boost::edge_index, *vi, Graph);
 			if (idx == protectionID) {
 				boost::remove_edge(*vi, Graph);
@@ -215,7 +215,7 @@ void ProtectionGraph::replaceTargetIncomingEdges(vd src, vd dst) {
 	graph_t::in_edge_iterator vi, vi_end;
 	for (std::tie(vi, vi_end) = boost::in_edges(src, Graph); vi != vi_end; vi++) {
 		auto type = get_edge_property(boost::edge_type, *vi, Graph);
-		if (type != PROTECTION) continue;
+		if (type != DEPENDENCY) continue;
 
 		auto idx = get_edge_property(boost::edge_index, *vi, Graph);
 		auto name = get_edge_property(boost::edge_name, *vi, Graph);
@@ -234,7 +234,7 @@ void ProtectionGraph::replaceTargetOutgoingEdges(vd src, vd dst) {
 	graph_t::out_edge_iterator vi, vi_end;
 	for (std::tie(vi, vi_end) = boost::out_edges(src, Graph); vi != vi_end; vi++) {
 		auto type = get_edge_property(boost::edge_type, *vi, Graph);
-		if (type != PROTECTION) continue;
+		if (type != DEPENDENCY) continue;
 
 		auto idx = get_edge_property(boost::edge_index, *vi, Graph);
 		auto name = get_edge_property(boost::edge_name, *vi, Graph);

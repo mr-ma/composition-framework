@@ -5,8 +5,8 @@
 
 namespace composition {
 	enum edge_type {
-		HIERARCHY,
-		PROTECTION
+		CFG,
+		DEPENDENCY,
 	};
 }
 

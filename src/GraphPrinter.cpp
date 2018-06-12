@@ -76,7 +76,7 @@ void GraphPrinter::printEdges(std::unordered_map<vd, uint> map, raw_ostream &str
 	for (std::tie(vi, vi_end) = boost::edges(Graph); vi != vi_end; vi++) {
 		auto type = get_edge_property(boost::edge_type, *vi, Graph);
 
-		if (type != HIERARCHY) continue;
+		if (type != CFG) continue;
 
 		auto from = boost::source(*vi, Graph);
 		auto to = boost::target(*vi, Graph);
@@ -96,7 +96,7 @@ void GraphPrinter::printEdges(std::unordered_map<vd, uint> map, raw_ostream &str
 		auto type = get_edge_property(boost::edge_type, *vi, Graph);
 		auto name = get_edge_property(boost::edge_name, *vi, Graph);
 
-		if (type != PROTECTION) continue;
+		if (type != DEPENDENCY) continue;
 		auto from = boost::source(*vi, Graph);
 		auto fromID = map[from];
 		auto fromName = get_vertex_property(boost::vertex_name, from, Graph);
