@@ -49,6 +49,7 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
             include/composition/filter/FilterInfo.hpp
 
             include/composition/graph/vertex_type.hpp
+            include/composition/graph/vertex_attribute_set.hpp
             include/composition/graph/edge_type.hpp
             include/composition/graph/graph.hpp
             include/composition/graph/ProtectionGraph.hpp

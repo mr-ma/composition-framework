@@ -32,8 +32,8 @@ namespace composition {
 
 		ProtectionGraph(const ProtectionGraph &that) = delete;
 
-		ProtectionGraph(const ProtectionGraph &&that) noexcept : ProtectionIdx(std::move(that.ProtectionIdx)),
-		                                                         Protections(std::move(that.Protections)),
+		ProtectionGraph(const ProtectionGraph &&that) noexcept : ProtectionIdx(that.ProtectionIdx),
+		                                                         Protections(that.Protections),
 		                                                         Graph(that.Graph) {
 		};
 
@@ -42,14 +42,14 @@ namespace composition {
 		const graph_t &getGraph() const;
 
 		template<typename T, typename S>
-		uintptr_t addProtection(std::string name, T protector, S protectee) {
+		uintptr_t addProtection(const std::string &name, T protector, S protectee) {
 			// Two functions, a protector and a protectee form an edge
 			// The direction is from the protectee to the protector to indicate the information flow.
 			return addProtection(name, protector, TypeToNodeType<T>().value, protectee, protectee, TypeToNodeType<S>().value);
 		}
 
 		uintptr_t
-		addProtection(std::string name, llvm::Value *protector, vertex_type protectorType, llvm::Value *protectee, vertex_type protecteeType) {
+		addProtection(const std::string &name, llvm::Value *protector, vertex_type protectorType, llvm::Value *protectee, vertex_type protecteeType) {
 			// Two functions, a protector and a protectee form an edge
 			// The direction is from the protectee to the protector to indicate the information flow.
 			auto dstNode = this->insertNode(protector, protectorType);

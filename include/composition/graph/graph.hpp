@@ -5,6 +5,7 @@
 #include <boost/graph/adjacency_list.hpp>
 #include <composition/graph/vertex_type.hpp>
 #include <composition/graph/edge_type.hpp>
+#include <composition/graph/vertex_attribute_set.hpp>
 
 namespace composition {
 	typedef uintptr_t vertex_idx_t;
@@ -16,7 +17,9 @@ namespace composition {
 			boost::bidirectionalS,
 			boost::property<boost::vertex_index_t, vertex_idx_t,
 					boost::property<boost::vertex_name_t, std::string,
-							boost::property<boost::vertex_type_t, vertex_type>
+							boost::property<boost::vertex_type_t, vertex_type,
+									boost::property<boost::vertex_attribute_set_t, vertex_attribute_set>
+							>
 					>
 			>,
 			boost::property<boost::edge_index_t, edge_idx_t,

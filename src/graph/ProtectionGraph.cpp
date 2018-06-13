@@ -1,3 +1,4 @@
+#include <unordered_set>
 #include <llvm/Support/Debug.h>
 #include <boost/graph/strong_components.hpp>
 #include <composition/graph/ProtectionGraph.hpp>
@@ -17,6 +18,8 @@ vd ProtectionGraph::insertNode(llvm::Value *input, vertex_type type) {
 	set_vertex_property(boost::vertex_index, v, idx, Graph);
 	set_vertex_property(boost::vertex_name, v, input->getName().str(), Graph);
 	set_vertex_property(boost::vertex_type, v, type, Graph);
+	auto empty_set = std::unordered_set<std::string>();
+	set_vertex_property(boost::vertex_attribute_set, v, empty_set, Graph);
 	return v;
 }
 
