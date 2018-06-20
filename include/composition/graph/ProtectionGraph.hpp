@@ -39,7 +39,7 @@ namespace composition {
 
 		ProtectionGraph &operator=(ProtectionGraph &&) = default;
 
-		const graph_t &getGraph() const;
+		graph_t &getGraph();
 
 		template<typename T, typename S>
 		uintptr_t addProtection(const std::string &name, T protector, S protectee) {

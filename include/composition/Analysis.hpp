@@ -14,15 +14,15 @@ namespace composition {
 	class ComposableAnalysis : public Pass {
 	public:
 		template<typename S, typename U>
-		void addProtection(std::string name, S protector, U protectee, PatchFunction p) {
+		void addProtection(const std::string &name, S protector, U protectee, PatchFunction p) {
 			addProtection(Manifest{name, protector, TypeToNodeType<S>().value, protectee, TypeToNodeType<U>().value}, p);
 		}
 
-		void addProtection(Manifest m, PatchFunction p) {
+		void addProtection(const Manifest &m, PatchFunction &p) {
 			ManifestRegistry::Add(m, p);
 		}
 
-		void addPreserved(std::string name, llvm::Value *value) {
+		void addPreserved(const std::string &name, llvm::Value *value) {
 			PreservedValueRegistry::Register(name, value);
 		}
 

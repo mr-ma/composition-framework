@@ -3,7 +3,9 @@
 
 #include <string>
 #include <map>
+#include <vector>
 #include <llvm/Support/Debug.h>
+#include <llvm/Support/raw_ostream.h>
 #include <composition/Pass.hpp>
 
 class AnalysisRegistry {

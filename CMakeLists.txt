@@ -51,6 +51,8 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
             include/composition/graph/vertex_type.hpp
             include/composition/graph/vertex_attribute_set.hpp
             include/composition/graph/edge_type.hpp
+            include/composition/graph/dot.hpp
+            include/composition/graph/empty_graph.hpp
             include/composition/graph/graph.hpp
             include/composition/graph/ProtectionGraph.hpp
             include/composition/graph/protection.hpp
@@ -101,9 +103,9 @@ target_include_directories(
 )
 
 # LLVM is (typically) built with no C++ RTTI. We need to match that.
-target_compile_options(${COMPOSITION_FRAMEWORK_TARGET_NAME}
-                       PRIVATE
-                       -fno-rtti)
+#target_compile_options(${COMPOSITION_FRAMEWORK_TARGET_NAME}
+#                       PRIVATE
+#                       -fno-rtti)
 
 target_link_libraries(${COMPOSITION_FRAMEWORK_TARGET_NAME}
                       PRIVATE

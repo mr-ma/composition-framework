@@ -105,7 +105,7 @@ void ProtectionGraph::reduceToInstructions() {
 	}
 }
 
-const graph_t &ProtectionGraph::getGraph() const {
+graph_t &ProtectionGraph::getGraph() {
 	return Graph;
 }
 

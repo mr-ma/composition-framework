@@ -3,6 +3,7 @@
 #include <composition/ManifestRegistry.hpp>
 #include <composition/trace/TraceableValue.hpp>
 #include <composition/trace/PreservedValueRegistry.hpp>
+#include <composition/graph/dot.hpp>
 
 using namespace llvm;
 using namespace composition;
@@ -28,6 +29,8 @@ bool AnalysisPass::runOnModule(llvm::Module &M) {
 	for (Manifest m : manifests) {
 		m.idx = Graph.addProtection(m.protection, m.from, m.fromType, m.to, m.toType);
 	}
+
+	save_graph_to_dot(Graph.getGraph(), "graph_test.dot");
 
 	GraphPrinter(Graph.getGraph()).dump_dot("graph_raw.dot");
 	Graph.expandToFunctions();
