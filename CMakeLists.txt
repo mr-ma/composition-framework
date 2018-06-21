@@ -81,6 +81,8 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
             src/trace/TraceableValue.cpp
             src/trace/PreservedValueRegistry.cpp
 
+            src/util/functions.cpp
+
             src/AnalysisPass.cpp
             src/GraphPrinter.cpp
             src/GraphPass.cpp

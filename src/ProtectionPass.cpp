@@ -26,7 +26,7 @@ bool ProtectionPass::runOnModule(llvm::Module &M) {
 	}
 
 	PreservedValueRegistry::Clear();
-	return false;
+	return !patchers.empty();
 }
 
 char ProtectionPass::ID = 0;

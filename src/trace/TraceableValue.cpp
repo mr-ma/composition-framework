@@ -1,32 +1,11 @@
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
-#include <llvm/Support/PrettyStackTrace.h>
-#include <composition/trace/TraceableValue.hpp>
 #include <llvm/PassSupport.h>
-#include <regex>
+#include <composition/trace/TraceableValue.hpp>
+#include <composition/util/functions.hpp>
 
 using namespace llvm;
 
-std::string getPassName() {
-	std::string passName;
-
-	const void *val = SavePrettyStackState();
-	if (val != nullptr) {
-		auto *entry = (PrettyStackTraceEntry *) val;
-
-		std::string out;
-		auto stream = raw_string_ostream(out);
-		entry->print(stream);
-
-		std::regex passNameRegex("'(.*?)'");
-		std::smatch sm;
-		while (std::regex_search(stream.str(), sm, passNameRegex)) {
-			passName = sm.str();
-			break;
-		}
-	}
-	return passName;
-}
 
 template<typename ExtraDataT>
 void TraceableValueState::Config::onRAUW(const ExtraDataT &, llvm::Value *oldValue, llvm::Value *newValue) {
