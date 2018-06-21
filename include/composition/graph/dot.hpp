@@ -6,51 +6,60 @@
 #include <boost/graph/adjacency_list.hpp>
 #include <composition/graph/empty_graph.hpp>
 #include <boost/algorithm/string/replace.hpp>
+#include "graphviz.hpp"
 
 namespace composition {
-	std::string graphviz_encode(std::string s) noexcept {
-		boost::algorithm::replace_all(s, " , ", "$$$COMMA$$$");
-		boost::algorithm::replace_all(s, " ", "$$$SPACE$$$");
-		boost::algorithm::replace_all(s, "\"", "$$$QUOTE$$$");
-		return s;
-	}
-
-	std::string grapviz_decode(std::string s) noexcept {
-		boost::algorithm::replace_all(s, "$$$COMMA$$$", " , ");
-		boost::algorithm::replace_all(s, "$$$SPACE$$$", " ");
-		boost::algorithm::replace_all(s, "$$$QUOTE$$$", "\"");
-		return s;
-	}
-
-	class custom_vertex_writer {
+	template<typename graph>
+	class bundled_vertices_writer {
 	public:
-		explicit custom_vertex_writer(graph_t &g) : g(g) {}
+		explicit bundled_vertices_writer(graph g) : g{g} {}
 
-		template<class Vertex>
-		void operator()(std::ostream &out, const Vertex &e) const {
-			out << "[label=" << get_vertex_property(boost::vertex_name, e, g) << "]";
+		template<class vertex_descriptor>
+		void operator()(std::ostream &out, const vertex_descriptor &vd) const noexcept {
+			out << "[label=" << g[vd].name << "]";
 		}
 
 	private:
-		graph_t &g;
+		graph g;
 	};
 
-	class custom_edge_writer {
+	template<typename graph>
+	class bundled_edges_writer {
 	public:
-		explicit custom_edge_writer(graph_t &g) : g(g) {}
+		explicit bundled_edges_writer(graph g) : g{g} {}
 
-		template<class Edge>
-		void operator()(std::ostream &out, const Edge &e) const {
-			out << "[label=" << get_edge_property(boost::edge_name, e, g) << "]";
+		template<class edge_descriptor>
+		void operator()(std::ostream &out, const edge_descriptor &ed) const noexcept {
+			out << "[label=" << g[ed].name << "]";
 		}
 
 	private:
-		graph_t &g;
+		graph g;
 	};
 
-	void save_graph_to_dot(graph_t &g, const std::string &filename) noexcept {
+	template<typename graph>
+	inline bundled_vertices_writer<graph>
+	make_bundled_vertices_writer(const graph &g) {
+		return bundled_vertices_writer<graph>(g);
+	}
+
+	template<typename graph>
+	inline bundled_edges_writer<graph>
+	make_bundled_edges_writer(const graph &g) {
+		return bundled_edges_writer<graph>(g);
+	}
+
+	template<typename graph>
+	void save_graph_to_dot(graph &g, const std::string &filename) noexcept {
+		std::map<vd, size_t> index;
+		auto pmap = boost::make_assoc_property_map(index);
+
+		for (auto vd : boost::make_iterator_range(boost::vertices(g))) {
+			index[vd] = index.size();
+		}
+
 		std::ofstream f(filename);
-		boost::write_graphviz(f, g, custom_vertex_writer(g), custom_edge_writer(g));
+		boost::write_graphviz(f, g, make_bundled_vertices_writer(g), make_bundled_edges_writer(g), boost::default_writer(), pmap);
 	}
 
 	bool is_regular_file(const std::string &filename) noexcept {

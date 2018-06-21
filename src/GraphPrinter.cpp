@@ -1,4 +1,5 @@
 #include <composition/GraphPrinter.hpp>
+#include <composition/graph/vertex_type.hpp>
 #include "MMap.h"
 
 using namespace llvm;
@@ -14,11 +15,12 @@ std::unordered_map<vd, uint> GraphPrinter::printNodes(raw_ostream &stream) {
 		idxMap[*vi] = i;
 		i++;
 
-		auto idx = get_vertex_property(boost::vertex_index, *vi, Graph);
-		auto name = get_vertex_property(boost::vertex_name, *vi, Graph);
-		auto type = get_vertex_property(boost::vertex_type, *vi, Graph);
+		auto v = Graph[*vi];
+		auto idx = v.index;
+		auto name = v.name;
+		auto type = v.type;
 
-		if (type == INSTRUCTION) {
+		if (type == vertex_type::INSTRUCTION) {
 			auto &&instr = reinterpret_cast<Instruction *>(idx);
 			auto funcName = instr->getParent()->getParent()->getName().str();
 			clusterMap.insert({funcName, *vi});
@@ -28,12 +30,12 @@ std::unordered_map<vd, uint> GraphPrinter::printNodes(raw_ostream &stream) {
 		auto label = name;
 		if (name.empty()) {
 			switch (type) {
-				case BASICBLOCK: {
+				case vertex_type::BASICBLOCK: {
 					auto &&b = reinterpret_cast<BasicBlock *>(idx);
 					label = b->getParent()->getName().str() + "_bb_" + std::to_string(idx);
 				}
 					break;
-				case FUNCTION:
+				case vertex_type::FUNCTION:
 					label = "func";
 					break;
 				default:
@@ -58,7 +60,8 @@ std::unordered_map<vd, uint> GraphPrinter::printNodes(raw_ostream &stream) {
 			stream << "label = \"" << it->first << "\";\n";
 			last = it->first;
 		}
-		auto label = "i_" + std::to_string(get_vertex_property(boost::vertex_index, it->second, Graph));
+		auto v = Graph[it->second];
+		auto label = "i_" + std::to_string(v.index);
 		stream << std::to_string(idxMap[it->second]) << " [label=\"" << label << "\"];\n";
 	}
 	if (!last.empty()) {
@@ -74,9 +77,10 @@ void GraphPrinter::printEdges(std::unordered_map<vd, uint> map, raw_ostream &str
 
 	graph_t::edge_iterator vi, vi_end;
 	for (std::tie(vi, vi_end) = boost::edges(Graph); vi != vi_end; vi++) {
-		auto type = get_edge_property(boost::edge_type, *vi, Graph);
+		auto e = Graph[*vi];
+		auto type = e.type;
 
-		if (type != CFG) continue;
+		if (type != edge_type::CFG) continue;
 
 		auto from = boost::source(*vi, Graph);
 		auto to = boost::target(*vi, Graph);
@@ -92,18 +96,19 @@ void GraphPrinter::printEdges(std::unordered_map<vd, uint> map, raw_ostream &str
 	stream << "edge [color=red];\n";
 
 	for (std::tie(vi, vi_end) = boost::edges(Graph); vi != vi_end; vi++) {
-		auto idx = get_edge_property(boost::edge_index, *vi, Graph);
-		auto type = get_edge_property(boost::edge_type, *vi, Graph);
-		auto name = get_edge_property(boost::edge_name, *vi, Graph);
+		auto e = Graph[*vi];
+		auto idx = e.index;
+		auto type = e.type;
+		auto name = e.name;
 
-		if (type != DEPENDENCY) continue;
+		if (type != edge_type::DEPENDENCY) continue;
 		auto from = boost::source(*vi, Graph);
 		auto fromID = map[from];
-		auto fromName = get_vertex_property(boost::vertex_name, from, Graph);
+		auto fromName = get_vertex_property(&vertex_t::name, from, Graph);
 
 		auto to = boost::target(*vi, Graph);
 		auto toID = map[to];
-		auto toName = get_vertex_property(boost::vertex_name, to, Graph);
+		auto toName = get_vertex_property(&vertex_t::name, to, Graph);
 
 		dbgs() << fromName << " -> " << toName << "\n";
 		dbgs() << std::to_string(fromID) << " -> " << std::to_string(toID) << "\n";

@@ -45,7 +45,7 @@ namespace composition {
 		uintptr_t addProtection(const std::string &name, T protector, S protectee) {
 			// Two functions, a protector and a protectee form an edge
 			// The direction is from the protectee to the protector to indicate the information flow.
-			return addProtection(name, protector, TypeToNodeType<T>().value, protectee, protectee, TypeToNodeType<S>().value);
+			return addProtection(name, protector, LLVMToVertexType<T>().value, protectee, protectee, LLVMToVertexType<S>().value);
 		}
 
 		uintptr_t
@@ -57,21 +57,21 @@ namespace composition {
 
 			auto edge = boost::add_edge(srcNode, dstNode, Graph);
 			assert(edge.second);
-			set_edge_property(boost::edge_index, edge.first, ProtectionIdx, Graph);
-			set_edge_property(boost::edge_name, edge.first, name, Graph);
-			set_edge_property(boost::edge_type, edge.first, DEPENDENCY, Graph);
+			Graph[edge.first] = edge_t{ProtectionIdx, name, edge_type::DEPENDENCY};
 			Protections[ProtectionIdx] = Protection(protector, protectee);
 			return ProtectionIdx++;
 		}
 
 		template<typename T, typename S>
-		void addHierarchy(T parent, S child) {
-			auto srcNode = this->insertNode(parent, TypeToNodeType<T>().value);
-			auto dstNode = this->insertNode(child, TypeToNodeType<S>().value);
+		uintptr_t addHierarchy(T parent, S child) {
+			auto srcNode = this->insertNode(parent, LLVMToVertexType<T>().value);
+			auto dstNode = this->insertNode(child, LLVMToVertexType<S>().value);
 
 			auto edge = boost::add_edge(srcNode, dstNode, Graph);
 			assert(edge.second);
-			set_edge_property(boost::edge_type, edge.first, CFG, Graph);
+			Graph[edge.first] = edge_t{ProtectionIdx, "CFG", edge_type::CFG};
+			Protections[ProtectionIdx] = Protection(parent, child);
+			return ProtectionIdx++;
 		}
 
 		void removeProtection(uintptr_t protectionID);

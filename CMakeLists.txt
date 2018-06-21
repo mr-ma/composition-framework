@@ -48,14 +48,14 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
             include/composition/filter/ValueInfo.hpp
             include/composition/filter/FilterInfo.hpp
 
-            include/composition/graph/vertex_type.hpp
-            include/composition/graph/vertex_attribute_set.hpp
-            include/composition/graph/edge_type.hpp
             include/composition/graph/dot.hpp
             include/composition/graph/empty_graph.hpp
             include/composition/graph/graph.hpp
             include/composition/graph/ProtectionGraph.hpp
             include/composition/graph/protection.hpp
+            include/composition/graph/edge.hpp
+            include/composition/graph/vertex.hpp
+            include/composition/graph/graphviz.hpp
 
             include/composition/trace/TraceableValue.hpp
             include/composition/trace/PreservedValueRegistry.hpp
@@ -76,7 +76,10 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
 
             src/filter/FunctionFilter.cpp
 
+            src/graph/vertex.cpp
+            src/graph/edge.cpp
             src/graph/ProtectionGraph.cpp
+            src/graph/graphviz.cpp
 
             src/trace/TraceableValue.cpp
             src/trace/PreservedValueRegistry.cpp

@@ -15,7 +15,7 @@ namespace composition {
 	public:
 		template<typename S, typename U>
 		void addProtection(const std::string &name, S protector, U protectee, PatchFunction p) {
-			addProtection(Manifest{name, protector, TypeToNodeType<S>().value, protectee, TypeToNodeType<U>().value}, p);
+			addProtection(Manifest{name, protector, LLVMToVertexType<S>().value, protectee, LLVMToVertexType<U>().value}, p);
 		}
 
 		void addProtection(const Manifest &m, PatchFunction &p) {

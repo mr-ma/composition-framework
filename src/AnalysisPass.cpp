@@ -30,13 +30,11 @@ bool AnalysisPass::runOnModule(llvm::Module &M) {
 		m.idx = Graph.addProtection(m.protection, m.from, m.fromType, m.to, m.toType);
 	}
 
-	save_graph_to_dot(Graph.getGraph(), "graph_test.dot");
-
-	GraphPrinter(Graph.getGraph()).dump_dot("graph_raw.dot");
+	save_graph_to_dot(Graph.getGraph(), "graph_raw.dot");
 	Graph.expandToFunctions();
-	GraphPrinter(Graph.getGraph()).dump_dot("graph_expanded.dot");
+	save_graph_to_dot(Graph.getGraph(), "graph_expanded.dot");
 	Graph.reduceToFunctions();
-	GraphPrinter(Graph.getGraph()).dump_dot("graph_reduced.dot");
+	save_graph_to_dot(Graph.getGraph(), "graph_reduced.dot");
 
 	return false;
 }
