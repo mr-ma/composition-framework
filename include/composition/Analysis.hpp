@@ -6,7 +6,7 @@
 #include <composition/AnalysisRegistry.hpp>
 #include <composition/Manifest.hpp>
 #include <composition/ManifestRegistry.hpp>
-#include <composition/graph/vertex_type.hpp>
+#include <composition/graph/vertex.hpp>
 #include <composition/trace/PreservedValueRegistry.hpp>
 
 namespace composition {
@@ -14,11 +14,11 @@ namespace composition {
 	class ComposableAnalysis : public Pass {
 	public:
 		template<typename S, typename U>
-		void addProtection(const std::string &name, S protector, U protectee, PatchFunction p) {
+		void addProtection(const std::string &name, S protector, U protectee, const PatchFunction &p) {
 			addProtection(Manifest{name, protector, LLVMToVertexType<S>().value, protectee, LLVMToVertexType<U>().value}, p);
 		}
 
-		void addProtection(const Manifest &m, PatchFunction &p) {
+		void addProtection(const Manifest &m, const PatchFunction &p) {
 			ManifestRegistry::Add(m, p);
 		}
 

@@ -1,21 +1,35 @@
 #include <unordered_set>
 #include <llvm/Support/Debug.h>
+#include <llvm/Support/raw_ostream.h>
 #include <boost/graph/strong_components.hpp>
 #include <composition/graph/ProtectionGraph.hpp>
 #include <composition/ManifestRegistry.hpp>
+#include <composition/util/functions.hpp>
 
 using namespace llvm;
 using namespace composition;
 
-vd ProtectionGraph::insertNode(llvm::Value *input, vertex_type type) {
+vd_t ProtectionGraph::insertNode(llvm::Value *input, vertex_type type) {
+	assertType(input, type);
+
 	auto idx = reinterpret_cast<uintptr_t>(input);
 
 	if (has_vertex_with_property(&vertex_t::index, idx, Graph)) {
 		return find_first_vertex_with_property(&vertex_t::index, idx, Graph);
 	}
 
-	vertex_t v(idx, input->getName().str(), type, {});
-	return boost::add_vertex(v, Graph);
+	std::string name;
+	if (!input->hasName()) {
+		if (isa<Instruction>(input)) {
+			name = "I";
+		} else if (isa<BasicBlock>(input)) {
+			name = "BB";
+		}
+	} else {
+		name = input->getName();
+	}
+
+	return boost::add_vertex(vertex_t(idx, name, type, {}), Graph);
 }
 
 void ProtectionGraph::removeProtection(uintptr_t protectionID) {
@@ -66,7 +80,7 @@ void ProtectionGraph::expandToInstructions() {
 	}
 }
 
-void ProtectionGraph::expandBasicBlockToInstructions(vd it, llvm::BasicBlock *B) {
+void ProtectionGraph::expandBasicBlockToInstructions(vd_t it, llvm::BasicBlock *B) {
 	for (auto &I : *B) {
 		auto node = this->insertNode(&I, vertex_type::INSTRUCTION);
 		replaceTarget(it, node);
@@ -111,11 +125,12 @@ void ProtectionGraph::SCC() {
 	unsigned long vertices = boost::num_vertices(Graph);
 	while (num != vertices) {
 
-		std::map<vd, size_t> index;
+		std::map<vd_t, size_t> index;
 		auto pmap = boost::make_assoc_property_map(index);
 
+		int i = 0;
 		for (auto vd : boost::make_iterator_range(boost::vertices(Graph))) {
-			index[vd] = index.size();
+			put(pmap, vd, i++);
 		}
 
 
@@ -131,10 +146,10 @@ void ProtectionGraph::SCC() {
 
 		dbgs() << "Total number of components: " << std::to_string(num) << "\n";
 		for (auto i = 0; i != num; i++) {
-			std::vector<int> matches;
+			std::vector<vd_t> matches;
 			for (auto j = 0; j != vertices; j++) {
 				if (component[j] == i) {
-					matches.push_back(j);
+					matches.push_back(find_first_vertex_with_property_map(pmap, j, Graph));
 				}
 			}
 
@@ -144,7 +159,7 @@ void ProtectionGraph::SCC() {
 			}
 		}
 
-		for (auto i = 0; i != vertices; ++i) {
+		for (auto i = 0; i != vertices; i++) {
 			auto str = get_vertex_property(&vertex_t::name, find_first_vertex_with_property_map(pmap, i, Graph), Graph);
 			dbgs() << "Vertex " << std::to_string(i) << " " << str << " is in component " << std::to_string(component[i]) << "\n";
 		}
@@ -172,12 +187,12 @@ void ProtectionGraph::expandToFunctions() {
 			case vertex_type::FUNCTION:
 				break;
 			case vertex_type::BASICBLOCK: {
-				auto B = reinterpret_cast<llvm::BasicBlock *>(v.index);
+				const auto &B = reinterpret_cast<llvm::BasicBlock *>(v.index);
 				this->expandBasicBlockToFunction(*vi, B);
 			}
 				break;
 			case vertex_type::INSTRUCTION: {
-				auto I = reinterpret_cast<llvm::Instruction *>(v.index);
+				const auto &I = reinterpret_cast<llvm::Instruction *>(v.index);
 				this->expandInstructionToFunction(*vi, I);
 			}
 				break;
@@ -189,7 +204,7 @@ void ProtectionGraph::expandToFunctions() {
 	}
 }
 
-void ProtectionGraph::expandBasicBlockToFunction(vd it, llvm::BasicBlock *B) {
+void ProtectionGraph::expandBasicBlockToFunction(vd_t it, llvm::BasicBlock *B) {
 	if (B->getParent() == nullptr) {
 		return;
 	}
@@ -199,7 +214,7 @@ void ProtectionGraph::expandBasicBlockToFunction(vd it, llvm::BasicBlock *B) {
 	replaceTarget(it, funcNode);
 }
 
-void ProtectionGraph::expandInstructionToFunction(vd it, llvm::Instruction *I) {
+void ProtectionGraph::expandInstructionToFunction(vd_t it, llvm::Instruction *I) {
 	if (I->getParent() == nullptr || I->getParent()->getParent() == nullptr) {
 		return;
 	}
@@ -209,12 +224,12 @@ void ProtectionGraph::expandInstructionToFunction(vd it, llvm::Instruction *I) {
 	replaceTarget(it, funcNode);
 }
 
-void ProtectionGraph::replaceTarget(vd src, vd dst) {
+void ProtectionGraph::replaceTarget(vd_t src, vd_t dst) {
 	replaceTargetIncomingEdges(src, dst);
 	replaceTargetOutgoingEdges(src, dst);
 }
 
-void ProtectionGraph::replaceTargetIncomingEdges(vd src, vd dst) {
+void ProtectionGraph::replaceTargetIncomingEdges(vd_t src, vd_t dst) {
 	graph_t::in_edge_iterator vi, vi_end;
 	for (std::tie(vi, vi_end) = boost::in_edges(src, Graph); vi != vi_end; vi++) {
 		auto e = Graph[*vi];
@@ -229,7 +244,7 @@ void ProtectionGraph::replaceTargetIncomingEdges(vd src, vd dst) {
 	}
 }
 
-void ProtectionGraph::replaceTargetOutgoingEdges(vd src, vd dst) {
+void ProtectionGraph::replaceTargetOutgoingEdges(vd_t src, vd_t dst) {
 	graph_t::out_edge_iterator vi, vi_end;
 	for (std::tie(vi, vi_end) = boost::out_edges(src, Graph); vi != vi_end; vi++) {
 		auto e = Graph[*vi];
@@ -277,12 +292,12 @@ void ProtectionGraph::reduceToFunctions() {
 	}
 }
 
-void ProtectionGraph::handleCycle(std::vector<int> matches) {
+void ProtectionGraph::handleCycle(std::vector<vd_t> matches) {
 	dbgs() << "Handling cycle in component\n";
 
-	vd prev = nullptr;
+	vd_t prev = nullptr;
 	for (auto it = matches.begin(), it_end = matches.end(); it != it_end; it++) {
-		auto vd = find_first_vertex_with_property(&vertex_t::index, *it, Graph);
+		vd_t vd = *it;
 		auto v = Graph[vd];
 
 		dbgs() << v.name << "\n";

@@ -13,19 +13,19 @@ namespace composition {
 		std::unordered_map<edge_idx_t, Protection> Protections{};
 
 	private:
-		vd insertNode(llvm::Value *node, vertex_type type);
+		vd_t insertNode(llvm::Value *node, vertex_type type);
 
-		void expandBasicBlockToInstructions(vd B, llvm::BasicBlock *pBlock);
+		void expandBasicBlockToInstructions(vd_t B, llvm::BasicBlock *pBlock);
 
-		void expandInstructionToFunction(vd it, llvm::Instruction *I);
+		void expandInstructionToFunction(vd_t it, llvm::Instruction *I);
 
-		void expandBasicBlockToFunction(vd it, llvm::BasicBlock *B);
+		void expandBasicBlockToFunction(vd_t it, llvm::BasicBlock *B);
 
-		void replaceTarget(vd src, vd dst);
+		void replaceTarget(vd_t src, vd_t dst);
 
-		void replaceTargetIncomingEdges(vd src, vd dst);
+		void replaceTargetIncomingEdges(vd_t src, vd_t dst);
 
-		void replaceTargetOutgoingEdges(vd src, vd dst);
+		void replaceTargetOutgoingEdges(vd_t src, vd_t dst);
 
 	public:
 		ProtectionGraph() = default;
@@ -86,7 +86,7 @@ namespace composition {
 
 		void SCC();
 
-		void handleCycle(std::vector<int> matches);
+		void handleCycle(std::vector<vd_t> matches);
 	};
 }
 #endif //COMPOSITION_FRAMEWORK_PROTECTIONGRAPH_HPP

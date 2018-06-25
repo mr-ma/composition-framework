@@ -8,7 +8,6 @@
 #include <llvm/IR/Module.h>
 #include <composition/graph/ProtectionGraph.hpp>
 #include <composition/GraphPass.hpp>
-#include <composition/GraphPrinter.hpp>
 
 namespace composition {
 	class AnalysisPass : public llvm::ModulePass {

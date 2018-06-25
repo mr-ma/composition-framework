@@ -26,7 +26,7 @@ bool AnalysisPass::runOnModule(llvm::Module &M) {
 	dbgs() << "AnalysisPass running\n";
 
 	auto manifests = *ManifestRegistry::GetAll();
-	for (Manifest m : manifests) {
+	for (auto &m : manifests) {
 		m.idx = Graph.addProtection(m.protection, m.from, m.fromType, m.to, m.toType);
 	}
 

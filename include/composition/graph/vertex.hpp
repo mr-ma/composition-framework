@@ -54,4 +54,6 @@ bool operator==(const vertex_t &lhs, const vertex_t &rhs) noexcept;
 
 bool operator!=(const vertex_t &lhs, const vertex_t &rhs) noexcept;
 
+void assertType(llvm::Value *value, vertex_type type);
+
 #endif //COMPOSITION_FRAMEWORK_VERTEX_HPP

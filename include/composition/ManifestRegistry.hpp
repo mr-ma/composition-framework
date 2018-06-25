@@ -11,7 +11,7 @@ namespace composition {
 
 	class ManifestRegistry {
 	public:
-		static void Add(Manifest m, PatchFunction p) {
+		static void Add(const Manifest &m, const PatchFunction &p) {
 			RegisteredManifests()->push_back(m);
 			(*ManifestPatchers())[m] = p;
 		}
@@ -29,7 +29,7 @@ namespace composition {
 			}
 		}
 
-		static PatchFunction GetPatcher(Manifest m) {
+		static PatchFunction GetPatcher(const Manifest &m) {
 			return (*ManifestPatchers())[m];
 		}
 

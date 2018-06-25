@@ -64,7 +64,6 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
             include/composition/AnalysisPass.hpp
             include/composition/AnalysisRegistry.hpp
             include/composition/AnalysisRegistry.hpp
-            include/composition/GraphPrinter.hpp
             include/composition/GraphPass.hpp
             include/composition/Manifest.hpp
             include/composition/ManifestRegistry.hpp
@@ -87,7 +86,6 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
             src/util/functions.cpp
 
             src/AnalysisPass.cpp
-            src/GraphPrinter.cpp
             src/GraphPass.cpp
             src/ProtectionPass.cpp
             src/MMap.h)

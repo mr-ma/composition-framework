@@ -17,8 +17,8 @@ namespace composition {
 			boost::property<boost::graph_name_t, std::string>
 	> graph_t;
 
-	using vd = graph_t::vertex_descriptor;
-	using ed = graph_t::edge_descriptor;
+	using vd_t = graph_t::vertex_descriptor;
+	using ed_t = graph_t::edge_descriptor;
 
 	template<typename property_t, typename graph_t>
 	auto get_vertex_property(const property_t &p, const typename graph_t::vertex_descriptor vd, graph_t &g) noexcept -> decltype(get(get(p, g), vd)) {

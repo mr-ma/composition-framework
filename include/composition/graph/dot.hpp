@@ -51,7 +51,7 @@ namespace composition {
 
 	template<typename graph>
 	void save_graph_to_dot(graph &g, const std::string &filename) noexcept {
-		std::map<vd, size_t> index;
+		std::map<vd_t, size_t> index;
 		auto pmap = boost::make_assoc_property_map(index);
 
 		for (auto vd : boost::make_iterator_range(boost::vertices(g))) {
