@@ -4,10 +4,11 @@
 #include <composition/trace/PreservedValueRegistry.hpp>
 
 using namespace llvm;
+using namespace composition;
 
-bool PreservedValueRegistry::Register(std::string name, llvm::Value *v) {
+bool PreservedValueRegistry::Register(const std::string &name, llvm::Value *v, const PreservedCallback &callback) {
 	dbgs() << "Registering preserved value: " << v->getName() << "\n";
-	TraceableValues()->getNumber(std::move(name), v);
+	TraceableValues()->getNumber(v, TraceableCallbackInfo(name, callback));
 	return true;
 }
 

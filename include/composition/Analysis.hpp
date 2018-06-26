@@ -22,8 +22,8 @@ namespace composition {
 			ManifestRegistry::Add(m, p);
 		}
 
-		void addPreserved(const std::string &name, llvm::Value *value) {
-			PreservedValueRegistry::Register(name, value);
+		void addPreserved(const std::string &name, llvm::Value *value, const PreservedCallback &callback) {
+			PreservedValueRegistry::Register(name, value, callback);
 		}
 
 	protected:

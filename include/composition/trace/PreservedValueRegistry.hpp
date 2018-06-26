@@ -6,13 +6,16 @@
 #include <llvm/Support/raw_ostream.h>
 #include <composition/trace/TraceableValue.hpp>
 
-class PreservedValueRegistry {
-public:
-	static bool Register(std::string name, llvm::Value *v);
+namespace composition {
+	class PreservedValueRegistry {
+	public:
+		static bool Register(const std::string &name, llvm::Value *v, const PreservedCallback &callback);
 
-	static void Clear();
-protected:
-	static TraceableValueState *TraceableValues();;
-};
+		static void Clear();
+
+	protected:
+		static TraceableValueState *TraceableValues();;
+	};
+}
 
 #endif //COMPOSITION_FRAMEWORK_PRESERVEDVALUEREGISTRY_HPP

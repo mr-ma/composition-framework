@@ -1,13 +1,14 @@
 #ifndef COMPOSITION_FRAMEWORK_MANIFESTREGISTRY_HPP
 #define COMPOSITION_FRAMEWORK_MANIFESTREGISTRY_HPP
 
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 #include <composition/Manifest.hpp>
 
 namespace composition {
 
-	typedef std::function<void(Manifest)> PatchFunction; //TODO ApplyManifestCallback
+	typedef std::function<void(Manifest)> PatchFunction;
 
 	class ManifestRegistry {
 	public:

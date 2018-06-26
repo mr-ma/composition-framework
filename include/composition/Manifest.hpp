@@ -1,6 +1,7 @@
 #ifndef COMPOSITION_FRAMEWORK_MANIFEST_HPP
 #define COMPOSITION_FRAMEWORK_MANIFEST_HPP
 
+#include <cstdint>
 #include <llvm/IR/Value.h>
 #include <composition/graph/vertex.hpp>
 

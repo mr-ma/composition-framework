@@ -6,36 +6,48 @@
 #include <llvm/IR/GlobalValue.h>
 #include <llvm/IR/ValueMap.h>
 
-class TraceableValueState {
-	struct Config : llvm::ValueMapConfig<llvm::Value *> {
-		enum { FollowRAUW = true };
+namespace composition {
 
-		template<typename ExtraDataT>
-		static void onRAUW(const ExtraDataT &data, llvm::Value *oldValue, llvm::Value *newValue);
+	typedef std::function<void(const std::string &, llvm::Value *, llvm::Value *)> PreservedCallback;
 
-		template<typename ExtraDataT>
-		static void onDelete(const ExtraDataT &data, llvm::Value *oldValue);
+	struct TraceableCallbackInfo {
+		std::string pass;
+		PreservedCallback callback;
+
+		TraceableCallbackInfo(const std::string &pass, const PreservedCallback &callback) : pass(pass), callback(callback) {}
 	};
 
-	// Each GlobalValue is mapped to an identifier. The Config ensures when RAUW
-	// occurs, the mapping is changed.
-	using ValueNumberMap = llvm::ValueMap<llvm::Value *, uint64_t, Config>;
-	ValueNumberMap GlobalNumbers;
+	class TraceableValueState {
+		struct Config : llvm::ValueMapConfig<llvm::Value *> {
+			enum { FollowRAUW = true };
 
-	static std::map<llvm::Value *, std::string> ValueNameMap;
+			template<typename ExtraDataT>
+			static void onRAUW(const ExtraDataT &data, llvm::Value *oldValue, llvm::Value *newValue);
 
-	// The next unused serial number to assign to a global.
-	uint64_t NextNumber = 0;
+			template<typename ExtraDataT>
+			static void onDelete(const ExtraDataT &data, llvm::Value *oldValue);
+		};
 
-public:
-	TraceableValueState() = default;
+		// Each GlobalValue is mapped to an identifier. The Config ensures when RAUW
+		// occurs, the mapping is changed.
+		using ValueNumberMap = llvm::ValueMap<llvm::Value *, uint64_t, Config>;
+		ValueNumberMap GlobalNumbers;
 
-	uint64_t getNumber(std::string name, llvm::Value *v);
+		static std::map<llvm::Value *, TraceableCallbackInfo> ValueNameMap;
 
-	void erase(llvm::Value *v);
+		// The next unused serial number to assign to a global.
+		uint64_t NextNumber = 0;
 
-	void clear();
-};
+	public:
+		TraceableValueState() = default;
 
+		uint64_t getNumber(llvm::Value *v, TraceableCallbackInfo info);
+
+		void erase(llvm::Value *v);
+
+		void clear();
+	};
+
+}
 
 #endif //COMPOSITION_FRAMEWORK_TRACEABLEVALUE_HPP

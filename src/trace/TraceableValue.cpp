@@ -5,7 +5,7 @@
 #include <composition/util/functions.hpp>
 
 using namespace llvm;
-
+using namespace composition;
 
 template<typename ExtraDataT>
 void TraceableValueState::Config::onRAUW(const ExtraDataT &, llvm::Value *oldValue, llvm::Value *newValue) {
@@ -15,7 +15,7 @@ void TraceableValueState::Config::onRAUW(const ExtraDataT &, llvm::Value *oldVal
 	if (it == ValueNameMap.end()) {
 		dbgs() << "Could not find pass that added this value to be preserved.\n";
 	} else {
-		dbgs() << "Value was added by pass: " << it->second << "\n";
+		dbgs() << "Value was added by pass: " << it->second.pass << "\n";
 	}
 	dbgs() << "Old: ";
 	oldValue->print(dbgs(), true);
@@ -23,6 +23,8 @@ void TraceableValueState::Config::onRAUW(const ExtraDataT &, llvm::Value *oldVal
 	newValue->print(dbgs(), true);
 	dbgs() << "\n";
 	dbgs() << "Value was changed by pass: " << getPassName() << "\n";
+
+	it->second.callback(getPassName(), oldValue, newValue);
 }
 
 template<typename ExtraDataT>
@@ -32,12 +34,14 @@ void TraceableValueState::Config::onDelete(const ExtraDataT &, llvm::Value *oldV
 	if (it == ValueNameMap.end()) {
 		dbgs() << "Could not find pass that added this value to be preserved.\n";
 	} else {
-		dbgs() << "Value was added by pass: " << it->second << "\n";
+		dbgs() << "Value was added by pass: " << it->second.pass << "\n";
 	}
 	dbgs() << "Old: ";
 	oldValue->print(dbgs(), true);
 	dbgs() << "\n";
 	dbgs() << "Value was deleted by pass: " << getPassName() << "\n";
+
+	it->second.callback(getPassName(), oldValue, nullptr);
 }
 
 
@@ -51,15 +55,15 @@ void TraceableValueState::erase(llvm::Value *v) {
 	ValueNameMap.erase(v);
 }
 
-uint64_t TraceableValueState::getNumber(std::string name, llvm::Value *v) {
+uint64_t TraceableValueState::getNumber(llvm::Value *v, TraceableCallbackInfo info) {
 	ValueNumberMap::iterator MapIter;
 	bool Inserted;
 	std::tie(MapIter, Inserted) = GlobalNumbers.insert({v, NextNumber});
 	if (Inserted)
 		NextNumber++;
 
-	ValueNameMap.insert({v, name});
+	ValueNameMap.insert({v, info});
 	return MapIter->second;
 }
 
-std::map<llvm::Value *, std::string> TraceableValueState::ValueNameMap = {};
+std::map<llvm::Value *, TraceableCallbackInfo> TraceableValueState::ValueNameMap = {};
