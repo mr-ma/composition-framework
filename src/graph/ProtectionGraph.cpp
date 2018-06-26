@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <unordered_set>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
@@ -137,31 +138,45 @@ void ProtectionGraph::SCC() {
 		std::vector<int> component(vertices), discover_time(vertices);
 		std::vector<boost::default_color_type> color(vertices);
 		std::vector<graph_t::vertex_descriptor> root(vertices);
-		num = static_cast<unsigned long>(boost::strong_components(Graph, boost::make_iterator_property_map(component.begin(), pmap),
+		num = static_cast<unsigned long>(boost::strong_components(Graph, boost::iterator_property_map(component.begin(), pmap),
 		                                                          root_map(boost::make_iterator_property_map(root.begin(), pmap)).
 				                                                          discover_time_map(boost::make_iterator_property_map(discover_time.begin(),
 				                                                                                                              pmap)).
 				                                                          color_map(make_iterator_property_map(color.begin(), pmap))
 		));
 
+		//TODO the generated resulting graph file looks wrong
+		//it is possible that SCC produces an incorrect result and it needs to be checked!
 		dbgs() << "Total number of components: " << std::to_string(num) << "\n";
 		for (auto i = 0; i != num; i++) {
 			std::vector<vd_t> matches;
-			for (auto j = 0; j != vertices; j++) {
-				if (component[j] == i) {
-					matches.push_back(find_first_vertex_with_property_map(pmap, j, Graph));
+			for (auto &el : index) {
+				if (component[el.second] == i) {
+					matches.push_back(el.first);
 				}
 			}
 
 			if (matches.size() != 1) {
-				dbgs() << "Component " << std::to_string(i) << " contains cycle with " << std::to_string(matches.size()) << " elements.\n";
+				dbgs() << "Component " << std::to_string(i) << " contains cycle with " << std::to_string(matches.size() + 1) << " elements.\n";
 				handleCycle(matches);
 			}
 		}
 
-		for (auto i = 0; i != vertices; i++) {
-			auto str = get_vertex_property(&vertex_t::name, find_first_vertex_with_property_map(pmap, i, Graph), Graph);
-			dbgs() << "Vertex " << std::to_string(i) << " " << str << " is in component " << std::to_string(component[i]) << "\n";
+		//TODO If we want to access the vertices sorted by there aritificial index from above
+		//Then we need to sort it according to the next 2 blocks. Otherwise, we could use index map directly.
+		std::vector<std::pair<vd_t, size_t>> pairs;
+		for (auto it = index.begin(); it != index.end(); it++) {
+			pairs.push_back(*it);
+		}
+
+		sort(pairs.begin(), pairs.end(), [=](std::pair<vd_t, size_t> &a, std::pair<vd_t, size_t> &b) {
+			return a.second < b.second;
+		});
+
+
+		for (auto &el : pairs) {
+			auto v = Graph[el.first];
+			dbgs() << "Vertex " << std::to_string(el.second) << " " << v.name << " is in component " << std::to_string(component[el.second]) << "\n";
 		}
 	}
 
