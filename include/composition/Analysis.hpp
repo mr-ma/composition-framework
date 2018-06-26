@@ -36,6 +36,6 @@ namespace composition {
 	template<typename T>
 // attempt to initialise the IsRegistered variable of derived classes
 // whilst registering them to the factory
-	const bool ComposableAnalysis<T>::IsRegistered_ = AnalysisRegistry::Register(&T::ID);
+	const bool ComposableAnalysis<T>::IsRegistered_ = AnalysisRegistry::Register(&T::ID, &T::PostPatchingRequired);
 }
 #endif //COMPOSITION_FRAMEWORK_ANALYSIS_HPP

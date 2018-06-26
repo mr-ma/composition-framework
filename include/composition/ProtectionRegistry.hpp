@@ -20,8 +20,8 @@ namespace composition {
 			return true;
 		}
 
-		static std::vector<char *> *GetAll() {
-			return RegisteredProtections();
+		static std::vector<char *> GetAll() {
+			return *RegisteredProtections();
 		};
 	protected:
 		// a map to hold a ... mapping between strings and create functions

@@ -14,11 +14,11 @@ void AnalysisPass::getAnalysisUsage(AnalysisUsage &AU) const {
 	AU.setPreservesAll();
 	dbgs() << "Called analysis usage\n";
 	auto registered = AnalysisRegistry::GetAll();
-	dbgs() << "Got " << std::to_string(registered->size()) << "\n";
+	dbgs() << "Got " << std::to_string(registered.size()) << "\n";
 
-	for (auto PassID : *registered) {
-		dbgs() << "Require " << std::to_string(reinterpret_cast<uintptr_t>(PassID)) << "\n";
-		AU.addRequiredID(PassID);
+	for (auto passInfo : registered) {
+		dbgs() << "Require " << std::to_string(reinterpret_cast<uintptr_t>(passInfo.first)) << "\n";
+		AU.addRequiredID(passInfo.first);
 	}
 }
 

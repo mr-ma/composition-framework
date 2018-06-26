@@ -3,6 +3,7 @@
 #include <composition/GraphPass.hpp>
 #include <composition/AnalysisPass.hpp>
 #include <composition/ManifestRegistry.hpp>
+#include <composition/AnalysisRegistry.hpp>
 
 using namespace llvm;
 using namespace composition;
@@ -22,7 +23,15 @@ bool GraphPass::runOnModule(llvm::Module &module) {
 
 	//TODO modify SCC to remove cycles according to strategy
 
-	//TODO topological sort graph according to strategy
+	// Get all registered analysis passes and check if one needs postpatching
+	// If a pass needs postpatching then apply topological sorting before applying the protections
+	auto registered = AnalysisRegistry::GetAll();
+	for (const auto &passInfo : registered) {
+		if (passInfo.second) {
+			//TODO topological sort graph according to strategy
+			break;
+		}
+	}
 
 	//TODO create postpatching manifest order/export to json
 	return false;
