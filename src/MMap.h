@@ -8,7 +8,7 @@ class MMap : public std::set<std::pair<_A, _B>, _Compare> {
 public:
 	MMap() : std::set<std::pair<_A, _B>, _Compare>() {};
 
-	~MMap() {};
+	~MMap() = default;;
 };
 
 template<typename InPair>

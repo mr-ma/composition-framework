@@ -49,18 +49,7 @@ namespace composition {
 		}
 
 		uintptr_t
-		addProtection(const std::string &name, llvm::Value *protector, vertex_type protectorType, llvm::Value *protectee, vertex_type protecteeType) {
-			// Two functions, a protector and a protectee form an edge
-			// The direction is from the protectee to the protector to indicate the information flow.
-			auto dstNode = this->insertNode(protector, protectorType);
-			auto srcNode = this->insertNode(protectee, protecteeType);
-
-			auto edge = boost::add_edge(srcNode, dstNode, Graph);
-			assert(edge.second);
-			Graph[edge.first] = edge_t{ProtectionIdx, name, edge_type::DEPENDENCY};
-			Protections[ProtectionIdx] = Protection(protector, protectee);
-			return ProtectionIdx++;
-		}
+		addProtection(const std::string &name, llvm::Value *protector, vertex_type protectorType, llvm::Value *protectee, vertex_type protecteeType);
 
 		template<typename T, typename S>
 		uintptr_t addHierarchy(T parent, S child) {
