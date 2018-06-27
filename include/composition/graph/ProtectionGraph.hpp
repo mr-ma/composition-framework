@@ -52,7 +52,7 @@ namespace composition {
 		addProtection(const std::string &name, llvm::Value *protector, vertex_type protectorType, llvm::Value *protectee, vertex_type protecteeType);
 
 		template<typename T, typename S>
-		uintptr_t addHierarchy(T parent, S child) {
+		uintptr_t addCFG(T parent, S child) {
 			auto srcNode = this->insertNode(parent, LLVMToVertexType<T>().value);
 			auto dstNode = this->insertNode(child, LLVMToVertexType<S>().value);
 

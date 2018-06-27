@@ -4,6 +4,7 @@
 #include <composition/trace/TraceableValue.hpp>
 #include <composition/trace/PreservedValueRegistry.hpp>
 #include <composition/graph/dot.hpp>
+#include <llvm/Analysis/CallGraph.h>
 
 using namespace llvm;
 using namespace composition;
@@ -52,6 +53,31 @@ bool AnalysisPass::runOnModule(llvm::Module &M) {
 	auto manifests = *ManifestRegistry::GetAll();
 	for (auto &m : manifests) {
 		m.idx = Graph.addProtection(m.protection, m.from, m.fromType, m.to, m.toType);
+	}
+
+
+	//TODO #1 It's probably better to use a callgraph here. However, using a callgraph leads to a SIGSEGV for no reason
+	//Printing and dumping of the callgraph works, but as soon as accessing it is tried the program behaves unexpectedly.
+	//Therefore, for now, only add direct call edges as CFG part to the graph.
+	for (auto &F : M) {
+		// Look for calls by this function.
+		for (auto &BB : F) {
+			for (auto &I : BB) {
+				Value *v = &cast<Value>(I);
+				CallSite CS(v);
+				if (!CS) {
+					continue;
+				}
+
+				Function *Callee = CS.getCalledFunction();
+				if (!Callee) {
+					continue;
+				}
+
+				//Only direct calls are possible to track
+				Graph.addCFG(&F, Callee);
+			}
+		}
 	}
 
 	save_graph_to_dot(Graph.getGraph(), "graph_raw.dot");
