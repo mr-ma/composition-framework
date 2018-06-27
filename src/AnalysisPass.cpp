@@ -10,6 +10,30 @@ using namespace composition;
 
 char AnalysisPass::ID = 0;
 
+bool AnalysisPass::doInitialization(Module &M) {
+	dbgs() << "AnalysisPass loaded...\n";
+
+	//The following code loads all the tags from the source code.
+	//The tags are then applied to the function for which a tag was used.
+	//The tags may be used by any pass to decide if it is e.g., a sensitive function
+	//Start annotations from @ http://bholt.org/posts/llvm-quick-tricks.html
+	auto global_annos = M.getNamedGlobal("llvm.global.annotations");
+	if (global_annos) {
+		auto a = cast<ConstantArray>(global_annos->getOperand(0));
+		for (unsigned int i = 0; i < a->getNumOperands(); i++) {
+			auto e = cast<ConstantStruct>(a->getOperand(i));
+
+			if (auto fn = dyn_cast<Function>(e->getOperand(0)->getOperand(0))) {
+				auto anno = cast<ConstantDataArray>(cast<GlobalVariable>(e->getOperand(1)->getOperand(0))->getOperand(0))->getAsCString();
+				fn->addFnAttr(anno); // <-- add function annotation here
+				dbgs() << "Sensitive function: " << fn->getName().str() << "\n";
+			}
+		}
+	}
+	//End annotations from @ http://bholt.org/posts/llvm-quick-tricks.html
+	return true;
+}
+
 void AnalysisPass::getAnalysisUsage(AnalysisUsage &AU) const {
 	AU.setPreservesAll();
 	dbgs() << "Called analysis usage\n";

@@ -16,6 +16,8 @@ namespace composition {
 	public:
 		static char ID;
 	public:
+		bool doInitialization(llvm::Module &module) override;
+
 		AnalysisPass() : ModulePass(ID) {}
 
 		ProtectionGraph &getGraph();
