@@ -4,6 +4,7 @@
 #include <composition/AnalysisPass.hpp>
 #include <composition/ManifestRegistry.hpp>
 #include <composition/AnalysisRegistry.hpp>
+#include <composition/graph/dot.hpp>
 
 using namespace llvm;
 using namespace composition;
@@ -20,6 +21,7 @@ bool GraphPass::runOnModule(llvm::Module &module) {
 	Graph = std::move(pass.getGraph());
 	dbgs() << "GraphPass SCC\n";
 	Graph.SCC();
+	save_graph_to_dot(Graph.getGraph(), "graph_scc.dot");
 
 	//TODO modify SCC to remove cycles according to strategy
 

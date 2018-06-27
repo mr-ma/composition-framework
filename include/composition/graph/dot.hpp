@@ -62,27 +62,9 @@ namespace composition {
 		boost::write_graphviz(f, g, make_bundled_vertices_writer(g), make_bundled_edges_writer(g), boost::default_writer(), pmap);
 	}
 
-	bool is_regular_file(const std::string &filename) noexcept {
-		std::fstream f;
-		f.open(filename.c_str(), std::ios::in);
-		return f.is_open();
-	}
+	bool is_regular_file(const std::string &filename) noexcept;
 
-	graph_t load_graph_from_dot(const std::string &dot_filename) {
-		if (!is_regular_file(dot_filename)) {
-			std::stringstream msg;
-			msg << __func__ << " : ␣ f i l e ␣ ’ " << dot_filename << " ’ ␣not ␣ found ";
-			throw std::invalid_argument(msg.str());
-		}
-
-		std::ifstream f(dot_filename.c_str());
-		auto g = create_empty_graph();
-		boost::dynamic_properties dp(
-				boost::ignore_other_properties
-		);
-		boost::read_graphviz(f, g, dp);
-		return g;
-	}
+	graph_t load_graph_from_dot(const std::string &dot_filename);
 }
 
 #endif //COMPOSITION_FRAMEWORK_DOT_HPP

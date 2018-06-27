@@ -79,6 +79,8 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
             src/graph/edge.cpp
             src/graph/ProtectionGraph.cpp
             src/graph/graphviz.cpp
+            src/graph/dot.cpp
+            src/graph/empty_graph.cpp
 
             src/trace/TraceableValue.cpp
             src/trace/PreservedValueRegistry.cpp
