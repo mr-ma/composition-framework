@@ -8,7 +8,8 @@
 #include <composition/graph/graph.hpp>
 #include <composition/graph/protection.hpp>
 #include <composition/ManifestRegistry.hpp>
-#include "scc.hpp"
+#include <composition/graph/scc.hpp>
+#include <composition/graph/topological_sort.hpp>
 
 namespace composition {
 	class ProtectionGraph {
@@ -80,8 +81,15 @@ namespace composition {
 
 		template<typename T>
 		struct Predicate { // both edge and vertex
-			bool operator()(typename T::edge_descriptor ed) const { return (*G)[ed].type == edge_type::DEPENDENCY; } // all
-			bool operator()(typename T::vertex_descriptor vd) const { return true; }
+			bool operator()(typename T::edge_descriptor ed) const {
+				assert(G != nullptr);
+				return (*G)[ed].type == edge_type::DEPENDENCY;
+			}
+
+			bool operator()(typename T::vertex_descriptor vd) const {
+				assert(G != nullptr);
+				return true;
+			}
 
 			T *G;
 
@@ -91,7 +99,6 @@ namespace composition {
 		};
 
 		void SCC_DEPENDENCY(graph_t &g) {
-			//Move these two lines such that SCC runs for any kind of graph.
 			Predicate<graph_t> p(&g);
 			auto fg = boost::make_filtered_graph(g, p);
 
@@ -124,6 +131,12 @@ namespace composition {
 		}
 
 		void handleCycle(std::vector<vd_t> matches);
+
+		std::vector<vd_t> topologicalSortProtections() {
+			Predicate<graph_t> p(&Graph);
+			auto fg = boost::make_filtered_graph(Graph, p);
+			return composition::reverse_topological_sort(fg);
+		}
 	};
 }
 #endif //COMPOSITION_FRAMEWORK_PROTECTIONGRAPH_HPP

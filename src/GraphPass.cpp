@@ -24,15 +24,17 @@ bool GraphPass::runOnModule(llvm::Module &module) {
 
 	Graph.SCC_DEPENDENCY(g);
 	save_graph_to_dot(Graph.getGraph(), "graph_scc.dot");
-
-	//TODO modify SCC to remove cycles according to strategy
-
 	// Get all registered analysis passes and check if one needs postpatching
 	// If a pass needs postpatching then apply topological sorting before applying the protections
 	auto registered = AnalysisRegistry::GetAll();
 	for (const auto &passInfo : registered) {
 		if (passInfo.second) {
-			//TODO topological sort graph according to strategy
+			dbgs() << "SORTING:\n";
+			//TODO fix topo sort for filtered multi edge graph
+			/*auto sorted = Graph.topologicalSortProtections();
+			for(auto vd : sorted) {
+				dbgs() << g[vd].name << "\n";
+			}*/
 			break;
 		}
 	}
