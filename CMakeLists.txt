@@ -49,6 +49,7 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
             include/composition/filter/FilterInfo.hpp
 
             include/composition/graph/dot.hpp
+            include/composition/graph/scc.hpp
             include/composition/graph/empty_graph.hpp
             include/composition/graph/graph.hpp
             include/composition/graph/ProtectionGraph.hpp

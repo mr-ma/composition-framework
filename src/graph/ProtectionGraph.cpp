@@ -2,9 +2,7 @@
 #include <unordered_set>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
-#include <boost/graph/strong_components.hpp>
 #include <composition/graph/ProtectionGraph.hpp>
-#include <composition/ManifestRegistry.hpp>
 #include <composition/util/functions.hpp>
 
 using namespace llvm;
@@ -121,78 +119,6 @@ graph_t &ProtectionGraph::getGraph() {
 	return Graph;
 }
 
-void ProtectionGraph::SCC() {
-	unsigned long num = 0;
-	unsigned long vertices = boost::num_vertices(Graph);
-	while (num != vertices) {
-
-		std::map<vd_t, size_t> index;
-		auto pmap = boost::make_assoc_property_map(index);
-
-		int i = 0;
-		for (auto vd : boost::make_iterator_range(boost::vertices(Graph))) {
-			put(pmap, vd, i++);
-		}
-
-
-		std::vector<int> component(vertices), discover_time(vertices);
-		std::vector<boost::default_color_type> color(vertices);
-		std::vector<graph_t::vertex_descriptor> root(vertices);
-		num = static_cast<unsigned long>(boost::strong_components(Graph, boost::iterator_property_map(component.begin(), pmap),
-		                                                          root_map(boost::make_iterator_property_map(root.begin(), pmap)).
-				                                                          discover_time_map(boost::make_iterator_property_map(discover_time.begin(),
-				                                                                                                              pmap)).
-				                                                          color_map(make_iterator_property_map(color.begin(), pmap))
-		));
-
-		//TODO the generated resulting graph file looks wrong
-		//it is possible that SCC produces an incorrect result and it needs to be checked!
-		dbgs() << "Total number of components: " << std::to_string(num) << "\n";
-		for (auto i = 0; i != num; i++) {
-			std::vector<vd_t> matches;
-			for (auto &el : index) {
-				if (component[el.second] == i) {
-					matches.push_back(el.first);
-				}
-			}
-
-			if (matches.size() != 1) {
-				dbgs() << "Component " << std::to_string(i) << " contains cycle with " << std::to_string(matches.size() + 1) << " elements.\n";
-				handleCycle(matches);
-			}
-		}
-
-		//TODO If we want to access the vertices sorted by there aritificial index from above
-		//Then we need to sort it according to the next 2 blocks. Otherwise, we could use index map directly.
-		std::vector<std::pair<vd_t, size_t>> pairs;
-		for (auto it = index.begin(); it != index.end(); it++) {
-			pairs.push_back(*it);
-		}
-
-		sort(pairs.begin(), pairs.end(), [=](std::pair<vd_t, size_t> &a, std::pair<vd_t, size_t> &b) {
-			return a.second < b.second;
-		});
-
-
-		for (auto &el : pairs) {
-			auto v = Graph[el.first];
-			dbgs() << "Vertex " << std::to_string(el.second) << " " << v.name << " is in component " << std::to_string(component[el.second]) << "\n";
-		}
-	}
-
-	std::vector<uintptr_t> leftProtections;
-	graph_t::edge_iterator it, it_end;
-	for (std::tie(it, it_end) = boost::edges(Graph); it != it_end; it++) {
-		leftProtections.push_back(get_edge_property(&edge_t::index, *it, Graph));
-	}
-
-	for (uintptr_t i = 0; i < ProtectionIdx; i++) {
-		if (std::find(leftProtections.begin(), leftProtections.end(), i) == leftProtections.end()) {
-			removeProtection(i);
-			composition::ManifestRegistry::Remove(i);
-		}
-	}
-}
 
 void ProtectionGraph::expandToFunctions() {
 	boost::graph_traits<graph_t>::vertex_iterator vi, vi_end;

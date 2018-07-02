@@ -2,8 +2,13 @@
 #define COMPOSITION_FRAMEWORK_PROTECTIONGRAPH_HPP
 
 #include <llvm/IR/Value.h>
+#include <llvm/Support/Debug.h>
+#include <llvm/Support/raw_ostream.h>
+#include <boost/graph/filtered_graph.hpp>
 #include <composition/graph/graph.hpp>
 #include <composition/graph/protection.hpp>
+#include <composition/ManifestRegistry.hpp>
+#include "scc.hpp"
 
 namespace composition {
 	class ProtectionGraph {
@@ -73,7 +78,50 @@ namespace composition {
 
 		void reduceToFunctions();
 
-		void SCC();
+		template<typename T>
+		struct Predicate { // both edge and vertex
+			bool operator()(typename T::edge_descriptor ed) const { return (*G)[ed].type == edge_type::DEPENDENCY; } // all
+			bool operator()(typename T::vertex_descriptor vd) const { return true; }
+
+			T *G;
+
+			Predicate() = default;
+
+			explicit Predicate(T *G) : G(G) {}
+		};
+
+		void SCC_DEPENDENCY(graph_t &g) {
+			//Move these two lines such that SCC runs for any kind of graph.
+			Predicate<graph_t> p(&g);
+			auto fg = boost::make_filtered_graph(g, p);
+
+			bool changed;
+			do {
+				changed = false;
+				auto components = SCC(fg);
+				int i = 0;
+				for (const auto &matches : components) {
+					if (matches.size() != 1) {
+						changed = true;
+						llvm::dbgs() << "Component " << std::to_string(i++) << " contains cycle with " << std::to_string(matches.size() + 1) << " elements.\n";
+						handleCycle(matches);
+					}
+				}
+			} while (changed);
+
+			std::vector<uintptr_t> leftProtections;
+			graph_t::edge_iterator it, it_end;
+			for (std::tie(it, it_end) = boost::edges(g); it != it_end; it++) {
+				auto e = g[*it];
+				leftProtections.push_back(e.index);
+			}
+			for (uintptr_t i = 0; i < ProtectionIdx; i++) {
+				if (std::find(leftProtections.begin(), leftProtections.end(), i) == leftProtections.end()) {
+					removeProtection(i);
+					composition::ManifestRegistry::Remove(i);
+				}
+			}
+		}
 
 		void handleCycle(std::vector<vd_t> matches);
 	};
