@@ -8,47 +8,23 @@
 
 namespace composition {
 
-	typedef std::function<void(Manifest)> PatchFunction;
+typedef unsigned long ManifestIndex;
+class ManifestRegistry {
+public:
+  static void Add(Manifest m);
 
-	class ManifestRegistry {
-	public:
-		static void Add(const Manifest &m, const PatchFunction &p) {
-			RegisteredManifests()->push_back(m);
-			(*ManifestPatchers())[m] = p;
-		}
+  static std::unordered_map<ManifestIndex, Manifest> *GetAll();;
 
-		static std::vector<Manifest> *GetAll() {
-			return RegisteredManifests();
-		};
+  static void Remove(ManifestIndex idx);
 
-		static void Remove(uintptr_t idx) {
-			for (auto it = RegisteredManifests()->begin(), it_end = RegisteredManifests()->end(); it != it_end; it++) {
-				if (it->idx == idx) {
-					ManifestPatchers()->erase(*it);
-					it = RegisteredManifests()->erase(it);
-				}
-			}
-		}
+protected:
+  static ManifestIndex index;
 
-		static PatchFunction GetPatcher(const Manifest &m) {
-			return (*ManifestPatchers())[m];
-		}
-
-		static std::unordered_map<Manifest, PatchFunction> *GetAllManifestPatchers() {
-			return ManifestPatchers();
-		};
-
-	protected:
-		static std::vector<Manifest> *RegisteredManifests() {
-			static std::vector<Manifest> value = {};
-			return &value;
-		};
-
-		static std::unordered_map<Manifest, PatchFunction> *ManifestPatchers() {
-			static std::unordered_map<Manifest, PatchFunction> value = {};
-			return &value;
-		};
-	};
+  static std::unordered_map<ManifestIndex, Manifest> *RegisteredManifests() {
+    static std::unordered_map<ManifestIndex, Manifest> value = {};
+    return &value;
+  };
+};
 }
 
 #endif //COMPOSITION_FRAMEWORK_MANIFESTREGISTRY_HPP

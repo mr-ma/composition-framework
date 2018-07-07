@@ -2,34 +2,32 @@
 
 #include <composition/GraphPass.hpp>
 #include <composition/ProtectionPass.hpp>
-#include <composition/ManifestRegistry.hpp>
 #include <composition/trace/PreservedValueRegistry.hpp>
 
 using namespace llvm;
-using namespace composition;
+namespace composition {
 
 void ProtectionPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
-	AU.setPreservesAll();
-	AU.addRequired<GraphPass>();
+  AU.setPreservesAll();
+  AU.addRequired<GraphPass>();
 }
 
 bool ProtectionPass::runOnModule(llvm::Module &M) {
-	dbgs() << "ProtectionPass running\n";
+  dbgs() << "ProtectionPass running\n";
 
-	auto &pass = getAnalysis<GraphPass>();
-	std::vector<Manifest> manifests = pass.GetManifestsInOrder();
+  auto &pass = getAnalysis<GraphPass>();
+  std::unordered_map<ManifestIndex, Manifest> manifests = pass.GetManifestsInOrder();
 
-	auto patchers = *ManifestRegistry::GetAllManifestPatchers();
-	for (const auto &m : manifests) {
-		auto p = ManifestRegistry::GetPatcher(m);
-		p(m);
-	}
+  for (const auto &m : manifests) {
+    m.second.patchFunction(m.second);
+  }
 
-	PreservedValueRegistry::Clear();
-	return !patchers.empty();
+  PreservedValueRegistry::Clear();
+  return !manifests.empty();
 }
 
 char ProtectionPass::ID = 0;
 static llvm::RegisterPass<ProtectionPass> X("constraint-protection", "Constraint Protection Pass",
                                             true /* Only looks at CFG */,
                                             true /* Analysis Pass */);
+}

@@ -1,51 +1,56 @@
 #ifndef COMPOSITION_FRAMEWORK_MANIFEST_HPP
 #define COMPOSITION_FRAMEWORK_MANIFEST_HPP
-
+#include <utility>
 #include <cstdint>
 #include <llvm/IR/Value.h>
 #include <composition/graph/vertex.hpp>
+#include <composition/graph/constraint.hpp>
 
 namespace composition {
 
+class Manifest;
 
-	class Manifest {
-	public:
-		uintptr_t idx{};
-		std::string protection;
-		llvm::Value *from;
-		vertex_type fromType;
-		llvm::Value *to;
-		vertex_type toType;
+typedef std::function<void(Manifest)> PatchFunction;
 
-		Manifest(const std::string &protection, llvm::Value *from, vertex_type fromType, llvm::Value *to, vertex_type toType)
-				: protection(protection), from(from), fromType(fromType), to(to), toType(toType) {
-			assertType(from, fromType);
-			assertType(to, toType);
-		}
-		//TODO metadata if postpatching is needed - and its direction (from, to, both)
+struct Manifest {
+public:
+  unsigned long idx{};
+  std::string name;
+  PatchFunction patchFunction;
+  std::vector<std::shared_ptr<Constraint>> constraints;
+  bool postPatching{};
 
-		bool operator==(const Manifest &other) const {
-			return (protection == other.protection && reinterpret_cast<uintptr_t>(from) == reinterpret_cast<uintptr_t>(other.from) &&
-			        reinterpret_cast<uintptr_t>(to) == reinterpret_cast<uintptr_t>(other.to));
-		}
+  Manifest(std::string name, PatchFunction patchFunction, std::vector<std::shared_ptr<Constraint>> constraints)
+      : name(std::move(name)), patchFunction(std::move(patchFunction)), constraints(std::move(constraints)) {
+  }
 
-		bool operator<(const Manifest &other) const {
-			return (protection < other.protection);
-		}
-	};
+  Manifest(const std::string &name,
+           const PatchFunction &patchFunction,
+           const std::vector<std::shared_ptr<Constraint>> &constraints,
+           bool postPatching) :
+      Manifest(name, patchFunction, constraints) {
+    this->postPatching = postPatching;
+  }
+  //TODO metadata if postpatching is needed - and its direction (from, to, both)
+
+  bool operator==(const Manifest &other) const {
+    return (idx == other.idx);
+  }
+
+  bool operator<(const Manifest &other) const {
+    return (idx < other.idx);
+  }
+};
 
 }
 
 namespace std {
-	template<>
-	struct hash<composition::Manifest> {
-		size_t operator()(const composition::Manifest &pt) const {
-			size_t h1 = std::hash<std::string>()(pt.protection);
-			auto h2 = reinterpret_cast<uintptr_t>(pt.from);
-			auto h3 = reinterpret_cast<uintptr_t>(pt.to);
-			return h1 ^ h2 ^ h3;
-		}
-	};
+template<>
+struct hash<composition::Manifest> {
+  size_t operator()(const composition::Manifest &pt) const {
+    return pt.idx;
+  }
+};
 }
 
 #endif //COMPOSITION_FRAMEWORK_MANIFEST_HPP

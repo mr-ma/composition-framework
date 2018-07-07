@@ -10,21 +10,21 @@
 #include <composition/GraphPass.hpp>
 
 namespace composition {
-	class AnalysisPass : public llvm::ModulePass {
-	private:
-		ProtectionGraph Graph{};
-	public:
-		static char ID;
-	public:
-		bool doInitialization(llvm::Module &module) override;
+class AnalysisPass : public llvm::ModulePass {
+private:
+  ProtectionGraph Graph{};
+public:
+  static char ID;
+public:
+  bool doInitialization(llvm::Module &module) override;
 
-		AnalysisPass() : ModulePass(ID) {}
+  AnalysisPass() : ModulePass(ID) {}
 
-		ProtectionGraph &getGraph();
+  ProtectionGraph &getGraph();
 
-		bool runOnModule(llvm::Module &M) override;
+  bool runOnModule(llvm::Module &M) override;
 
-		void getAnalysisUsage(llvm::AnalysisUsage &AU) const override;
-	};
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override;
+};
 }
 #endif //COMPOSITION_FRAMEWORK_ANALYSISPASS_H

@@ -6,20 +6,20 @@
 
 namespace composition {
 
-	template<typename T>
-	class ComposableProtection : public Pass {
-	public:
+template<typename T>
+class ComposableProtection : public Pass {
+public:
 
-	protected:
-		// to determine if the class definition is registered
-		const static bool IsRegistered_;
+protected:
+  // to determine if the class definition is registered
+  const static bool IsRegistered_;
 
-		ComposableProtection() : Pass(IsRegistered_) {}
-	};
+  ComposableProtection() : Pass(IsRegistered_) {}
+};
 
-	template<typename T>
+template<typename T>
 // attempt to initialise the IsRegistered variable of derived classes
 // whilst registering them to the factory
-	const bool ComposableProtection<T>::IsRegistered_ = ProtectionRegistry::Register(&T::ID);
+const bool ComposableProtection<T>::IsRegistered_ = ProtectionRegistry::Register(&T::ID);
 }
 #endif //COMPOSITION_FRAMEWORK_PROTECTION_HPP

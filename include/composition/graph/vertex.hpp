@@ -1,59 +1,39 @@
-#ifndef COMPOSITION_FRAMEWORK_VERTEX_HPP
-#define COMPOSITION_FRAMEWORK_VERTEX_HPP
+#ifndef COMPOSITION_FRAMEWORK_GRAPH_VERTEX_HPP
+#define COMPOSITION_FRAMEWORK_GRAPH_VERTEX_HPP
 
-#include <cstdint>
 #include <string>
-#include <unordered_set>
-#include <llvm/IR/Function.h>
-#include <llvm/IR/BasicBlock.h>
-#include <llvm/IR/Instruction.h>
+#include <unordered_map>
 #include <llvm/IR/Value.h>
-#include <iostream>
-#include <type_traits>
+#include <composition/graph/constraint.hpp>
+#include <composition/graph/vertex_type.hpp>
 
-typedef uintptr_t vertex_idx_t;
-
-enum class vertex_type {
-	UNKNOWN,
-	FUNCTION,
-	BASICBLOCK,
-	INSTRUCTION,
-	VALUE
-};
-
-std::ostream &operator<<(std::ostream &os, const vertex_type &obj);
-
-template<typename T>
-struct LLVMToVertexType;
-template<>
-struct LLVMToVertexType<llvm::Function *> { static constexpr vertex_type value = vertex_type::FUNCTION; };
-template<>
-struct LLVMToVertexType<llvm::BasicBlock *> { static constexpr vertex_type value = vertex_type::BASICBLOCK; };
-template<>
-struct LLVMToVertexType<llvm::Instruction *> { static constexpr vertex_type value = vertex_type::INSTRUCTION; };
-template<>
-struct LLVMToVertexType<llvm::Value *> { static constexpr vertex_type value = vertex_type::VALUE; };
+namespace composition {
+typedef unsigned long vertex_idx_t;
+typedef unsigned long ConstraintIndex;
 
 struct vertex_t {
-	explicit vertex_t(
-			vertex_idx_t index = 0,
-			const std::string &name = "",
-			vertex_type type = vertex_type::UNKNOWN,
-			const std::unordered_set<std::string> &attributes = {}
-	) noexcept;
+  vertex_idx_t index;
+  std::string name;
+  vertex_type type;
+  std::unordered_map<ConstraintIndex, std::shared_ptr<Constraint>> constraints;
 
-	vertex_idx_t index;
-	std::string name;
-	vertex_type type;
-	std::unordered_set<std::string> attributes;
+  explicit vertex_t(
+      vertex_idx_t index = 0,
+      const std::string &name = "",
+      vertex_type type = vertex_type::UNKNOWN,
+      const std::unordered_map<ConstraintIndex, std::shared_ptr<Constraint>> &constraints = {}
+  ) noexcept;
+
+  std::ostream &operator<<(std::ostream &os) noexcept;
+
+  bool operator==(const vertex_t &rhs) noexcept;
+
+  bool operator!=(const vertex_t &rhs) noexcept;
 };
-
-std::ostream &operator<<(std::ostream &os, const vertex_t &e) noexcept;
-
-bool operator==(const vertex_t &lhs, const vertex_t &rhs) noexcept;
-
-bool operator!=(const vertex_t &lhs, const vertex_t &rhs) noexcept;
 
 void assertType(llvm::Value *value, vertex_type type);
 
-#endif //COMPOSITION_FRAMEWORK_VERTEX_HPP
+vertex_type llvmToVertexType(const llvm::Value *value);
+}
+
+#endif //COMPOSITION_FRAMEWORK_GRAPH_VERTEX_HPP

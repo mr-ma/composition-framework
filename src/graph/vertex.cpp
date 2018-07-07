@@ -1,56 +1,73 @@
+#include <llvm/IR/Value.h>
+#include <llvm/IR/Instruction.h>
+#include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Function.h>
 #include <composition/graph/vertex.hpp>
-
-#include <sstream>
 #include <composition/graph/graphviz.hpp>
-#include <llvm/Support/Debug.h>
-#include <llvm/Support/raw_ostream.h>
-
-std::ostream &operator<<(std::ostream &os, const vertex_type &obj) {
-	os << static_cast<std::underlying_type<vertex_type>::type>(obj);
-	return os;
-}
+namespace composition {
 
 vertex_t::vertex_t(
-		vertex_idx_t index,
-		const std::string &name,
-		vertex_type type,
-		const std::unordered_set<std::string> &attributes
+    vertex_idx_t index,
+    const std::string &name,
+    vertex_type type,
+    const std::unordered_map<ConstraintIndex, std::shared_ptr<Constraint>> &constraints
 ) noexcept :
-		index{index},
-		name{name},
-		type{type},
-		attributes{attributes} {
+    index{index},
+    name{name},
+    type{type},
+    constraints{constraints} {
 }
 
-std::ostream &operator<<(std::ostream &os, const vertex_t &v) noexcept {
-	os << v.index
-	   << ","
-	   << graphviz_encode(v.name)
-	   << ","
-	   << v.type
-	   << ",";
-	for (const auto &a : v.attributes) {
-		os << a << " ";
-	}
-	return os;
+std::ostream &vertex_t::operator<<(std::ostream &os) noexcept {
+  os << this->index
+     << ","
+     << graphviz_encode(this->name)
+     << ","
+     << this->type
+     << ",";
+  for (const auto &c : this->constraints) {
+    os << c.second->getInfo() << " ";
+  }
+  return os;
 }
 
-bool operator==(const vertex_t &lhs, const vertex_t &rhs) noexcept {
-	return lhs.index == rhs.index;
+bool vertex_t::operator==(const vertex_t &rhs) noexcept {
+  return this->index == rhs.index;
 }
 
-bool operator!=(const vertex_t &lhs, const vertex_t &rhs) noexcept {
-	return !(lhs == rhs);
+bool vertex_t::operator!=(const vertex_t &rhs) noexcept {
+  return !(*this == rhs);
 }
 
 void assertType(llvm::Value *value, vertex_type type) {
-	if (llvm::isa<llvm::Instruction>(value)) {
-		assert(type == vertex_type::INSTRUCTION);
-	} else if (llvm::isa<llvm::BasicBlock>(value)) {
-		assert(type == vertex_type::BASICBLOCK);
-	} else if (llvm::isa<llvm::Function>(value)) {
-		assert(type == vertex_type::FUNCTION);
-	} else {
-		assert(false);
-	}
+  assert(value != nullptr && "Value for assertType is nullptr");
+
+  if (llvm::isa<llvm::Instruction>(value)) {
+    assert(type == vertex_type::INSTRUCTION);
+  } else if (llvm::isa<llvm::BasicBlock>(value)) {
+    assert(type == vertex_type::BASICBLOCK);
+  } else if (llvm::isa<llvm::Function>(value)) {
+    assert(type == vertex_type::FUNCTION);
+  } else if (llvm::isa<llvm::Value>(value)) {
+    assert(type == vertex_type::VALUE);
+  } else {
+    assert(false);
+  }
+}
+
+vertex_type llvmToVertexType(const llvm::Value *value) {
+  assert(value != nullptr && "Value for llvmToVertexType is nullptr");
+
+  if (llvm::isa<llvm::Instruction>(value)) {
+    return vertex_type::INSTRUCTION;
+  }
+  if (llvm::isa<llvm::BasicBlock>(value)) {
+    return vertex_type::BASICBLOCK;
+  }
+  if (llvm::isa<llvm::Function>(value)) {
+    return vertex_type::FUNCTION;
+  }
+  return vertex_type::VALUE;
+}
+
 }
