@@ -2,7 +2,6 @@
 #include <composition/AnalysisPass.hpp>
 #include <composition/AnalysisRegistry.hpp>
 #include <composition/trace/TraceableValue.hpp>
-#include <composition/trace/PreservedValueRegistry.hpp>
 #include <composition/graph/dot.hpp>
 
 using namespace llvm;
@@ -49,13 +48,29 @@ void AnalysisPass::getAnalysisUsage(AnalysisUsage &AU) const {
 bool AnalysisPass::runOnModule(llvm::Module &M) {
   dbgs() << "AnalysisPass running\n";
 
+  //TODO #2 the following code should illustrate how to use the preserved value registry
+  //However, if it is used then tetris example fails with error.
+  /*auto arg1 = ConstantInt::get(Type::getInt32Ty(M.getContext()), static_cast<uint64_t>(1));
+  auto arg2 = ConstantInt::get(Type::getInt32Ty(M.getContext()), static_cast<uint64_t>(2));
+  PreservedValueRegistry::Register("comp-analysis",
+                                   arg1,
+                                   [this](const std::string &pass, llvm::Value *oldV, llvm::Value *newV) {
+                                     //assert ( false );
+                                   });
+  arg1->replaceAllUsesWith(arg2);*/
+
   auto manifests = *ManifestRegistry::GetAll();
+  size_t total = manifests.size();
+  dbgs() << "Adding " << std::to_string(total) << " manifests to protection graph\n";
+  size_t i = 0;
   for (auto &m : manifests) {
+    dbgs() << "#" << std::to_string(i++) << "/" << std::to_string(total) << "\r";
     for (auto &c : m.second.constraints) {
       Graph.addConstraint(m.first, c);
     }
   }
-
+  dbgs() << "#" << std::to_string(i) << "/" << std::to_string(total) << "\n";
+  dbgs() << "Building CallGraph\n";
 
   //TODO #1 It's probably better to use a callgraph here. However, using a callgraph leads to a SIGSEGV for no reason
   //Printing and dumping of the callgraph works, but as soon as accessing it is tried the program behaves unexpectedly.
@@ -80,6 +95,7 @@ bool AnalysisPass::runOnModule(llvm::Module &M) {
       }
     }
   }
+  dbgs() << "Done building CallGraph\n";
 
   save_graph_to_dot(Graph.getGraph(), "graph_raw.dot");
   Graph.expandToFunctions();

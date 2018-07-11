@@ -7,6 +7,7 @@
 #include <boost/algorithm/string/replace.hpp>
 #include <composition/graph/empty_graph.hpp>
 #include <composition/graph/graphviz.hpp>
+#include <composition/graph/constraint.hpp>
 
 namespace composition {
 template<typename graph>
@@ -16,7 +17,16 @@ public:
 
   template<class vertex_descriptor>
   void operator()(std::ostream &out, const vertex_descriptor &vd) const noexcept {
-    out << "[label=" << g[vd].name << "]";
+    out << "[label=" << g[vd].name;
+
+    for (auto &c : g[vd].constraints) {
+      if (llvm::isa<Preserved>(c.second.get())) {
+        out << "_preserved";
+      } else if (llvm::isa<Present>(c.second.get())) {
+        out << "_present";
+      }
+    }
+    out << "]\n";
   }
 
 private:

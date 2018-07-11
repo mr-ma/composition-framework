@@ -109,7 +109,7 @@ public:
         if (matches.size() != 1) {
           changed = true;
           llvm::dbgs() << "Component " << std::to_string(i++) << " contains cycle with "
-                       << std::to_string(matches.size() + 1) << " elements.\n";
+                       << std::to_string(matches.size()) << " elements.\n";
           handleCycle(matches);
         }
       }
