@@ -6,17 +6,6 @@
 #include <composition/graph/graphviz.hpp>
 namespace composition {
 
-vertex_t::vertex_t(
-    vertex_idx_t index,
-    const std::string &name,
-    vertex_type type,
-    const std::unordered_map<ConstraintIndex, std::shared_ptr<Constraint>> &constraints
-) noexcept :
-    index{index},
-    name{name},
-    type{type},
-    constraints{constraints} {
-}
 
 std::ostream &vertex_t::operator<<(std::ostream &os) noexcept {
   os << this->index

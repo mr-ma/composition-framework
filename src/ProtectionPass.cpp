@@ -18,8 +18,8 @@ bool ProtectionPass::runOnModule(llvm::Module &M) {
   auto &pass = getAnalysis<GraphPass>();
   std::unordered_map<ManifestIndex, Manifest> manifests = pass.GetManifestsInOrder();
 
-  for (const auto &m : manifests) {
-    m.second.patchFunction(m.second);
+  for (auto &m : manifests) {
+    m.second.Redo();
   }
 
   PreservedValueRegistry::Clear();

@@ -5,16 +5,6 @@
 
 namespace composition {
 
-edge_t::edge_t(
-    edge_idx_t index,
-    const std::string &name,
-    edge_type type
-) noexcept :
-    index{index},
-    name{name},
-    type{type} {
-}
-
 std::ostream &edge_t::operator<<(std::ostream &os) noexcept {
   os << this->index
      << ","

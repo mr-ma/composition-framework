@@ -8,12 +8,11 @@
 
 namespace composition {
 typedef boost::adjacency_list<
-    boost::listS,
-    boost::listS,
+    boost::vecS,
+    boost::vecS,
     boost::bidirectionalS,
     vertex_t,
-    edge_t,
-    boost::property<boost::graph_name_t, std::string>
+    edge_t
 > graph_t;
 
 using vd_t = graph_t::vertex_descriptor;

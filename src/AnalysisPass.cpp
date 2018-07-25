@@ -3,6 +3,7 @@
 #include <composition/AnalysisRegistry.hpp>
 #include <composition/trace/TraceableValue.hpp>
 #include <composition/graph/dot.hpp>
+#include <composition/graph/graphml.hpp>
 
 using namespace llvm;
 namespace composition {

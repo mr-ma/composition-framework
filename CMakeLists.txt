@@ -59,6 +59,10 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
         include/composition/graph/vertex.hpp
         include/composition/graph/vertex_type.hpp
         include/composition/graph/graphviz.hpp
+        include/composition/graph/filtered_graph_hidden.hpp
+        include/composition/graph/graphml.hpp
+
+        include/composition/metric/Coverage.hpp
 
         include/composition/trace/TraceableValue.hpp
         include/composition/trace/PreservedValueRegistry.hpp
@@ -87,6 +91,8 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
         src/graph/graphviz.cpp
         src/graph/dot.cpp
         src/graph/empty_graph.cpp
+
+        src/metric/Coverage.cpp
 
         src/trace/TraceableValue.cpp
         src/trace/PreservedValueRegistry.cpp

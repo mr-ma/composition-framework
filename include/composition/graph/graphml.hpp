@@ -1,8 +1,8 @@
-#ifndef COMPOSITION_FRAMEWORK_GRAPH_DOT_HPP
-#define COMPOSITION_FRAMEWORK_GRAPH_DOT_HPP
+#ifndef COMPOSITION_FRAMEWORK_GML_HPP
+#define COMPOSITION_FRAMEWORK_GML_HPP
 
 #include <fstream>
-#include <boost/graph/graphviz.hpp>
+#include <boost/graph/graphml.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/algorithm/string/replace.hpp>
 #include <composition/graph/empty_graph.hpp>
@@ -11,7 +11,7 @@
 
 namespace composition {
 template<typename graph>
-void save_graph_to_dot(graph &g, const std::string &filename) noexcept {
+void save_graph_to_graphml(graph &g, const std::string &filename) noexcept {
   std::map<typename graph::vertex_descriptor, size_t> index;
   std::map<typename graph::vertex_descriptor, int> isPresent;
   std::map<typename graph::vertex_descriptor, int> isPreserved;
@@ -35,23 +35,21 @@ void save_graph_to_dot(graph &g, const std::string &filename) noexcept {
     isPresent[vd] = present;
     isPreserved[vd] = preserved;
   }
-
   boost::dynamic_properties dp;
-  dp.property("node_id", boost::make_assoc_property_map(index));
-  dp.property("label", get(&vertex_t::name, g));
-  dp.property("removed", get(&vertex_t::removed, g));
-  dp.property("present", boost::make_assoc_property_map(isPresent));
-  dp.property("preserved", boost::make_assoc_property_map(isPreserved));
+  dp.property("vertex_name", get(&vertex_t::name, g));
+  dp.property("vertex_removed", get(&vertex_t::removed, g));
+  dp.property("vertex_present", boost::make_assoc_property_map(isPresent));
+  dp.property("vertex_preserved", boost::make_assoc_property_map(isPreserved));
 
-  dp.property("label", get(&edge_t::name, g));
-  dp.property("removed", get(&edge_t::removed, g));
+  dp.property("edge_name", get(&edge_t::name, g));
+  dp.property("edge_removed", get(&edge_t::removed, g));
+
   std::ofstream f(filename);
-  boost::write_graphviz_dp(f, g, dp);
+  boost::write_graphml(f, g, boost::make_assoc_property_map(index), dp);
 }
 
 bool is_regular_file(const std::string &filename) noexcept;
 
 graph_t load_graph_from_dot(const std::string &dot_filename);
 }
-
-#endif //COMPOSITION_FRAMEWORK_GRAPH_DOT_HPP
+#endif //COMPOSITION_FRAMEWORK_GML_HPP

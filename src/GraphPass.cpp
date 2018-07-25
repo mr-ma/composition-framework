@@ -4,6 +4,7 @@
 #include <composition/AnalysisPass.hpp>
 #include <composition/AnalysisRegistry.hpp>
 #include <composition/graph/dot.hpp>
+#include <composition/graph/graphml.hpp>
 
 using namespace llvm;
 namespace composition {
@@ -20,10 +21,9 @@ bool GraphPass::runOnModule(llvm::Module &module) {
   Graph = std::move(pass.getGraph());
   dbgs() << "GraphPass SCC\n";
 
-  auto g = Graph.getGraph();
-
-  Graph.SCC_DEPENDENCY(g);
+  Graph.SCC_DEPENDENCY(Graph.getGraph());
   save_graph_to_dot(Graph.getGraph(), "graph_scc.dot");
+  save_graph_to_graphml(Graph.getGraph(), "graph_scc.graphml");
   // Get all registered analysis passes and check if one needs postpatching
   // If a pass needs postpatching then apply topological sorting before applying the protections
   auto registered = AnalysisRegistry::GetAll();
@@ -38,6 +38,7 @@ bool GraphPass::runOnModule(llvm::Module &module) {
       break;
     }
   }
+  dbgs() << "GraphPass done\n";
 
   //TODO create postpatching manifest order/export to json
   return false;

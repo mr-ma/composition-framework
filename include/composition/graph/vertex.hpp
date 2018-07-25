@@ -1,6 +1,7 @@
 #ifndef COMPOSITION_FRAMEWORK_GRAPH_VERTEX_HPP
 #define COMPOSITION_FRAMEWORK_GRAPH_VERTEX_HPP
 
+#include <utility>
 #include <string>
 #include <unordered_map>
 #include <llvm/IR/Value.h>
@@ -16,13 +17,18 @@ struct vertex_t {
   std::string name;
   vertex_type type;
   std::unordered_map<ConstraintIndex, std::shared_ptr<Constraint>> constraints;
+  bool removed{};
 
   explicit vertex_t(
       vertex_idx_t index = 0,
-      const std::string &name = "",
+      std::string name = "",
       vertex_type type = vertex_type::UNKNOWN,
-      const std::unordered_map<ConstraintIndex, std::shared_ptr<Constraint>> &constraints = {}
-  ) noexcept;
+      std::unordered_map<ConstraintIndex, std::shared_ptr<Constraint>> constraints = {}
+  ) noexcept : index{index},
+               name{std::move(name)},
+               type{type},
+               constraints{std::move(constraints)} {
+  };
 
   std::ostream &operator<<(std::ostream &os) noexcept;
 
