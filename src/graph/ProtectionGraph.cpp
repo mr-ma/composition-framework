@@ -226,7 +226,7 @@ void ProtectionGraph::reduceToFunctions() {
 void ProtectionGraph::handleCycle(std::vector<vd_t> matches) {
   dbgs() << "Handling cycle in component\n";
 
-  vd_t prev;
+  vd_t prev = 0;
   for (auto it = matches.begin(), it_end = matches.end(); it != it_end; ++it) {
     vd_t vd = *it;
     auto v = Graph[vd];
@@ -256,6 +256,7 @@ ProtectionIndex ProtectionGraph::addConstraint(ManifestIndex index, std::shared_
 
     auto edge = boost::add_edge(srcNode, dstNode, GraphWithHidden);
     assert(edge.second);
+    edges[ProtectionIdx] = edge.first;
     Graph[edge.first] = edge_t{ProtectionIdx, c->getInfo(), edge_type::DEPENDENCY};
   } else if (auto present = dyn_cast<Present>(c.get())) {
     assert(present->getTarget() != nullptr);

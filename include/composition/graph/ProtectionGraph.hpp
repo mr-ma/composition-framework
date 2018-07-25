@@ -24,7 +24,8 @@ private:
   graph_hidden_t Graph;
   ProtectionIndex ProtectionIdx{};
   std::unordered_map<ProtectionIndex, ManifestIndex> Protections{};
-  std::unordered_map<uintptr_t, vd_t> vertices;
+  std::unordered_map<uintptr_t, vd_t> vertices{};
+  std::unordered_map<uintptr_t, ed_t> edges{};
 
 private:
   vd_t insertNode(llvm::Value *node, vertex_type type);
@@ -50,7 +51,9 @@ public:
   ProtectionGraph(const ProtectionGraph &&that) noexcept : ProtectionIdx(that.ProtectionIdx),
                                                            Protections(that.Protections),
                                                            GraphWithHidden(that.GraphWithHidden),
-                                                           Graph(that.Graph) {
+                                                           Graph(that.Graph),
+                                                           vertices(that.vertices),
+                                                           edges(that.edges) {
   }
 
   ProtectionGraph &operator=(ProtectionGraph &&that) noexcept {
@@ -84,6 +87,7 @@ public:
 
     auto edge = boost::add_edge(srcNode, dstNode, GraphWithHidden);
     assert(edge.second);
+    edges[ProtectionIdx] = edge.first;
     Graph[edge.first] = edge_t{ProtectionIdx, "CFG", edge_type::CFG};
     //Protections[ProtectionIdx] = Protection(parent, child);
     return ProtectionIdx++;
@@ -143,11 +147,24 @@ public:
       auto e = g[*it];
       leftProtections.push_back(e.index);
     }
+
     for (ProtectionIndex i = 0; i < ProtectionIdx; i++) {
-      if (std::find(leftProtections.begin(), leftProtections.end(), i) == leftProtections.end()) {
-        removeProtection(i);
-        composition::ManifestRegistry::Remove(i);
+      if (std::find(leftProtections.begin(), leftProtections.end(), i) != leftProtections.end()) {
+        continue;
       }
+
+      //Filtering for Dependency edge is needed as we otherwise remove manifests which contain other constraints
+      //like preserved or present as of right now
+      if(edges.find(i) == edges.end()) {
+        continue;
+      }
+
+      if(g[edges[i]].type != edge_type::DEPENDENCY) {
+        continue;
+      }
+
+      removeProtection(i);
+      composition::ManifestRegistry::Remove(i);
     }
   }
 

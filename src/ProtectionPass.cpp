@@ -18,7 +18,9 @@ bool ProtectionPass::runOnModule(llvm::Module &M) {
   auto &pass = getAnalysis<GraphPass>();
   std::unordered_map<ManifestIndex, Manifest> manifests = pass.GetManifestsInOrder();
 
+  dbgs() << "Got " << manifests.size() << " manifests\n";
   for (auto &m : manifests) {
+    //m.second.Undo();
     m.second.Redo();
   }
 

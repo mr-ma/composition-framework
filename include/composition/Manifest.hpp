@@ -8,6 +8,8 @@
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/GlobalVariable.h>
+#include <llvm/Support/Debug.h>
+#include <llvm/Support/raw_ostream.h>
 #include <composition/graph/vertex.hpp>
 #include <composition/graph/constraint.hpp>
 #include <composition/metric/Coverage.hpp>
@@ -26,14 +28,14 @@ public:
   PatchFunction patchFunction;
   std::vector<std::shared_ptr<Constraint>> constraints;
   bool postPatching;
-  std::unordered_set<llvm::Value *> addedValues;
+  std::set<llvm::Value *> addedValues;
 
   Manifest(std::string name,
            llvm::Value *protectee,
            PatchFunction patchFunction,
-           std::vector<std::shared_ptr<Constraint>> constraints,
+           std::vector<std::shared_ptr<Constraint>> constraints = {},
            bool postPatching = false,
-           std::unordered_set<llvm::Value *> addedValues = {})
+           std::set<llvm::Value *> addedValues = {})
       : name(std::move(name)), protectee(protectee), patchFunction(std::move(patchFunction)),
         constraints(std::move(constraints)), postPatching(postPatching), addedValues(std::move(addedValues)) {
   }
@@ -46,7 +48,7 @@ public:
     return (idx < other.idx);
   }
 
-  virtual std::unordered_set<llvm::Instruction *> Coverage() const {
+  virtual std::set<llvm::Instruction *> Coverage() const {
     return Coverage::ValueToInstructions(protectee);
   };
 
@@ -58,6 +60,7 @@ public:
     //TODO strictly speaking this function only removes the Instructions and GlobalVariables.
     //TODO however, if we wanted to remove basicblocks or functions we'd need to restore the correct controlflow
     //TODO for now, assume passes only add instructions
+    llvm::dbgs() << "Undoing " << addedValues.size() << " values\n";
     for (auto V : addedValues) {
       if (auto *F = llvm::dyn_cast<llvm::Function>(V)) {
         for (auto &B : *F) {
@@ -73,6 +76,8 @@ public:
         I->eraseFromParent();
       } else if (auto *G = llvm::dyn_cast<llvm::GlobalVariable>(V)) {
         G->eraseFromParent();
+      } else {
+        llvm::dbgs() << "Failed to undo\n";
       }
     }
   };
