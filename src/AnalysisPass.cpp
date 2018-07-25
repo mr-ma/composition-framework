@@ -99,10 +99,13 @@ bool AnalysisPass::runOnModule(llvm::Module &M) {
   dbgs() << "Done building CallGraph\n";
 
   save_graph_to_dot(Graph.getGraph(), "graph_raw.dot");
+  save_graph_to_graphml(Graph.getGraph(), "graph_raw.graphml");
   Graph.expandToFunctions();
   save_graph_to_dot(Graph.getGraph(), "graph_expanded.dot");
+  save_graph_to_graphml(Graph.getGraph(), "graph_expanded.graphml");
   Graph.reduceToFunctions();
   save_graph_to_dot(Graph.getGraph(), "graph_reduced.dot");
+  save_graph_to_graphml(Graph.getGraph(), "graph_reduced.graphml");
 
   return false;
 }
