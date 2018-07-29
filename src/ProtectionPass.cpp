@@ -16,11 +16,11 @@ bool ProtectionPass::runOnModule(llvm::Module &M) {
   dbgs() << "ProtectionPass running\n";
 
   auto &pass = getAnalysis<GraphPass>();
-  std::unordered_map<ManifestIndex, Manifest> manifests = pass.GetManifestsInOrder();
+  auto manifests = pass.GetManifestsInOrder();
 
   dbgs() << "Got " << manifests.size() << " manifests\n";
   for (auto &m : manifests) {
-    m.second.Redo();
+    m.Redo();
   }
 
   PreservedValueRegistry::Clear();

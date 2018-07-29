@@ -86,6 +86,8 @@ public:
     return ProtectionIdx++;
   }
 
+  std::vector<ManifestIndex> manifestIndexes(bool requireTopologicalSort = false);
+
   void removeProtection(ProtectionIndex protectionID);
 
   void expandToInstructions();
@@ -98,7 +100,8 @@ public:
 
   template<typename T>
   void SCC_DEPENDENCY(T &g) {
-    auto fg = filter_dependency_graph(g);
+    auto rg = filter_removed_graph(g);
+    auto fg = filter_dependency_graph(rg);
 
     bool changed;
     do {

@@ -48,8 +48,6 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
         include/composition/filter/FilterInfo.hpp
 
         include/composition/graph/dot.hpp
-        include/composition/graph/scc.hpp
-        include/composition/graph/topological_sort.hpp
         include/composition/graph/empty_graph.hpp
         include/composition/graph/graph.hpp
         include/composition/graph/ProtectionGraph.hpp
@@ -60,6 +58,9 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
         include/composition/graph/vertex_type.hpp
         include/composition/graph/graphviz.hpp
         include/composition/graph/graphml.hpp
+
+        include/composition/graph/algorithm/strong_components.hpp
+        include/composition/graph/algorithm/topological_sort.hpp
 
         include/composition/graph/filter/removed.hpp
         include/composition/graph/filter/dependency.hpp

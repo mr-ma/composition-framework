@@ -8,9 +8,9 @@
 #include <composition/graph/graph.hpp>
 
 namespace composition {
-template<typename g_t>
-std::vector<typename g_t::vertex_descriptor> topological_sort(g_t &g) {
-  using vd_t = typename g_t::vertex_descriptor;
+template<typename graph_t>
+std::vector<typename graph_t::vertex_descriptor> topological_sort(graph_t &g) {
+  using vd_t = typename graph_t::vertex_descriptor;
 
   auto index = index_map(g);
   auto assocIndexMap = boost::make_assoc_property_map(index);
@@ -23,8 +23,8 @@ std::vector<typename g_t::vertex_descriptor> topological_sort(g_t &g) {
   return result;
 }
 
-template<typename g_t>
-std::vector<typename g_t::vertex_descriptor> reverse_topological_sort(g_t &g) {
+template<typename graph_t>
+std::vector<typename graph_t::vertex_descriptor> reverse_topological_sort(graph_t &g) {
   auto result = topological_sort(g);
   std::reverse(result.begin(), result.end());
   return result;

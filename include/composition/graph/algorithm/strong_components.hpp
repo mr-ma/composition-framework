@@ -8,11 +8,11 @@
 
 namespace composition {
 
-template<typename g_t>
-std::vector<std::vector<typename g_t::vertex_descriptor>> SCC(g_t &g) {
-  using vd_t = typename g_t::vertex_descriptor;
-  using ed_t = typename g_t::edge_descriptor;
-  using ei_t = typename g_t::edge_iterator;
+template<typename graph_t>
+std::vector<std::vector<typename graph_t::vertex_descriptor>> SCC(graph_t &g) {
+  using vd_t = typename graph_t::vertex_descriptor;
+  using ed_t = typename graph_t::edge_descriptor;
+  using ei_t = typename graph_t::edge_iterator;
 
   auto index = index_map(g);
   auto assocIndexMap = boost::make_assoc_property_map(index);

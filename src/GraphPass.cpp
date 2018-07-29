@@ -1,5 +1,5 @@
 #include <llvm/Support/Debug.h>
-
+#include <llvm/Support/raw_ostream.h>
 #include <composition/GraphPass.hpp>
 #include <composition/AnalysisPass.hpp>
 #include <composition/AnalysisRegistry.hpp>
@@ -49,8 +49,27 @@ bool GraphPass::runOnModule(llvm::Module &module) {
 
 char GraphPass::ID = 0;
 
-std::unordered_map<ManifestIndex, Manifest> GraphPass::GetManifestsInOrder() {
-  return std::unordered_map<ManifestIndex, Manifest>(*ManifestRegistry::GetAll());
+std::vector<Manifest> GraphPass::GetManifestsInOrder() {
+  bool requireTopologicalSort = false;
+
+  auto m = *ManifestRegistry::GetAll();
+  for (const auto&kv : m) {
+    if (kv.second.postPatching) {
+      requireTopologicalSort = true;
+      break;
+    }
+  }
+
+  auto indexes = Graph.manifestIndexes(requireTopologicalSort);
+  auto result = std::vector<Manifest>();
+  std::transform(std::begin(indexes),
+      std::end(indexes),
+      std::back_inserter(result),
+      [m](const auto i) {
+    return m.find(i)->second;
+  });
+
+  return result;
 }
 
 static llvm::RegisterPass<GraphPass> X("constraint-graph", "Constraint Graph Pass",

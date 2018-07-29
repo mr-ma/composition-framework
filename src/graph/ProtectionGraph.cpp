@@ -267,4 +267,42 @@ ProtectionIndex ProtectionGraph::addConstraint(ManifestIndex index, std::shared_
   Protections[ProtectionIdx] = index;
   return ProtectionIdx++;
 }
+
+std::vector<ManifestIndex> ProtectionGraph::manifestIndexes(bool requireTopologicalSort) {
+  auto uniqueM = std::set<ManifestIndex>();
+  std::transform(std::begin(Protections),
+      std::end(Protections),
+      std::inserter(uniqueM, std::end(uniqueM)),
+      [](const auto &kv) { return kv.second; });
+
+  auto result = std::vector<ManifestIndex>{uniqueM.begin(), uniqueM.end()};
+  if (!requireTopologicalSort) {
+    return result;
+  }
+  size_t start = result.size();
+
+  auto rg = filter_removed_graph(Graph);
+  auto fg = filter_dependency_graph(rg);
+
+  for(auto [ei, ei_end] = boost::edges(fg); ei != ei_end; ++ei) {
+    auto i = fg[*ei].index;
+    auto manifest = Protections[i];
+    result.erase(std::remove(result.begin(), result.end(), manifest), result.end());
+  }
+
+  //TODO This is actually reversed reverse topological sorted
+  auto sorted = reverse_topological_sort(fg);
+  for (auto v : sorted) {
+    //TODO This could also be out_edges, cant verify with sc cfi alone
+    for(auto [ei, ei_end] = boost::in_edges(v, fg); ei != ei_end; ++ei) {
+      auto i = fg[*ei].index;
+      auto manifest = Protections[i];
+      if(std::find(result.begin(), result.end(), manifest) != result.end()) {
+        continue;
+      }
+      result.push_back(manifest);
+    }
+  }
+  return result;
+}
 }
