@@ -3,20 +3,53 @@
 
 #include <string>
 #include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/graphviz.hpp>
 #include <composition/graph/vertex.hpp>
 #include <composition/graph/edge.hpp>
+#include <composition/graph/filter/dependency.hpp>
+#include <composition/graph/filter/removed.hpp>
 
 namespace composition {
+using VertexProperties = boost::property<boost::vertex_index_t, int, vertex_t>;
+using EdgeProperties = boost::property<boost::edge_index_t, int, edge_t>;
+using GraphProperties = boost::property<boost::graph_name_t, std::string>;
+
 typedef boost::adjacency_list<
-    boost::vecS,
-    boost::vecS,
+    boost::listS,
+    boost::listS,
     boost::bidirectionalS,
-    vertex_t,
-    edge_t
+    VertexProperties,
+    EdgeProperties,
+    GraphProperties
 > graph_t;
 
 using vd_t = graph_t::vertex_descriptor;
 using ed_t = graph_t::edge_descriptor;
+
+template<typename s = size_t, typename graph_t>
+std::map<typename graph_t::vertex_descriptor, s> index_map(graph_t &g) {
+  std::map<typename graph_t::vertex_descriptor, s> map;
+  s idx = 0;
+  for (auto[vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
+    map[*vi] = idx++;
+  }
+  return map;
+}
+
+template<template<typename> typename filter, typename graph_t>
+auto filter_graph(graph_t &g) -> decltype(boost::make_filtered_graph(g, filter<graph_t>(g), filter<graph_t>(g))) {
+  return boost::make_filtered_graph(g, filter<graph_t>(g), filter<graph_t>(g));
+}
+
+template<typename graph_t>
+auto filter_dependency_graph(graph_t &g) -> decltype(filter_graph<DependencyPredicate>(g)) {
+  return filter_graph<DependencyPredicate>(g);
+}
+
+template<typename graph_t>
+auto filter_removed_graph(graph_t &g) -> decltype(filter_graph<RemovedPredicate>(g)) {
+  return filter_graph<RemovedPredicate>(g);
+}
 
 template<typename property_t, typename graph_t>
 auto get_vertex_property(const property_t &p,

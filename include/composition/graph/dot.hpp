@@ -10,11 +10,11 @@
 #include <composition/graph/constraint.hpp>
 
 namespace composition {
-template<typename graph>
-void save_graph_to_dot(graph &g, const std::string &filename) noexcept {
-  std::map<typename graph::vertex_descriptor, size_t> index;
-  std::map<typename graph::vertex_descriptor, int> isPresent;
-  std::map<typename graph::vertex_descriptor, int> isPreserved;
+template<typename graph_t>
+void save_graph_to_dot(graph_t &g, const std::string &filename) noexcept {
+  std::map<typename graph_t::vertex_descriptor, size_t> index;
+  std::map<typename graph_t::vertex_descriptor, int> isPresent;
+  std::map<typename graph_t::vertex_descriptor, int> isPreserved;
 
   for (auto vd : boost::make_iterator_range(boost::vertices(g))) {
     index[vd] = index.size();

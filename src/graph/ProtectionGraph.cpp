@@ -6,47 +6,64 @@
 
 using namespace llvm;
 namespace composition {
-vd_t ProtectionGraph::insertNode(llvm::Value *input, vertex_type type) {
-  assertType(input, type);
+graph_t &ProtectionGraph::getGraph() {
+  return Graph;
+}
 
-  auto idx = reinterpret_cast<uintptr_t>(input);
-  if(vertices.find(idx) != vertices.end()) {
+vd_t ProtectionGraph::add_vertex(llvm::Value *v) {
+  graph_t &g = Graph;
+
+  auto idx = reinterpret_cast<uintptr_t>(v);
+  if (vertices.find(idx) != vertices.end()) {
     return vertices[idx];
   }
 
-  if (has_vertex_with_property(&vertex_t::index, idx, GraphWithHidden)) {
-    return find_first_vertex_with_property(&vertex_t::index, idx, GraphWithHidden);
-  }
-
-  std::string name;
-  if (!input->hasName()) {
-    if (isa<Instruction>(input)) {
-      name = "I";
-    } else if (isa<BasicBlock>(input)) {
-      name = "BB";
-    }
-  } else {
-    name = input->getName();
-  }
-
-  auto vd = boost::add_vertex(vertex_t(idx, name, type, {}), GraphWithHidden);
+  auto vd = boost::add_vertex(g);
+  g[vd] = vertex_t(idx, llvmToVertexName(v), llvmToVertexType(v), {});
   vertices.insert({idx, vd});
   return vd;
 }
 
+void ProtectionGraph::remove_vertex(vd_t vd) noexcept {
+  graph_t &g = Graph;
+  g[vd].removed = true;
+  for (auto[ei, ei_end] = boost::in_edges(vd, g); ei != ei_end; ++ei) {
+    remove_edge(*ei);
+  }
+  for (auto[ei, ei_end] = boost::out_edges(vd, g); ei != ei_end; ++ei) {
+    remove_edge(*ei);
+  }
+}
+
+ed_t ProtectionGraph::add_edge(vd_t s, vd_t d, edge_t e) {
+  graph_t &g = Graph;
+  auto edge = boost::add_edge(s, d, g);
+  assert(edge.second);
+  edges[ProtectionIdx] = edge.first;
+  g[edge.first] = std::move(e);
+  return edge.first;
+}
+
+void ProtectionGraph::remove_edge(ed_t ed) noexcept {
+  graph_t &g = Graph;
+  g[ed].removed = true;
+}
+
 void ProtectionGraph::removeProtection(ProtectionIndex protectionID) {
+  graph_t &g = Graph;
+
   Protections.erase(protectionID);
 
-  auto [vi, vi_end] = boost::edges(Graph);
-  for (auto next = vi; next != vi_end; vi = next) {
-    ++next;
-
-    auto & e = Graph[*vi];
-    if (e.type == edge_type::DEPENDENCY) {
-      if (e.index == protectionID) {
-        e.removed = true;
-      }
+  for (auto[ei, ei_end] = boost::edges(g); ei != ei_end; ++ei) {
+    auto &e = g[*ei];
+    if (e.index == protectionID) {
+      remove_edge(*ei);
     }
+  }
+
+  for (auto[vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
+    auto &v = g[*vi];
+    v.constraints.erase(protectionID);
   }
 }
 
@@ -54,8 +71,10 @@ void ProtectionGraph::expandToInstructions() {
   // 1) Loop over all nodes
   // 2) If node is not an instruction -> Resolve instructions and add to graph
   // 3) Add edge for all edges to instructions
-  for (auto [vi, vi_end] = boost::vertices(Graph); vi != vi_end; ++vi) {
-    auto v = Graph[*vi];
+  graph_t &g = Graph;
+
+  for (auto[vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
+    auto v = g[*vi];
 
     switch (v.type) {
     case vertex_type::FUNCTION: {
@@ -79,28 +98,26 @@ void ProtectionGraph::expandToInstructions() {
 
 void ProtectionGraph::expandBasicBlockToInstructions(vd_t it, llvm::BasicBlock *B) {
   for (auto &I : *B) {
-    auto node = this->insertNode(&I, vertex_type::INSTRUCTION);
+    auto node = this->add_vertex(&I);
     replaceTarget(it, node);
   }
 }
 
 void ProtectionGraph::reduceToInstructions() {
-  auto [vi, vi_end] = boost::vertices(GraphWithHidden);
-  for (auto next = vi; vi != vi_end; vi = next) {
-    ++next;
-    auto &v = Graph[*vi];
+  graph_t &g = Graph;
+
+  for (auto[vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
+    auto &v = g[*vi];
     switch (v.type) {
     case vertex_type::FUNCTION:
-      boost::clear_vertex(*vi, GraphWithHidden);
-      v.removed = true;
+      remove_vertex(*vi);
       break;
     case vertex_type::BASICBLOCK:
-      boost::clear_vertex(*vi, GraphWithHidden);
-      v.removed = true;
+      remove_vertex(*vi);
       break;
     case vertex_type::INSTRUCTION: {
-      if (boost::out_degree(*vi, GraphWithHidden) == 0 && boost::in_degree(*vi, GraphWithHidden) == 0) {
-        v.removed = true;
+      if (boost::out_degree(*vi, g) == 0 && boost::in_degree(*vi, g) == 0) {
+        remove_vertex(*vi);
       }
       break;
     }
@@ -110,16 +127,11 @@ void ProtectionGraph::reduceToInstructions() {
   }
 }
 
-graph_hidden_t &ProtectionGraph::getGraph() {
-  return Graph;
-}
-graph_t &ProtectionGraph::getGraphWithHidden() {
-  return GraphWithHidden;
-}
-
 void ProtectionGraph::expandToFunctions() {
-  for (auto [vi, vi_end] = boost::vertices(Graph); vi != vi_end; ++vi) {
-    auto v = Graph[*vi];
+  graph_t &g = Graph;
+
+  for (auto[vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
+    auto v = g[*vi];
     switch (v.type) {
     case vertex_type::FUNCTION: break;
     case vertex_type::BASICBLOCK: {
@@ -139,13 +151,12 @@ void ProtectionGraph::expandToFunctions() {
 }
 
 void ProtectionGraph::expandBasicBlockToFunction(vd_t it, llvm::BasicBlock *B) {
-  if (B->getParent() == nullptr) {
+  auto func = B->getParent();
+  if (func == nullptr) {
     return;
   }
-  auto func = B->getParent();
-  assert(func != nullptr);
-  auto funcNode = this->insertNode(func, vertex_type::FUNCTION);
 
+  auto funcNode = this->add_vertex(func);
   replaceTarget(it, funcNode);
 }
 
@@ -153,10 +164,7 @@ void ProtectionGraph::expandInstructionToFunction(vd_t it, llvm::Instruction *I)
   if (I->getParent() == nullptr || I->getParent()->getParent() == nullptr) {
     return;
   }
-  auto func = I->getParent()->getParent();
-  assert(func != nullptr);
-  auto funcNode = this->insertNode(func, vertex_type::FUNCTION);
-
+  auto funcNode = this->add_vertex(I->getParent()->getParent());
   replaceTarget(it, funcNode);
 }
 
@@ -166,55 +174,45 @@ void ProtectionGraph::replaceTarget(vd_t src, vd_t dst) {
 }
 
 void ProtectionGraph::replaceTargetIncomingEdges(vd_t src, vd_t dst) {
-  for (auto [vi, vi_end] = boost::in_edges(src, Graph); vi != vi_end; ++vi) {
-    auto e = Graph[*vi];
+  graph_t &g = Graph;
+
+  for (auto[vi, vi_end] = boost::in_edges(src, g); vi != vi_end; ++vi) {
+    auto e = g[*vi];
     if (e.type != edge_type::DEPENDENCY)
       continue;
 
-    auto from = boost::source(*vi, Graph);
-    auto edge = boost::add_edge(from, dst, GraphWithHidden);
-    assert(edge.second);
-
-    edge_t eNew(e.index, e.name, e.type);
-    Graph[edge.first] = eNew;
+    auto from = boost::source(*vi, g);
+    this->add_edge(from, dst, edge_t{e.index, e.name, e.type});
   }
 }
 
 void ProtectionGraph::replaceTargetOutgoingEdges(vd_t src, vd_t dst) {
-  for (auto [vi, vi_end] = boost::out_edges(src, Graph); vi != vi_end; ++vi) {
-    auto e = Graph[*vi];
+  graph_t &g = Graph;
+
+  for (auto[vi, vi_end] = boost::out_edges(src, g); vi != vi_end; ++vi) {
+    auto e = g[*vi];
     if (e.type != edge_type::DEPENDENCY)
       continue;
 
-    auto to = boost::target(*vi, Graph);
-    auto edge = boost::add_edge(dst, to, GraphWithHidden);
-    assert(edge.second);
-
-    edge_t eNew(e.index, e.name, e.type);
-    Graph[edge.first] = eNew;
+    auto to = boost::target(*vi, g);
+    this->add_edge(dst, to, edge_t{e.index, e.name, e.type});
   }
 }
 
 void ProtectionGraph::reduceToFunctions() {
-  auto [vi, vi_end] = boost::vertices(Graph);
-  for (auto next = vi; vi != vi_end; vi = next) {
-    ++next;
+  graph_t &g = Graph;
 
-    auto& v = Graph[*vi];
+  for (auto[vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
+    auto &v = g[*vi];
     switch (v.type) {
     case vertex_type::FUNCTION:
-      if (boost::out_degree(*vi, Graph) == 0 && boost::in_degree(*vi, Graph) == 0) {
-        v.removed = true;
+      if (boost::out_degree(*vi, g) == 0 && boost::in_degree(*vi, g) == 0) {
+        remove_vertex(*vi);
       }
       break;
-    case vertex_type::BASICBLOCK:
-      boost::clear_vertex(*vi, GraphWithHidden);
-      v.removed = true;
+    case vertex_type::BASICBLOCK:remove_vertex(*vi);
       break;
-    case vertex_type::INSTRUCTION: {
-      boost::clear_vertex(*vi, GraphWithHidden);
-      v.removed = true;
-    }
+    case vertex_type::INSTRUCTION:remove_vertex(*vi);
       break;
     case vertex_type::VALUE: break;
     case vertex_type::UNKNOWN: break;
@@ -224,12 +222,13 @@ void ProtectionGraph::reduceToFunctions() {
 }
 
 void ProtectionGraph::handleCycle(std::vector<vd_t> matches) {
+  auto g = filter_removed_graph(Graph);
   dbgs() << "Handling cycle in component\n";
 
-  vd_t prev = 0;
+  vd_t prev = nullptr;
   for (auto it = matches.begin(), it_end = matches.end(); it != it_end; ++it) {
     vd_t vd = *it;
-    auto v = Graph[vd];
+    auto v = g[vd];
 
     dbgs() << v.name << "\n";
     dbgs() << std::to_string(v.index) << "\n";
@@ -239,33 +238,31 @@ void ProtectionGraph::handleCycle(std::vector<vd_t> matches) {
       continue;
     }
 
-    boost::remove_edge(vd, prev, GraphWithHidden);
-    boost::remove_edge(prev, vd, GraphWithHidden);
-
+    for (auto edge = boost::edge(vd, prev, g); edge.second; edge = boost::edge(vd, prev, g)) {
+      remove_edge(edge.first);
+    }
     prev = vd;
   }
 }
 
 ProtectionIndex ProtectionGraph::addConstraint(ManifestIndex index, std::shared_ptr<Constraint> c) {
+  graph_t &g = Graph;
+
   if (auto d = dyn_cast<Dependency>(c.get())) {
     assert(d->getFrom() != nullptr && "Source edge is nullptr");
     assert(d->getTo() != nullptr && "Target edge is nullptr");
 
-    auto dstNode = this->insertNode(d->getFrom(), llvmToVertexType(d->getFrom()));
-    auto srcNode = this->insertNode(d->getTo(), llvmToVertexType(d->getTo()));
-
-    auto edge = boost::add_edge(srcNode, dstNode, GraphWithHidden);
-    assert(edge.second);
-    edges[ProtectionIdx] = edge.first;
-    Graph[edge.first] = edge_t{ProtectionIdx, c->getInfo(), edge_type::DEPENDENCY};
+    auto dstNode = this->add_vertex(d->getFrom());
+    auto srcNode = this->add_vertex(d->getTo());
+    this->add_edge(srcNode, dstNode, edge_t{ProtectionIdx, c->getInfo(), edge_type::DEPENDENCY});
   } else if (auto present = dyn_cast<Present>(c.get())) {
     assert(present->getTarget() != nullptr);
-    auto v = this->insertNode(present->getTarget(), llvmToVertexType(present->getTarget()));
-    Graph[v].constraints.insert({ProtectionIdx, c});
+    auto v = this->add_vertex(present->getTarget());
+    g[v].constraints.insert({ProtectionIdx, c});
   } else if (auto preserved = dyn_cast<Preserved>(c.get())) {
     assert(preserved->getTarget() != nullptr);
-    auto v = this->insertNode(preserved->getTarget(), llvmToVertexType(preserved->getTarget()));
-    Graph[v].constraints.insert({ProtectionIdx, c});
+    auto v = this->add_vertex(preserved->getTarget());
+    g[v].constraints.insert({ProtectionIdx, c});
   }
   Protections[ProtectionIdx] = index;
   return ProtectionIdx++;

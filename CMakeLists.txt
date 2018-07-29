@@ -59,8 +59,10 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
         include/composition/graph/vertex.hpp
         include/composition/graph/vertex_type.hpp
         include/composition/graph/graphviz.hpp
-        include/composition/graph/filtered_graph_hidden.hpp
         include/composition/graph/graphml.hpp
+
+        include/composition/graph/filter/removed.hpp
+        include/composition/graph/filter/dependency.hpp
 
         include/composition/metric/Coverage.hpp
 
@@ -78,7 +80,9 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
         include/composition/Protection.hpp
         include/composition/ProtectionPass.hpp
         include/composition/ProtectionRegistry.hpp
+
         include/composition/util/functions.hpp
+        include/composition/util/strings.hpp
 
         src/filter/FunctionFilter.cpp
 
@@ -98,6 +102,7 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
         src/trace/PreservedValueRegistry.cpp
 
         src/util/functions.cpp
+        src/util/strings.cpp
 
         src/AnalysisPass.cpp
         src/GraphPass.cpp

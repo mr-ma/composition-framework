@@ -39,7 +39,9 @@ struct vertex_t {
 
 void assertType(llvm::Value *value, vertex_type type);
 
-vertex_type llvmToVertexType(const llvm::Value *value);
+vertex_type llvmToVertexType(const llvm::Value *v);
+
+std::string llvmToVertexName(const llvm::Value *v);
 }
 
 #endif //COMPOSITION_FRAMEWORK_GRAPH_VERTEX_HPP

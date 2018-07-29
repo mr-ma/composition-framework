@@ -1,3 +1,5 @@
+#include <utility>
+
 #ifndef COMPOSITION_FRAMEWORK_GRAPH_PROTECTIONGRAPH_HPP
 #define COMPOSITION_FRAMEWORK_GRAPH_PROTECTIONGRAPH_HPP
 
@@ -14,23 +16,30 @@
 #include <composition/ManifestRegistry.hpp>
 #include <composition/graph/scc.hpp>
 #include <composition/graph/topological_sort.hpp>
-#include <composition/graph/filtered_graph_hidden.hpp>
 
 namespace composition {
-typedef unsigned long ProtectionIndex;
+using ProtectionIndex = unsigned long;
+using VertexIndex = uintptr_t;
+using EdgeIndex = uintptr_t;
+
 class ProtectionGraph {
 private:
-  graph_t GraphWithHidden{};
-  graph_hidden_t Graph;
+  graph_t Graph{};
   ProtectionIndex ProtectionIdx{};
   std::unordered_map<ProtectionIndex, ManifestIndex> Protections{};
-  std::unordered_map<uintptr_t, vd_t> vertices{};
-  std::unordered_map<uintptr_t, ed_t> edges{};
+  std::unordered_map<VertexIndex, vd_t> vertices{};
+  std::unordered_map<EdgeIndex, ed_t> edges{};
 
 private:
-  vd_t insertNode(llvm::Value *node, vertex_type type);
+  vd_t add_vertex(llvm::Value *v);
 
-  void expandBasicBlockToInstructions(vd_t B, llvm::BasicBlock *pBlock);
+  void remove_vertex(vd_t vd) noexcept;
+
+  ed_t add_edge(vd_t s, vd_t d, edge_t e);
+
+  void remove_edge(ed_t ed) noexcept;
+
+  void expandBasicBlockToInstructions(vd_t it, llvm::BasicBlock *B);
 
   void expandInstructionToFunction(vd_t it, llvm::Instruction *I);
 
@@ -43,14 +52,12 @@ private:
   void replaceTargetOutgoingEdges(vd_t src, vd_t dst);
 
 public:
-  ProtectionGraph() : Graph({GraphWithHidden, HiddenPredicate<graph_t>(GraphWithHidden)}) {
-  }
+  ProtectionGraph() = default;
 
   ProtectionGraph(const ProtectionGraph &that) = delete;
 
   ProtectionGraph(const ProtectionGraph &&that) noexcept : ProtectionIdx(that.ProtectionIdx),
                                                            Protections(that.Protections),
-                                                           GraphWithHidden(that.GraphWithHidden),
                                                            Graph(that.Graph),
                                                            vertices(that.vertices),
                                                            edges(that.edges) {
@@ -60,21 +67,12 @@ public:
     ProtectionIdx = that.ProtectionIdx;
     Protections = std::move(that.Protections);
 
-    std::map<vd_t, size_t> index;
-    auto pmap = boost::make_assoc_property_map(index);
-
-    const auto &it = boost::make_iterator_range(boost::vertices(that.Graph));
-    int idx = 0;
-    for (auto vd : it) {
-      put(pmap, vd, idx++);
-    }
-
-    boost::copy_graph(that.GraphWithHidden, this->GraphWithHidden, vertex_index_map(pmap));
+    auto index = index_map(that.Graph);
+    boost::copy_graph(that.Graph, this->Graph, vertex_index_map(boost::make_assoc_property_map(index)));
     return *this;
   };
 
-  graph_t &getGraphWithHidden();
-  graph_hidden_t &getGraph();
+  graph_t &getGraph();
 
   ProtectionIndex addConstraint(ManifestIndex index, std::shared_ptr<Constraint> c);
 
@@ -82,14 +80,9 @@ public:
   ProtectionIndex addCFG(T parent, S child) {
     assert(parent != nullptr);
     assert(child != nullptr);
-    auto srcNode = this->insertNode(parent, llvmToVertexType(parent));
-    auto dstNode = this->insertNode(child, llvmToVertexType(child));
-
-    auto edge = boost::add_edge(srcNode, dstNode, GraphWithHidden);
-    assert(edge.second);
-    edges[ProtectionIdx] = edge.first;
-    Graph[edge.first] = edge_t{ProtectionIdx, "CFG", edge_type::CFG};
-    //Protections[ProtectionIdx] = Protection(parent, child);
+    auto srcNode = this->add_vertex(parent);
+    auto dstNode = this->add_vertex(child);
+    this->add_edge(srcNode, dstNode, edge_t{ProtectionIdx, "CFG", edge_type::CFG});
     return ProtectionIdx++;
   }
 
@@ -104,28 +97,8 @@ public:
   void reduceToFunctions();
 
   template<typename T>
-  struct Predicate { // both edge and vertex
-    bool operator()(typename T::edge_descriptor ed) const {
-      assert(g != nullptr);
-      return (*g)[ed].type == edge_type::DEPENDENCY;
-    }
-
-    bool operator()(typename T::vertex_descriptor vd) const {
-      assert(g != nullptr);
-      return true;
-    }
-
-    T *g;
-
-    Predicate() : g(nullptr) {}
-
-    explicit Predicate(T &g) : g(&g) {}
-  };
-
-  template<typename T>
   void SCC_DEPENDENCY(T &g) {
-    Predicate<T> p(g);
-    auto fg = boost::make_filtered_graph(g, p);
+    auto fg = filter_dependency_graph(g);
 
     bool changed;
     do {
@@ -155,11 +128,11 @@ public:
 
       //Filtering for Dependency edge is needed as we otherwise remove manifests which contain other constraints
       //like preserved or present as of right now
-      if(edges.find(i) == edges.end()) {
+      if (edges.find(i) == edges.end()) {
         continue;
       }
 
-      if(g[edges[i]].type != edge_type::DEPENDENCY) {
+      if (g[edges[i]].type != edge_type::DEPENDENCY) {
         continue;
       }
 
@@ -171,8 +144,8 @@ public:
   void handleCycle(std::vector<vd_t> matches);
 
   std::vector<vd_t> topologicalSortProtections() {
-    Predicate<graph_hidden_t> p(Graph);
-    auto fg = boost::make_filtered_graph(Graph, p);
+    graph_t &g = Graph;
+    auto fg = filter_dependency_graph(g);
     return composition::reverse_topological_sort(fg);
   }
 };

@@ -4,6 +4,7 @@
 #include <composition/trace/TraceableValue.hpp>
 #include <composition/graph/dot.hpp>
 #include <composition/graph/graphml.hpp>
+#include <composition/trace/PreservedValueRegistry.hpp>
 
 using namespace llvm;
 namespace composition {
@@ -97,15 +98,23 @@ bool AnalysisPass::runOnModule(llvm::Module &M) {
     }
   }
   dbgs() << "Done building CallGraph\n";
-
+  auto fg = filter_removed_graph(Graph.getGraph());
   save_graph_to_dot(Graph.getGraph(), "graph_raw.dot");
   save_graph_to_graphml(Graph.getGraph(), "graph_raw.graphml");
-  Graph.expandToFunctions();
+  save_graph_to_dot(fg, "graph_raw_removed.dot");
+  save_graph_to_graphml(fg, "graph_raw_removed.graphml");
+  //Graph.expandToFunctions();
+  Graph.expandToInstructions();
   save_graph_to_dot(Graph.getGraph(), "graph_expanded.dot");
   save_graph_to_graphml(Graph.getGraph(), "graph_expanded.graphml");
-  Graph.reduceToFunctions();
+  save_graph_to_dot(fg, "graph_expanded_removed.dot");
+  save_graph_to_graphml(fg, "graph_expanded_removed.graphml");
+  //Graph.reduceToFunctions();
+  Graph.reduceToInstructions();
   save_graph_to_dot(Graph.getGraph(), "graph_reduced.dot");
   save_graph_to_graphml(Graph.getGraph(), "graph_reduced.graphml");
+  save_graph_to_dot(fg, "graph_reduced_removed.dot");
+  save_graph_to_graphml(fg, "graph_reduced_removed.graphml");
 
   return false;
 }

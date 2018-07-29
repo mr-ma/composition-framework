@@ -20,12 +20,13 @@ bool GraphPass::runOnModule(llvm::Module &module) {
   auto &pass = getAnalysis<AnalysisPass>();
   Graph = std::move(pass.getGraph());
   dbgs() << "GraphPass SCC\n";
-  dbgs() << "Got " << (*ManifestRegistry::GetAll()).size() << " manifests\n";
 
+  auto fg = filter_removed_graph(Graph.getGraph());
   Graph.SCC_DEPENDENCY(Graph.getGraph());
-  dbgs() << "Got " << (*ManifestRegistry::GetAll()).size() << " manifests\n";
   save_graph_to_dot(Graph.getGraph(), "graph_scc.dot");
   save_graph_to_graphml(Graph.getGraph(), "graph_scc.graphml");
+  save_graph_to_dot(fg, "graph_scc_removed.dot");
+  save_graph_to_graphml(fg, "graph_scc_removed.graphml");
   // Get all registered analysis passes and check if one needs postpatching
   // If a pass needs postpatching then apply topological sorting before applying the protections
   auto registered = AnalysisRegistry::GetAll();
