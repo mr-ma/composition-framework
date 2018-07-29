@@ -136,8 +136,8 @@ public:
         continue;
       }
 
+      ManifestRegistry::Remove(Protections[i]);
       removeProtection(i);
-      composition::ManifestRegistry::Remove(i);
     }
   }
 
@@ -146,7 +146,7 @@ public:
   std::vector<vd_t> topologicalSortProtections() {
     graph_t &g = Graph;
     auto fg = filter_dependency_graph(g);
-    return composition::reverse_topological_sort(fg);
+    return reverse_topological_sort(fg);
   }
 };
 }

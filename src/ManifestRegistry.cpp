@@ -6,6 +6,7 @@ void ManifestRegistry::Remove(ManifestIndex idx) {
   std::unordered_map<ManifestIndex, Manifest> *manifests = RegisteredManifests();
   auto it = manifests->find(idx);
   if (it != manifests->end()) {
+    it->second.Undo();
     manifests->erase(it);
   }
 }

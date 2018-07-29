@@ -28,7 +28,7 @@ public:
   PatchFunction patchFunction;
   std::vector<std::shared_ptr<Constraint>> constraints;
   bool postPatching;
-  std::set<llvm::Value *> addedValues;
+  std::set<llvm::Value *> undoValues;
 
   Manifest(std::string name,
            llvm::Value *protectee,
@@ -37,7 +37,7 @@ public:
            bool postPatching = false,
            std::set<llvm::Value *> addedValues = {})
       : name(std::move(name)), protectee(protectee), patchFunction(std::move(patchFunction)),
-        constraints(std::move(constraints)), postPatching(postPatching), addedValues(std::move(addedValues)) {
+        constraints(std::move(constraints)), postPatching(postPatching), undoValues(std::move(addedValues)) {
   }
 
   bool operator==(const Manifest &other) const {
@@ -60,8 +60,8 @@ public:
     //TODO strictly speaking this function only removes the Instructions and GlobalVariables.
     //TODO however, if we wanted to remove basicblocks or functions we'd need to restore the correct controlflow
     //TODO for now, assume passes only add instructions
-    llvm::dbgs() << "Undoing " << addedValues.size() << " values\n";
-    for (auto V : addedValues) {
+    llvm::dbgs() << "Undoing " << undoValues.size() << " values\n";
+    for (auto V : undoValues) {
       if (auto *F = llvm::dyn_cast<llvm::Function>(V)) {
         for (auto &B : *F) {
           for (auto &I : B) {

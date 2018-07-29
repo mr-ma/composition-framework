@@ -1,5 +1,5 @@
-#ifndef COMPOSITION_FRAMEWORK_GRAPH_SCC_HPP
-#define COMPOSITION_FRAMEWORK_GRAPH_SCC_HPP
+#ifndef COMPOSITION_FRAMEWORK_GRAPH_STRONGCOMPONENTS_HPP
+#define COMPOSITION_FRAMEWORK_GRAPH_STRONGCOMPONENTS_HPP
 
 #include <boost/graph/strong_components.hpp>
 #include <boost/graph/detail/adjacency_list.hpp>
@@ -51,4 +51,4 @@ std::vector<std::vector<typename g_t::vertex_descriptor>> SCC(g_t &g) {
   return result;
 }
 }
-#endif //COMPOSITION_FRAMEWORK_GRAPH_SCC_HPP
+#endif //COMPOSITION_FRAMEWORK_GRAPH_STRONGCOMPONENTS_HPP

@@ -20,7 +20,6 @@ bool ProtectionPass::runOnModule(llvm::Module &M) {
 
   dbgs() << "Got " << manifests.size() << " manifests\n";
   for (auto &m : manifests) {
-    //m.second.Undo();
     m.second.Redo();
   }
 
