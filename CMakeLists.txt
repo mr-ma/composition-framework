@@ -47,7 +47,6 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
         include/composition/filter/ValueInfo.hpp
         include/composition/filter/FilterInfo.hpp
 
-        include/composition/graph/dot.hpp
         include/composition/graph/empty_graph.hpp
         include/composition/graph/graph.hpp
         include/composition/graph/ProtectionGraph.hpp
@@ -56,8 +55,6 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
         include/composition/graph/edge_type.hpp
         include/composition/graph/vertex.hpp
         include/composition/graph/vertex_type.hpp
-        include/composition/graph/graphviz.hpp
-        include/composition/graph/graphml.hpp
 
         include/composition/graph/algorithm/strong_components.hpp
         include/composition/graph/algorithm/topological_sort.hpp
@@ -66,6 +63,9 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
         include/composition/graph/filter/removed.hpp
         include/composition/graph/filter/dependency.hpp
 
+        include/composition/graph/util/dot.hpp
+        include/composition/graph/util/graphviz.hpp
+        include/composition/graph/util/graphml.hpp
         include/composition/graph/util/index_map.hpp
         include/composition/graph/util/vertex_count.hpp
 
@@ -98,7 +98,6 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
         src/graph/ProtectionGraph.cpp
         src/graph/constraint.cpp
         src/graph/graphviz.cpp
-        src/graph/dot.cpp
         src/graph/empty_graph.cpp
 
         src/metric/Coverage.cpp

@@ -3,8 +3,8 @@
 #include <composition/GraphPass.hpp>
 #include <composition/AnalysisPass.hpp>
 #include <composition/AnalysisRegistry.hpp>
-#include <composition/graph/dot.hpp>
-#include <composition/graph/graphml.hpp>
+#include <composition/graph/util/dot.hpp>
+#include <composition/graph/util/graphml.hpp>
 
 using namespace llvm;
 namespace composition {

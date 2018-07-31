@@ -16,6 +16,8 @@
 #include <composition/graph/algorithm/topological_sort.hpp>
 #include <composition/graph/util/index_map.hpp>
 #include <composition/graph/util/vertex_count.hpp>
+#include <composition/graph/filter/dependency.hpp>
+#include <composition/graph/filter/removed.hpp>
 
 namespace composition {
 using ProtectionIndex = unsigned long;

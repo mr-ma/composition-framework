@@ -6,8 +6,6 @@
 #include <boost/graph/graphviz.hpp>
 #include <composition/graph/vertex.hpp>
 #include <composition/graph/edge.hpp>
-#include <composition/graph/filter/dependency.hpp>
-#include <composition/graph/filter/removed.hpp>
 
 namespace composition {
 using VertexProperties = boost::property<boost::vertex_index_t, int, vertex_t>;

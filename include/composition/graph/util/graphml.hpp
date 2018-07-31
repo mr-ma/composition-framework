@@ -2,16 +2,25 @@
 #define COMPOSITION_FRAMEWORK_GML_HPP
 
 #include <fstream>
+#include <ostream>
 #include <boost/graph/graphml.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/algorithm/string/replace.hpp>
-#include <composition/graph/empty_graph.hpp>
-#include <composition/graph/graphviz.hpp>
 #include <composition/graph/constraint.hpp>
+#include <composition/graph/vertex.hpp>
+#include <composition/graph/edge.hpp>
 
 namespace composition {
 template<typename graph>
 void save_graph_to_graphml(graph &g, const std::string &filename) noexcept {
+  std::ofstream f;
+  f.exceptions(std::ios::failbit | std::ios::badbit);
+  f.open(filename);
+  save_graph_to_graphml(g, f);
+}
+
+template<typename graph>
+void save_graph_to_graphml(graph &g, std::ostream &out) noexcept {
   std::map<typename graph::vertex_descriptor, size_t> index;
   std::map<typename graph::vertex_descriptor, int> isPresent;
   std::map<typename graph::vertex_descriptor, int> isPreserved;
@@ -44,12 +53,7 @@ void save_graph_to_graphml(graph &g, const std::string &filename) noexcept {
   dp.property("edge_name", get(&edge_t::name, g));
   dp.property("edge_removed", get(&edge_t::removed, g));
 
-  std::ofstream f(filename);
-  boost::write_graphml(f, g, boost::make_assoc_property_map(index), dp);
+  boost::write_graphml(out, g, boost::make_assoc_property_map(index), dp);
 }
-
-bool is_regular_file(const std::string &filename) noexcept;
-
-graph_t load_graph_from_dot(const std::string &dot_filename);
 }
 #endif //COMPOSITION_FRAMEWORK_GML_HPP
