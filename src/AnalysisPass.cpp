@@ -42,8 +42,8 @@ void AnalysisPass::getAnalysisUsage(AnalysisUsage &AU) const {
   dbgs() << "Got " << std::to_string(registered.size()) << "\n";
 
   for (auto passInfo : registered) {
-    dbgs() << "Require " << std::to_string(reinterpret_cast<uintptr_t>(passInfo.first)) << "\n";
-    AU.addRequiredID(passInfo.first);
+    dbgs() << "Require " << std::to_string(reinterpret_cast<uintptr_t>(passInfo.ID)) << "\n";
+    AU.addRequiredID(passInfo.ID);
   }
 }
 

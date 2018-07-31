@@ -31,6 +31,6 @@ protected:
 template<typename T>
 // attempt to initialise the IsRegistered variable of derived classes
 // whilst registering them to the factory
-const bool ComposableAnalysis<T>::IsRegistered_ = AnalysisRegistry::Register(&T::ID, &T::PostPatchingRequired);
+const bool ComposableAnalysis<T>::IsRegistered_ = AnalysisRegistry::Register(&T::ID);
 }
 #endif //COMPOSITION_FRAMEWORK_ANALYSIS_HPP

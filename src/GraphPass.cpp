@@ -21,26 +21,13 @@ bool GraphPass::runOnModule(llvm::Module &module) {
   Graph = std::move(pass.getGraph());
   dbgs() << "GraphPass SCC\n";
 
-  auto fg = filter_removed_graph(Graph.getGraph());
   Graph.SCC_DEPENDENCY(Graph.getGraph());
+
+  auto fg = filter_removed_graph(Graph.getGraph());
   save_graph_to_dot(Graph.getGraph(), "graph_scc.dot");
   save_graph_to_graphml(Graph.getGraph(), "graph_scc.graphml");
   save_graph_to_dot(fg, "graph_scc_removed.dot");
   save_graph_to_graphml(fg, "graph_scc_removed.graphml");
-  // Get all registered analysis passes and check if one needs postpatching
-  // If a pass needs postpatching then apply topological sorting before applying the protections
-  auto registered = AnalysisRegistry::GetAll();
-  for (const auto &passInfo : registered) {
-    if (passInfo.second) {
-      dbgs() << "SORTING:\n";
-      //TODO fix topo sort for filtered multi edge graph
-      /*auto sorted = Graph.topologicalSortProtections();
-      for(auto vd : sorted) {
-          dbgs() << g[vd].name << "\n";
-      }*/
-      break;
-    }
-  }
   dbgs() << "GraphPass done\n";
 
   //TODO create postpatching manifest order/export to json
@@ -53,7 +40,7 @@ std::vector<Manifest> GraphPass::GetManifestsInOrder() {
   bool requireTopologicalSort = false;
 
   auto m = *ManifestRegistry::GetAll();
-  for (const auto&kv : m) {
+  for (const auto &kv : m) {
     if (kv.second.postPatching) {
       requireTopologicalSort = true;
       break;
@@ -63,11 +50,11 @@ std::vector<Manifest> GraphPass::GetManifestsInOrder() {
   auto indexes = Graph.manifestIndexes(requireTopologicalSort);
   auto result = std::vector<Manifest>();
   std::transform(std::begin(indexes),
-      std::end(indexes),
-      std::back_inserter(result),
-      [m](const auto i) {
-    return m.find(i)->second;
-  });
+                 std::end(indexes),
+                 std::back_inserter(result),
+                 [m](const auto i) {
+                   return m.find(i)->second;
+                 });
 
   return result;
 }

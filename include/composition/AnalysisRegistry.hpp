@@ -8,15 +8,17 @@
 #include <llvm/Support/raw_ostream.h>
 
 namespace composition {
-typedef std::pair<char *, bool> PassRegistrationInfo;
+struct PassRegistrationInfo {
+  char *ID;
+};
 
 class AnalysisRegistry {
 public:
   // register a class name with a particular create method
-  static bool Register(char *ID, bool *postPatchingRequired) {
+  static bool Register(char *ID) {
     // add the pair to the map
     llvm::dbgs() << "Registering analysis pass: " << std::to_string(reinterpret_cast<uintptr_t>(ID)) << "\n";
-    RegisteredAnalysis()->push_back({ID, postPatchingRequired});
+    RegisteredAnalysis()->push_back({ID});
     return true;
   }
 
