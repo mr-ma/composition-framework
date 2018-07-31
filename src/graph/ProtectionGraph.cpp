@@ -1,6 +1,5 @@
 #include <cstdint>
 #include <unordered_set>
-#include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
 #include <composition/graph/ProtectionGraph.hpp>
 
@@ -109,11 +108,9 @@ void ProtectionGraph::reduceToInstructions() {
   for (auto[vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
     auto &v = g[*vi];
     switch (v.type) {
-    case vertex_type::FUNCTION:
-      remove_vertex(*vi);
+    case vertex_type::FUNCTION:remove_vertex(*vi);
       break;
-    case vertex_type::BASICBLOCK:
-      remove_vertex(*vi);
+    case vertex_type::BASICBLOCK:remove_vertex(*vi);
       break;
     case vertex_type::INSTRUCTION: {
       if (boost::out_degree(*vi, g) == 0 && boost::in_degree(*vi, g) == 0) {
@@ -221,30 +218,6 @@ void ProtectionGraph::reduceToFunctions() {
   }
 }
 
-void ProtectionGraph::handleCycle(std::vector<vd_t> matches) {
-  auto g = filter_removed_graph(Graph);
-  dbgs() << "Handling cycle in component\n";
-
-  vd_t prev = nullptr;
-  for (auto it = matches.begin(), it_end = matches.end(); it != it_end; ++it) {
-    vd_t vd = *it;
-    auto v = g[vd];
-
-    dbgs() << v.name << "\n";
-    dbgs() << std::to_string(v.index) << "\n";
-
-    if (it == matches.begin()) {
-      prev = vd;
-      continue;
-    }
-
-    for (auto edge = boost::edge(vd, prev, g); edge.second; edge = boost::edge(vd, prev, g)) {
-      remove_edge(edge.first);
-    }
-    prev = vd;
-  }
-}
-
 ProtectionIndex ProtectionGraph::addConstraint(ManifestIndex index, std::shared_ptr<Constraint> c) {
   graph_t &g = Graph;
 
@@ -271,9 +244,9 @@ ProtectionIndex ProtectionGraph::addConstraint(ManifestIndex index, std::shared_
 std::vector<ManifestIndex> ProtectionGraph::manifestIndexes(bool requireTopologicalSort) {
   auto uniqueM = std::set<ManifestIndex>();
   std::transform(std::begin(Protections),
-      std::end(Protections),
-      std::inserter(uniqueM, std::end(uniqueM)),
-      [](const auto &kv) { return kv.second; });
+                 std::end(Protections),
+                 std::inserter(uniqueM, std::end(uniqueM)),
+                 [](const auto &kv) { return kv.second; });
 
   auto result = std::vector<ManifestIndex>{uniqueM.begin(), uniqueM.end()};
   if (!requireTopologicalSort) {
@@ -284,7 +257,7 @@ std::vector<ManifestIndex> ProtectionGraph::manifestIndexes(bool requireTopologi
   auto rg = filter_removed_graph(Graph);
   auto fg = filter_dependency_graph(rg);
 
-  for(auto [ei, ei_end] = boost::edges(fg); ei != ei_end; ++ei) {
+  for (auto[ei, ei_end] = boost::edges(fg); ei != ei_end; ++ei) {
     auto i = fg[*ei].index;
     auto manifest = Protections[i];
     result.erase(std::remove(result.begin(), result.end(), manifest), result.end());
@@ -292,10 +265,10 @@ std::vector<ManifestIndex> ProtectionGraph::manifestIndexes(bool requireTopologi
 
   auto sorted = topological_sort(fg);
   for (auto v : sorted) {
-    for(auto [ei, ei_end] = boost::out_edges(v, fg); ei != ei_end; ++ei) {
+    for (auto[ei, ei_end] = boost::out_edges(v, fg); ei != ei_end; ++ei) {
       auto i = fg[*ei].index;
       auto manifest = Protections[i];
-      if(std::find(result.begin(), result.end(), manifest) != result.end()) {
+      if (std::find(result.begin(), result.end(), manifest) != result.end()) {
         continue;
       }
       result.push_back(manifest);

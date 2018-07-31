@@ -26,31 +26,6 @@ typedef boost::adjacency_list<
 using vd_t = graph_t::vertex_descriptor;
 using ed_t = graph_t::edge_descriptor;
 
-template<typename s = size_t, typename graph_t>
-std::map<typename graph_t::vertex_descriptor, s> index_map(graph_t &g) {
-  std::map<typename graph_t::vertex_descriptor, s> map;
-  s idx = 0;
-  for (auto[vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
-    map[*vi] = idx++;
-  }
-  return map;
-}
-
-template<template<typename> typename filter, typename graph_t>
-auto filter_graph(graph_t &g) -> decltype(boost::make_filtered_graph(g, filter<graph_t>(g), filter<graph_t>(g))) {
-  return boost::make_filtered_graph(g, filter<graph_t>(g), filter<graph_t>(g));
-}
-
-template<typename graph_t>
-auto filter_dependency_graph(graph_t &g) -> decltype(filter_graph<DependencyPredicate>(g)) {
-  return filter_graph<DependencyPredicate>(g);
-}
-
-template<typename graph_t>
-auto filter_removed_graph(graph_t &g) -> decltype(filter_graph<RemovedPredicate>(g)) {
-  return filter_graph<RemovedPredicate>(g);
-}
-
 template<typename property_t, typename graph_t>
 auto get_vertex_property(const property_t &p,
                          const typename graph_t::vertex_descriptor vd,

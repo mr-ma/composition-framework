@@ -5,7 +5,7 @@
 #include <map>
 #include <boost/graph/topological_sort.hpp>
 #include <boost/range/iterator_range_core.hpp>
-#include <composition/graph/graph.hpp>
+#include <composition/graph/util/index_map.hpp>
 
 namespace composition {
 template<typename graph_t>

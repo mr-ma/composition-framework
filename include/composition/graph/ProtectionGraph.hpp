@@ -9,11 +9,13 @@
 #include <llvm/Support/raw_ostream.h>
 #include <boost/graph/filtered_graph.hpp>
 #include <boost/graph/copy.hpp>
+#include <composition/ManifestRegistry.hpp>
 #include <composition/graph/graph.hpp>
 #include <composition/graph/constraint.hpp>
-#include <composition/ManifestRegistry.hpp>
 #include <composition/graph/algorithm/strong_components.hpp>
 #include <composition/graph/algorithm/topological_sort.hpp>
+#include <composition/graph/util/index_map.hpp>
+#include <composition/graph/util/vertex_count.hpp>
 
 namespace composition {
 using ProtectionIndex = unsigned long;
@@ -97,21 +99,25 @@ public:
   void reduceToFunctions();
 
   template<typename T>
-  void SCC_DEPENDENCY(T &g) {
+  void dependencyConflictHandling(T &g) {
     auto rg = filter_removed_graph(g);
     auto fg = filter_dependency_graph(rg);
 
     bool changed;
     do {
       changed = false;
-      auto components = SCC(fg);
+      auto components = strong_components(fg);
       int i = 0;
-      for (const auto &matches : components) {
-        if (matches.size() != 1) {
+      for (auto &component : components) {
+        auto vertexCount = vertex_count(component);
+        if (vertexCount != 1) {
           changed = true;
-          llvm::dbgs() << "Component " << std::to_string(i++) << " contains cycle with "
-                       << std::to_string(matches.size()) << " elements.\n";
-          handleCycle(matches);
+          llvm::dbgs() << "Component " << std::to_string(i) << " contains cycle with " << std::to_string(vertexCount)
+                       << " elements.\n";
+          save_graph_to_dot(component, "graph_component_" + std::to_string(i) + ".dot");
+          save_graph_to_graphml(component, "graph_component_" + std::to_string(i) + ".graphml");
+          handleCycle(component);
+          ++i;
         }
       }
     } while (changed);
@@ -142,7 +148,29 @@ public:
     }
   }
 
-  void handleCycle(std::vector<vd_t> matches);
+  template<typename graph_t>
+  void handleCycle(graph_t &g) {
+    llvm::dbgs() << "Handling cycle in component\n";
+
+    vd_t prev = nullptr;
+    for (auto[vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
+      vd_t vd = *vi;
+      auto v = g[vd];
+
+      llvm::dbgs() << v.name << "\n";
+      llvm::dbgs() << std::to_string(v.index) << "\n";
+
+      if (prev == nullptr) {
+        prev = vd;
+        continue;
+      }
+
+      for (auto edge = boost::edge(vd, prev, g); edge.second; edge = boost::edge(vd, prev, g)) {
+        remove_edge(edge.first);
+      }
+      prev = vd;
+    }
+  }
 
   std::vector<vd_t> topologicalSortProtections() {
     graph_t &g = Graph;

@@ -1,6 +1,7 @@
-#ifndef COMPOSITION_FRAMEWORK_DEPENDENCY_HPP
-#define COMPOSITION_FRAMEWORK_DEPENDENCY_HPP
+#ifndef COMPOSITION_FRAMEWORK_GRAPH_FILTER_DEPENDENCY_HPP
+#define COMPOSITION_FRAMEWORK_GRAPH_FILTER_DEPENDENCY_HPP
 #include <composition/graph/edge_type.hpp>
+#include <composition/graph/filter/filter.hpp>
 
 namespace composition {
 template<typename T>
@@ -21,5 +22,10 @@ struct DependencyPredicate { // both edge and vertex
 
   explicit DependencyPredicate(T &g) : g(&g) {}
 };
+
+template<typename graph_t>
+auto filter_dependency_graph(graph_t &g) -> decltype(filter_graph<DependencyPredicate>(g)) {
+  return filter_graph<DependencyPredicate>(g);
 }
-#endif //COMPOSITION_FRAMEWORK_DEPENDENCY_HPP
+}
+#endif //COMPOSITION_FRAMEWORK_GRAPH_FILTER_DEPENDENCY_HPP

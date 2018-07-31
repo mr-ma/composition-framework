@@ -62,8 +62,12 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
         include/composition/graph/algorithm/strong_components.hpp
         include/composition/graph/algorithm/topological_sort.hpp
 
+        include/composition/graph/filter/filter.hpp
         include/composition/graph/filter/removed.hpp
         include/composition/graph/filter/dependency.hpp
+
+        include/composition/graph/util/index_map.hpp
+        include/composition/graph/util/vertex_count.hpp
 
         include/composition/metric/Coverage.hpp
 

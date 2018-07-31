@@ -1,5 +1,7 @@
-#ifndef COMPOSITION_FRAMEWORK_FILTERED_GRAPH_HIDDEN_HPP
-#define COMPOSITION_FRAMEWORK_FILTERED_GRAPH_HIDDEN_HPP
+#ifndef COMPOSITION_FRAMEWORK_GRAPH_FILTER_REMOVED_HPP
+#define COMPOSITION_FRAMEWORK_GRAPH_FILTER_REMOVED_HPP
+
+#include <composition/graph/filter/filter.hpp>
 
 namespace composition {
 template<typename T>
@@ -20,5 +22,10 @@ struct RemovedPredicate { // both edge and vertex
 
   explicit RemovedPredicate(T &G) : G(&G) {}
 };
+
+template<typename graph_t>
+auto filter_removed_graph(graph_t &g) -> decltype(filter_graph<RemovedPredicate>(g)) {
+  return filter_graph<RemovedPredicate>(g);
 }
-#endif //COMPOSITION_FRAMEWORK_FILTERED_GRAPH_HIDDEN_HPP
+}
+#endif //COMPOSITION_FRAMEWORK_GRAPH_FILTER_REMOVED_HPP

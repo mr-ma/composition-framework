@@ -19,9 +19,9 @@ bool GraphPass::runOnModule(llvm::Module &module) {
 
   auto &pass = getAnalysis<AnalysisPass>();
   Graph = std::move(pass.getGraph());
-  dbgs() << "GraphPass SCC\n";
+  dbgs() << "GraphPass strong_components\n";
 
-  Graph.SCC_DEPENDENCY(Graph.getGraph());
+  Graph.dependencyConflictHandling(Graph.getGraph());
 
   auto fg = filter_removed_graph(Graph.getGraph());
   save_graph_to_dot(Graph.getGraph(), "graph_scc.dot");
