@@ -108,8 +108,8 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
         src/AnalysisPass.cpp
         src/GraphPass.cpp
         src/ProtectionPass.cpp
-        src/ManifestRegistry.cpp
-        src/MMap.h)
+        src/ManifestRegistry.cpp)
+
 add_library(${PROJECT_NAME}::${COMPOSITION_FRAMEWORK_TARGET_NAME} ALIAS ${COMPOSITION_FRAMEWORK_TARGET_NAME})
 target_compile_features(${COMPOSITION_FRAMEWORK_TARGET_NAME} PUBLIC cxx_std_17)
 

@@ -1,8 +1,6 @@
-#include <utility>
-
 #ifndef COMPOSITION_FRAMEWORK_GRAPH_PROTECTIONGRAPH_HPP
 #define COMPOSITION_FRAMEWORK_GRAPH_PROTECTIONGRAPH_HPP
-
+#include <utility>
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/BasicBlock.h>
@@ -14,8 +12,8 @@
 #include <composition/graph/graph.hpp>
 #include <composition/graph/constraint.hpp>
 #include <composition/ManifestRegistry.hpp>
-#include <composition/graph/scc.hpp>
-#include <composition/graph/topological_sort.hpp>
+#include <composition/graph/algorithm/strong_components.hpp>
+#include <composition/graph/algorithm/topological_sort.hpp>
 
 namespace composition {
 using ProtectionIndex = unsigned long;
@@ -149,7 +147,7 @@ public:
   std::vector<vd_t> topologicalSortProtections() {
     graph_t &g = Graph;
     auto fg = filter_dependency_graph(g);
-    return reverse_topological_sort(fg);
+    return topological_sort(fg);
   }
 };
 }

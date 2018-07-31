@@ -9,7 +9,7 @@
 
 namespace composition {
 template<typename graph_t>
-std::vector<typename graph_t::vertex_descriptor> topological_sort(graph_t &g) {
+std::vector<typename graph_t::vertex_descriptor> reverse_topological_sort(graph_t &g) {
   using vd_t = typename graph_t::vertex_descriptor;
 
   auto index = index_map(g);
@@ -24,8 +24,8 @@ std::vector<typename graph_t::vertex_descriptor> topological_sort(graph_t &g) {
 }
 
 template<typename graph_t>
-std::vector<typename graph_t::vertex_descriptor> reverse_topological_sort(graph_t &g) {
-  auto result = topological_sort(g);
+std::vector<typename graph_t::vertex_descriptor> topological_sort(graph_t &g) {
+  auto result = reverse_topological_sort(g);
   std::reverse(result.begin(), result.end());
   return result;
 }
