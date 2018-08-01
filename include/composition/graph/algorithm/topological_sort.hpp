@@ -15,10 +15,8 @@ std::vector<typename graph_t::vertex_descriptor> reverse_topological_sort(graph_
   auto index = index_map(g);
   auto assocIndexMap = boost::make_assoc_property_map(index);
 
-  std::vector<boost::default_color_type> color(boost::num_vertices(g));
-
   std::vector<vd_t> result;
-  boost::topological_sort(g, std::back_inserter(result), color_map(make_iterator_property_map(color.begin(), assocIndexMap)));
+  boost::topological_sort(g, std::back_inserter(result), vertex_index_map(assocIndexMap));
 
   return result;
 }

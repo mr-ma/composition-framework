@@ -18,18 +18,18 @@ public:
   static bool Register(char *ID) {
     // add the pair to the map
     llvm::dbgs() << "Registering analysis pass: " << std::to_string(reinterpret_cast<uintptr_t>(ID)) << "\n";
-    RegisteredAnalysis()->push_back({ID});
+    RegisteredAnalysis().push_back({ID});
     return true;
   }
 
-  static std::vector<PassRegistrationInfo> GetAll() {
-    return *RegisteredAnalysis();
+  static std::vector<PassRegistrationInfo> &GetAll() {
+    return RegisteredAnalysis();
   };
 protected:
   // a map to hold a ... mapping between strings and create functions
-  static std::vector<PassRegistrationInfo> *RegisteredAnalysis() {
+  static std::vector<PassRegistrationInfo> &RegisteredAnalysis() {
     static std::vector<PassRegistrationInfo> value = {};
-    return &value;
+    return value;
   };
 };
 }

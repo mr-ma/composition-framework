@@ -47,7 +47,6 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
         include/composition/filter/ValueInfo.hpp
         include/composition/filter/FilterInfo.hpp
 
-        include/composition/graph/empty_graph.hpp
         include/composition/graph/graph.hpp
         include/composition/graph/ProtectionGraph.hpp
         include/composition/graph/constraint.hpp
@@ -98,7 +97,6 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
         src/graph/ProtectionGraph.cpp
         src/graph/constraint.cpp
         src/graph/graphviz.cpp
-        src/graph/empty_graph.cpp
 
         src/metric/Coverage.cpp
 

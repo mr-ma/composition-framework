@@ -14,7 +14,7 @@ public:
   static void Clear();
 
 protected:
-  static TraceableValueState *TraceableValues();;
+  static TraceableValueState &TraceableValues();;
 };
 }
 

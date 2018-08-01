@@ -12,14 +12,14 @@ graph_t &ProtectionGraph::getGraph() {
 vd_t ProtectionGraph::add_vertex(llvm::Value *v) {
   graph_t &g = Graph;
 
-  auto idx = reinterpret_cast<uintptr_t>(v);
-  if (vertices.find(idx) != vertices.end()) {
-    return vertices[idx];
+  auto idx = reinterpret_cast<vertex_idx_t>(v);
+  if (vertexCache.find(idx) != vertexCache.end()) {
+    return vertexCache.at(idx);
   }
 
   auto vd = boost::add_vertex(g);
   g[vd] = vertex_t(idx, llvmToVertexName(v), llvmToVertexType(v), {});
-  vertices.insert({idx, vd});
+  vertexCache.insert({idx, vd});
   return vd;
 }
 
@@ -38,8 +38,8 @@ ed_t ProtectionGraph::add_edge(vd_t s, vd_t d, edge_t e) {
   graph_t &g = Graph;
   auto edge = boost::add_edge(s, d, g);
   assert(edge.second);
-  edges[ProtectionIdx] = edge.first;
   g[edge.first] = std::move(e);
+  edgeCache.insert({ProtectionIdx, edge.first});
   return edge.first;
 }
 
@@ -207,9 +207,13 @@ void ProtectionGraph::reduceToFunctions() {
         remove_vertex(*vi);
       }
       break;
-    case vertex_type::BASICBLOCK:remove_vertex(*vi);
+    case vertex_type::BASICBLOCK: {
+      remove_vertex(*vi);
+    }
       break;
-    case vertex_type::INSTRUCTION:remove_vertex(*vi);
+    case vertex_type::INSTRUCTION: {
+      remove_vertex(*vi);
+    }
       break;
     case vertex_type::VALUE: break;
     case vertex_type::UNKNOWN: break;
@@ -237,7 +241,7 @@ ProtectionIndex ProtectionGraph::addConstraint(ManifestIndex index, std::shared_
     auto v = this->add_vertex(preserved->getTarget());
     g[v].constraints.insert({ProtectionIdx, c});
   }
-  Protections[ProtectionIdx] = index;
+  Protections.insert({ProtectionIdx, index});
   return ProtectionIdx++;
 }
 
@@ -252,14 +256,13 @@ std::vector<ManifestIndex> ProtectionGraph::manifestIndexes(bool requireTopologi
   if (!requireTopologicalSort) {
     return result;
   }
-  size_t start = result.size();
 
   auto rg = filter_removed_graph(Graph);
   auto fg = filter_dependency_graph(rg);
 
   for (auto[ei, ei_end] = boost::edges(fg); ei != ei_end; ++ei) {
     auto i = fg[*ei].index;
-    auto manifest = Protections[i];
+    auto manifest = Protections.at(i);
     result.erase(std::remove(result.begin(), result.end(), manifest), result.end());
   }
 
@@ -267,7 +270,7 @@ std::vector<ManifestIndex> ProtectionGraph::manifestIndexes(bool requireTopologi
   for (auto v : sorted) {
     for (auto[ei, ei_end] = boost::out_edges(v, fg); ei != ei_end; ++ei) {
       auto i = fg[*ei].index;
-      auto manifest = Protections[i];
+      auto manifest = Protections.at(i);
       if (std::find(result.begin(), result.end(), manifest) != result.end()) {
         continue;
       }

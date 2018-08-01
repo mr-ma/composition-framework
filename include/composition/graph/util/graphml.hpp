@@ -11,22 +11,22 @@
 #include <composition/graph/edge.hpp>
 
 namespace composition {
-template<typename graph>
-void save_graph_to_graphml(graph &g, const std::string &filename) noexcept {
+template<typename graph_t>
+void save_graph_to_graphml(graph_t &g, const std::string &filename) noexcept {
   std::ofstream f;
   f.exceptions(std::ios::failbit | std::ios::badbit);
   f.open(filename);
   save_graph_to_graphml(g, f);
 }
 
-template<typename graph>
-void save_graph_to_graphml(graph &g, std::ostream &out) noexcept {
-  std::map<typename graph::vertex_descriptor, size_t> index;
-  std::map<typename graph::vertex_descriptor, int> isPresent;
-  std::map<typename graph::vertex_descriptor, int> isPreserved;
+template<typename graph_t>
+void save_graph_to_graphml(graph_t &g, std::ostream &out) noexcept {
+  std::map<typename graph_t::vertex_descriptor, size_t> index;
+  std::map<typename graph_t::vertex_descriptor, int> isPresent;
+  std::map<typename graph_t::vertex_descriptor, int> isPreserved;
 
   for (auto vd : boost::make_iterator_range(boost::vertices(g))) {
-    index[vd] = index.size();
+    index.insert({vd, index.size()});
 
     int present = 0;
     int preserved = 0;
@@ -41,9 +41,10 @@ void save_graph_to_graphml(graph &g, std::ostream &out) noexcept {
                    ((present == 0 || present == 2) && p2->isInverse() ? 2 : 3));
       }
     }
-    isPresent[vd] = present;
-    isPreserved[vd] = preserved;
+    isPresent.insert({vd, present});
+    isPreserved.insert({vd, preserved});
   }
+
   boost::dynamic_properties dp;
   dp.property("vertex_name", get(&vertex_t::name, g));
   dp.property("vertex_removed", get(&vertex_t::removed, g));

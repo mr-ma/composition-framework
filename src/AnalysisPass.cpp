@@ -61,7 +61,7 @@ bool AnalysisPass::runOnModule(llvm::Module &M) {
                                    });
   arg1->replaceAllUsesWith(arg2);*/
 
-  auto manifests = *ManifestRegistry::GetAll();
+  auto manifests = ManifestRegistry::GetAll();
   size_t total = manifests.size();
   dbgs() << "Adding " << std::to_string(total) << " manifests to protection graph\n";
   size_t i = 0;

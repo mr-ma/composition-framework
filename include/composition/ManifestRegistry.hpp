@@ -13,16 +13,16 @@ class ManifestRegistry {
 public:
   static void Add(Manifest m);
 
-  static std::unordered_map<ManifestIndex, Manifest> *GetAll();;
+  static std::unordered_map<ManifestIndex, Manifest> &GetAll();;
 
   static void Remove(ManifestIndex idx);
 
 protected:
   static ManifestIndex index;
 
-  static std::unordered_map<ManifestIndex, Manifest> *RegisteredManifests() {
+  static std::unordered_map<ManifestIndex, Manifest> &RegisteredManifests() {
     static std::unordered_map<ManifestIndex, Manifest> value = {};
-    return &value;
+    return value;
   };
 };
 }

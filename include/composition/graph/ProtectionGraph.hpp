@@ -29,8 +29,8 @@ private:
   graph_t Graph{};
   ProtectionIndex ProtectionIdx{};
   std::unordered_map<ProtectionIndex, ManifestIndex> Protections{};
-  std::unordered_map<VertexIndex, vd_t> vertices{};
-  std::unordered_map<EdgeIndex, ed_t> edges{};
+  std::unordered_map<VertexIndex, vd_t> vertexCache{};
+  std::unordered_map<EdgeIndex, ed_t> edgeCache{};
 
 private:
   vd_t add_vertex(llvm::Value *v);
@@ -61,8 +61,8 @@ public:
   ProtectionGraph(const ProtectionGraph &&that) noexcept : ProtectionIdx(that.ProtectionIdx),
                                                            Protections(that.Protections),
                                                            Graph(that.Graph),
-                                                           vertices(that.vertices),
-                                                           edges(that.edges) {
+                                                           vertexCache(that.vertexCache),
+                                                           edgeCache(that.edgeCache) {
   }
 
   ProtectionGraph &operator=(ProtectionGraph &&that) noexcept {
@@ -137,15 +137,15 @@ public:
 
       //Filtering for Dependency edge is needed as we otherwise remove manifests which contain other constraints
       //like preserved or present as of right now
-      if (edges.find(i) == edges.end()) {
+      if (edgeCache.find(i) == edgeCache.end()) {
         continue;
       }
 
-      if (g[edges[i]].type != edge_type::DEPENDENCY) {
+      if (g[edgeCache.at(i)].type != edge_type::DEPENDENCY) {
         continue;
       }
 
-      ManifestRegistry::Remove(Protections[i]);
+      ManifestRegistry::Remove(Protections.at(i));
       removeProtection(i);
     }
   }
@@ -172,12 +172,6 @@ public:
       }
       prev = vd;
     }
-  }
-
-  std::vector<vd_t> topologicalSortProtections() {
-    graph_t &g = Graph;
-    auto fg = filter_dependency_graph(g);
-    return topological_sort(fg);
   }
 };
 }

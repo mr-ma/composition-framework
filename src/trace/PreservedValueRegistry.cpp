@@ -9,17 +9,17 @@ bool PreservedValueRegistry::Register(const std::string &name, llvm::Value *v, c
   dbgs() << "Registering preserved value: ";
   v->print(dbgs());
   dbgs() << "\n";
-  TraceableValues()->getNumber(v, TraceableCallbackInfo(name, callback));
+  TraceableValues().getNumber(v, TraceableCallbackInfo(name, callback));
   return true;
 }
 
 void PreservedValueRegistry::Clear() {
   dbgs() << "All values were correctly preserved\n";
-  TraceableValues()->clear();
+  TraceableValues().clear();
 }
 
-TraceableValueState *PreservedValueRegistry::TraceableValues() {
+TraceableValueState& PreservedValueRegistry::TraceableValues() {
   static TraceableValueState value = {};
-  return &value;
+  return value;
 }
 }

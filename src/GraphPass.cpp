@@ -39,7 +39,7 @@ char GraphPass::ID = 0;
 std::vector<Manifest> GraphPass::GetManifestsInOrder() {
   bool requireTopologicalSort = false;
 
-  auto m = *ManifestRegistry::GetAll();
+  auto m = ManifestRegistry::GetAll();
   for (const auto &kv : m) {
     if (kv.second.postPatching) {
       requireTopologicalSort = true;
