@@ -21,6 +21,10 @@ public:
     PreservedValueRegistry::Register(name, value, callback);
   }
 
+  void addPresent(const std::string &name, llvm::Value *value, const PresentCallback &callback) {
+    PreservedValueRegistry::Register(name, value, callback);
+  }
+
 protected:
   // to determine if the class definition is registered
   const static bool IsRegistered_;

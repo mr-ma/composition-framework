@@ -9,13 +9,16 @@
 namespace composition {
 
 typedef std::function<void(const std::string &, llvm::Value *, llvm::Value *)> PreservedCallback;
+typedef std::function<void(const std::string &, llvm::Value *)> PresentCallback;
 
 struct TraceableCallbackInfo {
   std::string pass;
-  PreservedCallback callback;
+  PresentCallback presentCallback;
+  PreservedCallback preservedCallback;
 
-  TraceableCallbackInfo(std::string pass, PreservedCallback callback)
-      : pass(std::move(pass)), callback(std::move(callback)) {}
+  TraceableCallbackInfo(std::string pass, PresentCallback presentCallback, PreservedCallback preservedCallback)
+      : pass(std::move(pass)), presentCallback(std::move(presentCallback)),
+        preservedCallback(std::move(preservedCallback)) {}
 };
 
 class TraceableValueState {
@@ -34,7 +37,7 @@ class TraceableValueState {
   using ValueNumberMap = llvm::ValueMap<llvm::Value *, uint64_t, Config>;
   ValueNumberMap GlobalNumbers;
 
-  static std::map<llvm::Value *, TraceableCallbackInfo> ValueNameMap;
+  static std::multimap<llvm::Value *, TraceableCallbackInfo> TraceableInfoMap;
 
   // The next unused serial number to assign to a global.
   uint64_t NextNumber = 0;

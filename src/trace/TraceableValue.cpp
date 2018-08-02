@@ -8,61 +8,72 @@ using namespace llvm;
 namespace composition {
 template<typename ExtraDataT>
 void TraceableValueState::Config::onRAUW(const ExtraDataT &, llvm::Value *oldValue, llvm::Value *newValue) {
-  dbgs() << "RAUWed value but should be preserved\n";
-
-  auto it = ValueNameMap.find(oldValue);
-  if (it == ValueNameMap.end()) {
-    dbgs() << "Could not find pass that added this value to be preserved.\n";
-  } else {
-    dbgs() << "Value was added by pass: " << it->second.pass << "\n";
+  std::vector<std::pair<std::string, PreservedCallback>> callbacks;
+  for (auto[it, it_end] = TraceableInfoMap.equal_range(oldValue); it != it_end; ++it) {
+    if (it->second.preservedCallback == nullptr) {
+      callbacks.emplace_back(it->second.pass, it->second.preservedCallback);
+    }
   }
+  if (callbacks.empty()) {
+    return;
+  }
+
+  dbgs() << "RAUWed value but should be preserved\n";
   dbgs() << "Old: ";
   oldValue->print(dbgs(), true);
   dbgs() << " New: ";
   newValue->print(dbgs(), true);
   dbgs() << "\n";
-  dbgs() << "Value was changed by pass: " << getPassName() << "\n";
+  dbgs() << "Value was deleted by pass: " << getPassName() << "\n";
 
-  it->second.callback(getPassName(), oldValue, newValue);
+  for (auto &c : callbacks) {
+    dbgs() << "Value was changed by pass: " << getPassName() << "\n";
+    c.second(getPassName(), oldValue, newValue);
+  }
 }
 
 template<typename ExtraDataT>
 void TraceableValueState::Config::onDelete(const ExtraDataT &, llvm::Value *oldValue) {
-  dbgs() << "Deleted value but should be preserved\n";
-  auto it = ValueNameMap.find(oldValue);
-  if (it == ValueNameMap.end()) {
-    dbgs() << "Could not find pass that added this value to be preserved.\n";
-  } else {
-    dbgs() << "Value was added by pass: " << it->second.pass << "\n";
+  std::vector<std::pair<std::string, PresentCallback>> callbacks;
+  for (auto[it, it_end] = TraceableInfoMap.equal_range(oldValue); it != it_end; ++it) {
+    if (it->second.presentCallback == nullptr) {
+      callbacks.emplace_back(it->second.pass, it->second.presentCallback);
+    }
   }
+  if (callbacks.empty()) {
+    return;
+  }
+
+  dbgs() << "Deleted value but should be preserved\n";
   dbgs() << "Old: ";
   oldValue->print(dbgs(), true);
   dbgs() << "\n";
   dbgs() << "Value was deleted by pass: " << getPassName() << "\n";
 
-  it->second.callback(getPassName(), oldValue, nullptr);
+  for (auto &c : callbacks) {
+    dbgs() << "Value was added by pass: " << c.first << "\n";
+    c.second(getPassName(), oldValue);
+  }
 }
 
 void TraceableValueState::clear() {
   GlobalNumbers.clear();
-  ValueNameMap.clear();
+  TraceableInfoMap.clear();
 }
 
 void TraceableValueState::erase(llvm::Value *v) {
   GlobalNumbers.erase(v);
-  ValueNameMap.erase(v);
+  TraceableInfoMap.erase(v);
 }
 
 uint64_t TraceableValueState::getNumber(llvm::Value *v, TraceableCallbackInfo info) {
-  ValueNumberMap::iterator MapIter;
-  bool Inserted;
-  std::tie(MapIter, Inserted) = GlobalNumbers.insert({v, NextNumber});
+  auto[MapIter, Inserted] = GlobalNumbers.insert({v, NextNumber});
   if (Inserted)
     NextNumber++;
 
-  ValueNameMap.insert({v, info});
+  TraceableInfoMap.insert({v, info});
   return MapIter->second;
 }
 
-std::map<llvm::Value *, TraceableCallbackInfo> TraceableValueState::ValueNameMap = {};
+std::multimap<llvm::Value *, TraceableCallbackInfo> TraceableValueState::TraceableInfoMap = {};
 }
