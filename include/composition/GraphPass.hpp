@@ -19,6 +19,8 @@ public:
   void getAnalysisUsage(llvm::AnalysisUsage &usage) const override;
 
   bool runOnModule(llvm::Module &module) override;
+
+  bool doFinalization(llvm::Module &module) override;
 };
 }
 #endif //COMPOSITION_FRAMEWORK_GRAPHPASS_H

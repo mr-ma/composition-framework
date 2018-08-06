@@ -1,5 +1,5 @@
 #include <boost/algorithm/string/replace.hpp>
-#include <composition/graph/graphviz.hpp>
+#include <composition/graph/util/graphviz.hpp>
 
 namespace composition {
 std::string graphviz_encode(std::string s) noexcept {

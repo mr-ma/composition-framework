@@ -35,7 +35,7 @@ set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
 find_package(Boost 1.58 REQUIRED graph)
-find_package(LLVM REQUIRED CONFIG)
+find_package(LLVM 6.0 REQUIRED CONFIG)
 ##
 ## TARGET
 ## create target and add include path
@@ -69,6 +69,7 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
         include/composition/graph/util/vertex_count.hpp
 
         include/composition/metric/Coverage.hpp
+        include/composition/metric/Performance.hpp
 
         include/composition/trace/TraceableValue.hpp
         include/composition/trace/PreservedValueRegistry.hpp
@@ -85,6 +86,11 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
         include/composition/ProtectionPass.hpp
         include/composition/ProtectionRegistry.hpp
 
+        include/composition/ConflictResolver.hpp
+        include/composition/ConflictResolverRegistry.hpp
+        include/composition/EnhancementResolver.hpp
+        include/composition/EnhancementResolverRegistry.hpp
+
         include/composition/util/functions.hpp
         include/composition/util/strings.hpp
 
@@ -96,9 +102,11 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
         src/graph/edge_type.cpp
         src/graph/ProtectionGraph.cpp
         src/graph/constraint.cpp
-        src/graph/graphviz.cpp
+
+        src/graph/util/graphviz.cpp
 
         src/metric/Coverage.cpp
+        src/metric/Performance.cpp
 
         src/trace/TraceableValue.cpp
         src/trace/PreservedValueRegistry.cpp
@@ -123,14 +131,16 @@ target_include_directories(
         PRIVATE
         ${Boost_INCLUDE_DIRS}
         ${LLVM_INCLUDE_DIRS}
-        /usr/include/llvm-3.9/
-        /usr/include/llvm-c-3.9/
 )
 
+if ($ENV{CLION_IDE})
+    include_directories("/usr/include/llvm-6.0/")
+endif ()
+
 # LLVM is (typically) built with no C++ RTTI. We need to match that.
-#target_compile_options(${COMPOSITION_FRAMEWORK_TARGET_NAME}
-#        PRIVATE
-#        -fno-rtti)
+target_compile_options(${COMPOSITION_FRAMEWORK_TARGET_NAME}
+        PRIVATE
+        -g)
 
 target_link_libraries(${COMPOSITION_FRAMEWORK_TARGET_NAME}
         PRIVATE

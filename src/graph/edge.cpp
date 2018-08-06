@@ -1,7 +1,7 @@
 #include <composition/graph/edge.hpp>
 
 #include <sstream>
-#include <composition/graph/graphviz.hpp>
+#include <composition/graph/util/graphviz.hpp>
 
 namespace composition {
 

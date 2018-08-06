@@ -13,9 +13,13 @@ class ManifestRegistry {
 public:
   static void Add(Manifest m);
 
-  static std::unordered_map<ManifestIndex, Manifest> &GetAll();;
+  static std::unordered_map<ManifestIndex, Manifest> &GetAll();
 
   static void Remove(ManifestIndex idx);
+
+  static void destroy() {
+    RegisteredManifests().clear();
+  }
 
 protected:
   static ManifestIndex index;

@@ -1,9 +1,10 @@
+#include <llvm/IR/CallSite.h>
 #include <llvm/Analysis/CallGraph.h>
 #include <composition/AnalysisPass.hpp>
 #include <composition/AnalysisRegistry.hpp>
 #include <composition/trace/TraceableValue.hpp>
-#include <composition/graph/dot.hpp>
-#include <composition/graph/graphml.hpp>
+#include <composition/graph/util/dot.hpp>
+#include <composition/graph/util/graphml.hpp>
 #include <composition/trace/PreservedValueRegistry.hpp>
 
 using namespace llvm;
@@ -67,7 +68,7 @@ bool AnalysisPass::runOnModule(llvm::Module &M) {
   size_t i = 0;
   for (auto &m : manifests) {
     dbgs() << "#" << std::to_string(i++) << "/" << std::to_string(total) << "\r";
-    for (auto &c : m.second.constraints) {
+    for (auto c : m.second.constraints) {
       Graph.addConstraint(m.first, c);
     }
   }

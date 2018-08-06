@@ -4,7 +4,7 @@
 #include <llvm/IR/Function.h>
 #include <llvm/Support/raw_ostream.h>
 #include <composition/graph/vertex.hpp>
-#include <composition/graph/graphviz.hpp>
+#include <composition/graph/util/graphviz.hpp>
 #include <composition/util/strings.hpp>
 namespace composition {
 

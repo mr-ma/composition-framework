@@ -1,3 +1,5 @@
+#include <utility>
+
 #ifndef COMPOSITION_FRAMEWORK_MANIFEST_HPP
 #define COMPOSITION_FRAMEWORK_MANIFEST_HPP
 #include <utility>
@@ -36,7 +38,7 @@ public:
            std::vector<std::shared_ptr<Constraint>> constraints = {},
            bool postPatching = false,
            std::set<llvm::Value *> addedValues = {})
-      : name(std::move(name)), protectee(protectee), patchFunction(std::move(patchFunction)),
+      : name(std::move(name)), protectee(protectee), patchFunction(patchFunction),
         constraints(std::move(constraints)), postPatching(postPatching), undoValues(std::move(addedValues)) {
   }
 

@@ -1,5 +1,7 @@
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/Analysis/LazyBlockFrequencyInfo.h>
+#include <llvm/PassAnalysisSupport.h>
 #include <composition/GraphPass.hpp>
 #include <composition/AnalysisPass.hpp>
 #include <composition/AnalysisRegistry.hpp>
@@ -12,6 +14,7 @@ namespace composition {
 void GraphPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
   AU.setPreservesAll();
   AU.addRequired<AnalysisPass>();
+  //AU.addRequired<LazyBlockFrequencyInfoPass>();
 }
 
 bool GraphPass::runOnModule(llvm::Module &module) {
@@ -57,6 +60,12 @@ std::vector<Manifest> GraphPass::GetManifestsInOrder() {
                  });
 
   return result;
+}
+
+bool GraphPass::doFinalization(Module &module) {
+  Graph.destroy();
+  ManifestRegistry::destroy();
+  return Pass::doFinalization(module);
 }
 
 static llvm::RegisterPass<GraphPass> X("constraint-graph", "Constraint Graph Pass",

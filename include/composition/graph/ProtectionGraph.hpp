@@ -33,6 +33,7 @@ private:
   std::unordered_map<EdgeIndex, ed_t> edgeCache{};
 
 private:
+
   vd_t add_vertex(llvm::Value *v);
 
   void remove_vertex(vd_t vd) noexcept;
@@ -73,6 +74,14 @@ public:
     boost::copy_graph(that.Graph, this->Graph, vertex_index_map(boost::make_assoc_property_map(index)));
     return *this;
   };
+
+  void destroy() {
+    Graph = {};
+    ProtectionIdx = 0;
+    Protections.clear();
+    vertexCache.clear();
+    edgeCache.clear();
+  }
 
   graph_t &getGraph();
 
