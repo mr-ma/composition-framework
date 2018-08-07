@@ -12,8 +12,7 @@ pipeline:
   discord:
     image: appleboy/drone-discord
     pull: true
-    webhook_id: 476301956835573770
-    webhook_token: VU4iwlwiNhErsevpKJlxZF6eRE-0WKNqtACdnj0SMfPuCzXWMmN9EwJbX5tfCrmOz2FI
+    secrets: [ discord_webhook_id, discord_webhook_token ]
     when:
       event: [ push, tag, pull_request ]
       status: [ changed, failure ]
