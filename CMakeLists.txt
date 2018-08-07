@@ -67,6 +67,7 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
         include/composition/graph/util/graphml.hpp
         include/composition/graph/util/index_map.hpp
         include/composition/graph/util/vertex_count.hpp
+        include/composition/graph/util/constraint_map.hpp
 
         include/composition/metric/Coverage.hpp
         include/composition/metric/Performance.hpp
@@ -93,6 +94,7 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
 
         include/composition/util/functions.hpp
         include/composition/util/strings.hpp
+        include/composition/util/enums.hpp
 
         src/filter/FunctionFilter.cpp
 

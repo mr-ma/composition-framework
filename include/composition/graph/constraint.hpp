@@ -2,9 +2,25 @@
 #define COMPOSITION_FRAMEWORK_GRAPH_CONSTRAINT_HPP
 #include <llvm/IR/Value.h>
 #include <llvm/Support/Casting.h>
+#include <composition/util/enums.hpp>
 
 namespace composition {
 
+enum class PresentConstraint : unsigned {
+  NONE = 0x00,
+  PRESENT = 0x01,
+  NOT_PRESENT = 0x02,
+  CONFLICT = PRESENT|NOT_PRESENT,
+};
+
+enum class PreservedConstraint : unsigned {
+  NONE = 0x00,
+  PRESERVED = 0x01,
+  NOT_PRESERVED = 0x02,
+  CONFLICT = PRESERVED|NOT_PRESERVED,
+};
+ENABLE_BITMASK_OPERATORS(PresentConstraint);
+ENABLE_BITMASK_OPERATORS(PreservedConstraint);
 class Constraint {
 public:
   enum class ConstraintKind {

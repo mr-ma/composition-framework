@@ -1,5 +1,5 @@
-#ifndef COMPOSITION_FRAMEWORK_GML_HPP
-#define COMPOSITION_FRAMEWORK_GML_HPP
+#ifndef COMPOSITION_FRAMEWORK_GRAPH_UTIL_GRAPHML_HPP
+#define COMPOSITION_FRAMEWORK_GRAPH_UTIL_GRAPHML_HPP
 
 #include <fstream>
 #include <ostream>
@@ -9,6 +9,7 @@
 #include <composition/graph/constraint.hpp>
 #include <composition/graph/vertex.hpp>
 #include <composition/graph/edge.hpp>
+#include <composition/graph/util/constraint_map.hpp>
 
 namespace composition {
 template<typename graph_t>
@@ -21,29 +22,8 @@ void save_graph_to_graphml(graph_t &g, const std::string &filename) noexcept {
 
 template<typename graph_t>
 void save_graph_to_graphml(graph_t &g, std::ostream &out) noexcept {
-  std::map<typename graph_t::vertex_descriptor, size_t> index;
-  std::map<typename graph_t::vertex_descriptor, int> isPresent;
-  std::map<typename graph_t::vertex_descriptor, int> isPreserved;
-
-  for (auto vd : boost::make_iterator_range(boost::vertices(g))) {
-    index.insert({vd, index.size()});
-
-    int present = 0;
-    int preserved = 0;
-    for (auto &c : g[vd].constraints) {
-      if (auto *p1 = llvm::dyn_cast<Preserved>(c.second.get())) {
-        //None = 0, Preserved = 1, Not Preserved = 2, Both = 3
-        preserved = ((preserved == 0 || preserved == 1) && !p1->isInverse() ? 1 :
-                     ((preserved == 0 || preserved == 2) && p1->isInverse() ? 2 : 3));
-      } else if (auto *p2 = llvm::dyn_cast<Present>(c.second.get())) {
-        //None = 0, Present = 1, Not Present = 2, Both = 3
-        present = ((present == 0 || present == 1) && !p2->isInverse() ? 1 :
-                   ((present == 0 || present == 2) && p2->isInverse() ? 2 : 3));
-      }
-    }
-    isPresent.insert({vd, present});
-    isPreserved.insert({vd, preserved});
-  }
+  auto index = index_map(g);
+  auto [isPresent, isPreserved] = constraint_map(g);
 
   boost::dynamic_properties dp;
   dp.property("vertex_name", get(&vertex_t::name, g));
@@ -57,4 +37,4 @@ void save_graph_to_graphml(graph_t &g, std::ostream &out) noexcept {
   boost::write_graphml(out, g, boost::make_assoc_property_map(index), dp);
 }
 }
-#endif //COMPOSITION_FRAMEWORK_GML_HPP
+#endif //COMPOSITION_FRAMEWORK_GRAPH_UTIL_GRAPHML_HPP

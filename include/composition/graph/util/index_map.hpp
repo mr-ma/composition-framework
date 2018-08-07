@@ -1,5 +1,5 @@
-#ifndef COMPOSITION_FRAMEWORK_INDEX_MAP_HPP
-#define COMPOSITION_FRAMEWORK_INDEX_MAP_HPP
+#ifndef COMPOSITION_FRAMEWORK_GRAPH_UTIL_INDEXMAP_HPP
+#define COMPOSITION_FRAMEWORK_GRAPH_UTIL_INDEXMAP_HPP
 
 #include <cstddef>
 #include <map>
@@ -15,4 +15,4 @@ std::map<typename graph_t::vertex_descriptor, s_t> index_map(graph_t &g) {
   return map;
 }
 
-#endif //COMPOSITION_FRAMEWORK_INDEX_MAP_HPP
+#endif //COMPOSITION_FRAMEWORK_GRAPH_UTIL_INDEXMAP_HPP
