@@ -1,4 +1,8 @@
 pipeline:
+    discord:
+        image: appleboy/drone-discord
+        webhook_id: 476301956835573770
+        webhook_token: VU4iwlwiNhErsevpKJlxZF6eRE-0WKNqtACdnj0SMfPuCzXWMmN9EwJbX5tfCrmOz2FI
     build:
         image: dennisfischer/llvm:6.0
         commands:
