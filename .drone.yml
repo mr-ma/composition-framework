@@ -1,14 +1,19 @@
 pipeline:
-    discord:
-        image: appleboy/drone-discord
-        webhook_id: 476301956835573770
-        webhook_token: VU4iwlwiNhErsevpKJlxZF6eRE-0WKNqtACdnj0SMfPuCzXWMmN9EwJbX5tfCrmOz2FI
-    build:
-        image: dennisfischer/llvm:6.0
-        commands:
-            - mkdir build/
-            - cd build/
-            - cmake ..
-            - cmake --build . -- -j4
-        when:
-            branch: [ master, graph ]
+  build:
+    image: dennisfischer/llvm:6.0
+    commands:
+    - mkdir build/
+    - cd build/
+    - cmake ..
+    - cmake --build . -- -j4
+    when:
+      branch: [ master, graph ]
+
+  discord:
+    image: appleboy/drone-discord
+    pull: true
+    webhook_id: 476301956835573770
+    webhook_token: VU4iwlwiNhErsevpKJlxZF6eRE-0WKNqtACdnj0SMfPuCzXWMmN9EwJbX5tfCrmOz2FI
+    when:
+      event: [ push, tag, pull_request ]
+      status: [ changed, failure ]
