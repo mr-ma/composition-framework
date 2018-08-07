@@ -14,7 +14,9 @@ vd_t ProtectionGraph::add_vertex(llvm::Value *v) {
 
   auto idx = reinterpret_cast<vertex_idx_t>(v);
   if (vertexCache.find(idx) != vertexCache.end()) {
-    return vertexCache.at(idx);
+    auto vd = vertexCache.at(idx);
+    g[vd].removed = false;
+    return vd;
   }
 
   auto vd = boost::add_vertex(g);
@@ -96,8 +98,12 @@ void ProtectionGraph::expandToInstructions() {
 }
 
 void ProtectionGraph::expandBasicBlockToInstructions(vd_t it, llvm::BasicBlock *B) {
+  graph_t &g = Graph;
+
   for (auto &I : *B) {
     auto node = this->add_vertex(&I);
+    auto constraints = g[it].constraints;
+    g[node].constraints.insert(constraints.begin(), constraints.end());
     replaceTarget(it, node);
   }
 }

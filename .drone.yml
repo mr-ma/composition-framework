@@ -1,0 +1,10 @@
+---
+build:
+  image: dennisfischer/llvm:6.0
+  commands:
+    - ls -l
+    - mkdir build/
+    - cd build/
+    - cmake ..
+    - cmake --build .
+  branches: [ master, graph ]
