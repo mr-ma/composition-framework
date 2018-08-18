@@ -260,6 +260,8 @@ std::vector<ManifestIndex> ProtectionGraph::manifestIndexes(bool requireTopologi
                  std::inserter(uniqueM, std::end(uniqueM)),
                  [](const auto &kv) { return kv.first; });
 
+  const auto unique_size = uniqueM.size();
+
   auto result = std::vector<ManifestIndex>{uniqueM.begin(), uniqueM.end()};
   if (!requireTopologicalSort) {
     return result;
@@ -267,24 +269,30 @@ std::vector<ManifestIndex> ProtectionGraph::manifestIndexes(bool requireTopologi
 
   auto rg = filter_removed_graph(Graph);
   auto fg = filter_dependency_graph(rg);
+  auto sc = filter_selfcycle_graph(fg);
 
-  for (auto[ei, ei_end] = boost::edges(fg); ei != ei_end; ++ei) {
-    auto i = fg[*ei].index;
-    auto manifest = Protections.at(i);
-    result.erase(std::remove(result.begin(), result.end(), manifest), result.end());
+  for (auto[vi, vi_end] = boost::vertices(sc); vi != vi_end; ++vi) {
+    for (auto[ei, ei_end] = boost::out_edges(*vi, sc); ei != ei_end; ++ei) {
+      auto i = sc[*ei].index;
+      auto manifest = Protections.at(i);
+      result.erase(std::remove(result.begin(), result.end(), manifest), result.end());
+    }
   }
 
-  auto sorted = topological_sort(fg);
+  auto sorted = topological_sort(sc);
   for (auto v : sorted) {
-    for (auto[ei, ei_end] = boost::out_edges(v, fg); ei != ei_end; ++ei) {
-      auto i = fg[*ei].index;
+    for (auto[ei, ei_end] = boost::out_edges(v, sc); ei != ei_end; ++ei) {
+      auto i = sc[*ei].index;
       auto manifest = Protections.at(i);
+
       if (std::find(result.begin(), result.end(), manifest) != result.end()) {
         continue;
       }
       result.push_back(manifest);
     }
   }
+
+  assert(unique_size == result.size());
   return result;
 }
 }

@@ -61,6 +61,7 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
         include/composition/graph/filter/filter.hpp
         include/composition/graph/filter/removed.hpp
         include/composition/graph/filter/dependency.hpp
+        include/composition/graph/filter/selfcycle.hpp
 
         include/composition/graph/util/dot.hpp
         include/composition/graph/util/graphviz.hpp

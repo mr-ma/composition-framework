@@ -20,6 +20,7 @@
 #include <composition/graph/util/dot.hpp>
 #include <composition/graph/filter/dependency.hpp>
 #include <composition/graph/filter/removed.hpp>
+#include <composition/graph/filter/selfcycle.hpp>
 
 namespace composition {
 using ProtectionIndex = unsigned long;
@@ -176,7 +177,9 @@ public:
       edgesInConflict.push_back(*ei);
     }
 
-    std::random_shuffle(edgesInConflict.begin(), edgesInConflict.end());
+    std::random_device rd;
+    std::mt19937 mt(rd());
+    std::shuffle(edgesInConflict.begin(), edgesInConflict.end(), mt);
     removeProtection(g[edgesInConflict.at(0)].index);
   }
 };
