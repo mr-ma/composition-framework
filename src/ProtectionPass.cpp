@@ -9,7 +9,7 @@ namespace composition {
 
 void ProtectionPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
   AU.setPreservesAll();
-  AU.addRequired<GraphPass>();
+  AU.addRequiredTransitive<GraphPass>();
 }
 
 bool ProtectionPass::runOnModule(llvm::Module &M) {

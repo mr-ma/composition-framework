@@ -252,11 +252,12 @@ ProtectionIndex ProtectionGraph::addConstraint(ManifestIndex index, std::shared_
 }
 
 std::vector<ManifestIndex> ProtectionGraph::manifestIndexes(bool requireTopologicalSort) {
+  auto allManifests = ManifestRegistry::GetAll();
   auto uniqueM = std::set<ManifestIndex>();
-  std::transform(std::begin(Protections),
-                 std::end(Protections),
+  std::transform(std::begin(allManifests),
+                 std::end(allManifests),
                  std::inserter(uniqueM, std::end(uniqueM)),
-                 [](const auto &kv) { return kv.second; });
+                 [](const auto &kv) { return kv.first; });
 
   auto result = std::vector<ManifestIndex>{uniqueM.begin(), uniqueM.end()};
   if (!requireTopologicalSort) {

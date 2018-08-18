@@ -53,8 +53,9 @@ class Dependency : public Constraint {
 private:
   llvm::Value *from;
   llvm::Value *to;
+  bool weak;
 public:
-  Dependency(std::string info, llvm::Value *from, llvm::Value *to);
+  Dependency(std::string info, llvm::Value *from, llvm::Value *to, bool weak = false);
 
   llvm::Value *getFrom() const;
 

@@ -16,6 +16,8 @@
 #include <composition/graph/algorithm/topological_sort.hpp>
 #include <composition/graph/util/index_map.hpp>
 #include <composition/graph/util/vertex_count.hpp>
+#include <composition/graph/util/graphml.hpp>
+#include <composition/graph/util/dot.hpp>
 #include <composition/graph/filter/dependency.hpp>
 #include <composition/graph/filter/removed.hpp>
 
@@ -154,7 +156,6 @@ public:
         continue;
       }
 
-      ManifestRegistry::Remove(Protections.at(i));
       removeProtection(i);
     }
   }
@@ -162,25 +163,21 @@ public:
   template<typename graph_t>
   void handleCycle(graph_t &g) {
     llvm::dbgs() << "Handling cycle in component\n";
-
-    vd_t prev = nullptr;
     for (auto[vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
       vd_t vd = *vi;
       auto v = g[vd];
 
       llvm::dbgs() << v.name << "\n";
       llvm::dbgs() << std::to_string(v.index) << "\n";
-
-      if (prev == nullptr) {
-        prev = vd;
-        continue;
-      }
-
-      for (auto edge = boost::edge(vd, prev, g); edge.second; edge = boost::edge(vd, prev, g)) {
-        remove_edge(edge.first);
-      }
-      prev = vd;
     }
+
+    std::vector<ed_t> edgesInConflict{};
+    for (auto[ei, ei_end] = boost::edges(g); ei != ei_end; ++ei) {
+      edgesInConflict.push_back(*ei);
+    }
+
+    std::random_shuffle(edgesInConflict.begin(), edgesInConflict.end());
+    removeProtection(g[edgesInConflict.at(0)].index);
   }
 };
 }

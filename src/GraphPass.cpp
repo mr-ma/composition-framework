@@ -13,7 +13,7 @@ namespace composition {
 
 void GraphPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
   AU.setPreservesAll();
-  AU.addRequired<AnalysisPass>();
+  AU.addRequiredTransitive<AnalysisPass>();
   //AU.addRequired<LazyBlockFrequencyInfoPass>();
 }
 
@@ -43,6 +43,7 @@ std::vector<Manifest> GraphPass::GetManifestsInOrder() {
   bool requireTopologicalSort = false;
 
   auto m = ManifestRegistry::GetAll();
+  const auto input_size = m.size();
   for (const auto &kv : m) {
     if (kv.second.postPatching) {
       requireTopologicalSort = true;
@@ -59,6 +60,7 @@ std::vector<Manifest> GraphPass::GetManifestsInOrder() {
                    return m.find(i)->second;
                  });
 
+  assert(input_size == result.size());
   return result;
 }
 
