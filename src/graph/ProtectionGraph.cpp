@@ -53,6 +53,7 @@ void ProtectionGraph::remove_edge(ed_t ed) noexcept {
 void ProtectionGraph::removeProtection(ProtectionIndex protectionID) {
   graph_t &g = Graph;
 
+  ManifestRegistry::Remove(Protections.at(protectionID));
   Protections.erase(protectionID);
 
   for (auto[ei, ei_end] = boost::edges(g); ei != ei_end; ++ei) {
