@@ -1,47 +1,27 @@
-cmake_minimum_required(VERSION 3.8)
-project(composition-framework VERSION 0.2 LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.12)
+project(composition-framework VERSION 0.4.0 LANGUAGES CXX)
 
-
-##
-## INCLUDE
-##
-##
-include(ExternalProject)
-
-##
-## OPTIONS
-##
-
-
-##
-## CONFIGURATION
-##
-set(COMPOSITION_FRAMEWORK_TARGET_NAME ${PROJECT_NAME})
-set(COMPOSITION_FRAMEWORK_CONFIG_INSTALL_DIR "lib/cmake/${PROJECT_NAME}" CACHE INTERNAL "")
-set(COMPOSITION_FRAMEWORK_INCLUDE_INSTALL_DIR "include")
-set(COMPOSITION_FRAMEWORK_TARGETS_EXPORT_NAME "${PROJECT_NAME}Targets")
-set(COMPOSITION_FRAMEWORK_CMAKE_CONFIG_TEMPLATE "cmake/config.cmake.in")
-set(COMPOSITION_FRAMEWORK_CMAKE_CONFIG_DIR "${CMAKE_CURRENT_BINARY_DIR}")
-set(COMPOSITION_FRAMEWORK_CMAKE_VERSION_CONFIG_FILE "${COMPOSITION_FRAMEWORK_CMAKE_CONFIG_DIR}/${PROJECT_NAME}ConfigVersion.cmake")
-set(COMPOSITION_FRAMEWORK_CMAKE_PROJECT_CONFIG_FILE "${COMPOSITION_FRAMEWORK_CMAKE_CONFIG_DIR}/${PROJECT_NAME}Config.cmake")
-set(COMPOSITION_FRAMEWORK_CMAKE_PROJECT_TARGETS_FILE "${COMPOSITION_FRAMEWORK_CMAKE_CONFIG_DIR}/${PROJECT_NAME}Targets.cmake")
-set(COMPOSITION_FRAMEWORK_INCLUDE_BUILD_DIR "${PROJECT_SOURCE_DIR}/include/")
-
+list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_SOURCE_DIR}/cmake)
 
 ##
 ## Dependencies
 ##
+find_package(Boost 1.58 REQUIRED COMPONENTS graph)
+find_package(LLVM 6.0 REQUIRED CONFIG)
+
+##
+## CONFIGURATION
+##
 set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
-find_package(Boost 1.58 REQUIRED graph)
-find_package(LLVM 6.0 REQUIRED CONFIG)
+
 ##
 ## TARGET
 ## create target and add include path
 ##
 
-add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
+add_library(CompositionFramework MODULE
         include/composition/filter/FunctionFilter.hpp
         include/composition/filter/FunctionInfo.hpp
         include/composition/filter/ValueInfo.hpp
@@ -97,95 +77,108 @@ add_library(${COMPOSITION_FRAMEWORK_TARGET_NAME} MODULE
         include/composition/util/strings.hpp
         include/composition/util/enums.hpp
 
-        src/filter/FunctionFilter.cpp
+        src/composition/filter/FunctionFilter.cpp
 
-        src/graph/vertex.cpp
-        src/graph/vertex_type.cpp
-        src/graph/edge.cpp
-        src/graph/edge_type.cpp
-        src/graph/ProtectionGraph.cpp
-        src/graph/constraint.cpp
+        src/composition/graph/vertex.cpp
+        src/composition/graph/vertex_type.cpp
+        src/composition/graph/edge.cpp
+        src/composition/graph/edge_type.cpp
+        src/composition/graph/ProtectionGraph.cpp
+        src/composition/graph/constraint.cpp
 
-        src/graph/util/graphviz.cpp
+        src/composition/graph/util/graphviz.cpp
 
-        src/metric/Coverage.cpp
-        src/metric/Performance.cpp
+        src/composition/metric/Coverage.cpp
+        src/composition/metric/Performance.cpp
 
-        src/trace/TraceableValue.cpp
-        src/trace/PreservedValueRegistry.cpp
+        src/composition/trace/TraceableValue.cpp
+        src/composition/trace/PreservedValueRegistry.cpp
 
-        src/util/functions.cpp
-        src/util/strings.cpp
+        src/composition/util/functions.cpp
+        src/composition/util/strings.cpp
 
-        src/AnalysisPass.cpp
-        src/GraphPass.cpp
-        src/ProtectionPass.cpp
-        src/ManifestRegistry.cpp)
+        src/composition/AnalysisPass.cpp
+        src/composition/GraphPass.cpp
+        src/composition/ProtectionPass.cpp
+        src/composition/ManifestRegistry.cpp)
 
-add_library(${PROJECT_NAME}::${COMPOSITION_FRAMEWORK_TARGET_NAME} ALIAS ${COMPOSITION_FRAMEWORK_TARGET_NAME})
-target_compile_features(${COMPOSITION_FRAMEWORK_TARGET_NAME} PUBLIC cxx_std_17)
+add_library(composition-framework::CompositionFramework ALIAS CompositionFramework)
 
-
-target_include_directories(
-        ${COMPOSITION_FRAMEWORK_TARGET_NAME}
+target_include_directories(CompositionFramework
         PUBLIC
-        $<BUILD_INTERFACE:${COMPOSITION_FRAMEWORK_INCLUDE_BUILD_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
         PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${Boost_INCLUDE_DIRS}
         ${LLVM_INCLUDE_DIRS}
-)
+        )
 
 if ($ENV{CLION_IDE})
     include_directories("/usr/include/llvm-6.0/")
+    include_directories("/usr/include/llvm-c-6.0/")
 endif ()
 
-# LLVM is (typically) built with no C++ RTTI. We need to match that.
-target_compile_options(${COMPOSITION_FRAMEWORK_TARGET_NAME}
-        PRIVATE
-        -g)
 
-target_link_libraries(${COMPOSITION_FRAMEWORK_TARGET_NAME}
-        PRIVATE
-        ${Boost_LIBRARIES})
+target_compile_options(CompositionFramework PRIVATE -g)
+target_compile_features(CompositionFramework PUBLIC cxx_std_17)
+target_link_libraries(CompositionFramework PRIVATE Boost::graph)
+
 ##
 ## INSTALL
 ## install header files, generate and install cmake config files for find_package()
 ##
+include(GNUInstallDirs)
+set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/composition)
+
+install(
+        TARGETS CompositionFramework
+        EXPORT composition-framework-targets
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
+install(
+        DIRECTORY include/
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+install(
+        EXPORT composition-framework-targets
+        NAMESPACE composition-framework::
+        DESTINATION ${INSTALL_CONFIGDIR}
+)
+
+##
+## Config Version file
+##
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
-        ${COMPOSITION_FRAMEWORK_CMAKE_VERSION_CONFIG_FILE} COMPATIBILITY SameMajorVersion
+        ${CMAKE_CURRENT_BINARY_DIR}/composition-frameworkConfigVersion.cmake
+        VERSION ${PROJECT_VERSION}
+        COMPATIBILITY SameMajorVersion
 )
+
 configure_package_config_file(
-        ${COMPOSITION_FRAMEWORK_CMAKE_CONFIG_TEMPLATE}
-        ${COMPOSITION_FRAMEWORK_CMAKE_PROJECT_CONFIG_FILE}
-        INSTALL_DESTINATION ${COMPOSITION_FRAMEWORK_CONFIG_INSTALL_DIR}
+        ${CMAKE_CURRENT_LIST_DIR}/cmake/composition-frameworkConfig.cmake.in
+        ${CMAKE_CURRENT_BINARY_DIR}/composition-frameworkConfig.cmake
+        INSTALL_DESTINATION ${INSTALL_CONFIGDIR}
 )
 
-install(
-        DIRECTORY ${COMPOSITION_FRAMEWORK_INCLUDE_BUILD_DIR}
-        DESTINATION ${COMPOSITION_FRAMEWORK_INCLUDE_INSTALL_DIR}
-)
-install(
-        FILES ${COMPOSITION_FRAMEWORK_CMAKE_PROJECT_CONFIG_FILE} ${COMPOSITION_FRAMEWORK_CMAKE_VERSION_CONFIG_FILE}
-        DESTINATION ${COMPOSITION_FRAMEWORK_CONFIG_INSTALL_DIR}
-)
+install(FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/composition-frameworkConfigVersion.cmake
+        ${CMAKE_CURRENT_BINARY_DIR}/composition-frameworkConfig.cmake
+        DESTINATION ${INSTALL_CONFIGDIR}
+        )
 
+
+##
+## Export
+##
 export(
-        TARGETS ${COMPOSITION_FRAMEWORK_TARGET_NAME}
-        NAMESPACE ${PROJECT_NAME}::
-        FILE ${COMPOSITION_FRAMEWORK_CMAKE_PROJECT_TARGETS_FILE}
+        EXPORT composition-framework-targets
+        NAMESPACE composition-framework::
+        FILE ${CMAKE_CURRENT_BINARY_DIR}/composition-frameworkTargets.cmake
 )
-install(
-        TARGETS ${COMPOSITION_FRAMEWORK_TARGET_NAME}
-        EXPORT ${COMPOSITION_FRAMEWORK_TARGETS_EXPORT_NAME}
-        INCLUDES DESTINATION ${COMPOSITION_FRAMEWORK_INCLUDE_INSTALL_DIR}
-        ARCHIVE DESTINATION lib
-        LIBRARY DESTINATION lib
-        RUNTIME DESTINATION bin
-)
-install(
-        EXPORT ${COMPOSITION_FRAMEWORK_TARGETS_EXPORT_NAME}
-        NAMESPACE ${PROJECT_NAME}::
-        DESTINATION ${COMPOSITION_FRAMEWORK_CONFIG_INSTALL_DIR}
-)
+
+export(PACKAGE composition-framework)

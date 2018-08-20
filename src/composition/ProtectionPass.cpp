@@ -20,7 +20,7 @@ bool ProtectionPass::runOnModule(llvm::Module &M) {
 
   dbgs() << "Got " << manifests.size() << " manifests\n";
   for (auto &m : manifests) {
-    m.Redo();
+    m->Redo();
   }
 
   PreservedValueRegistry::Clear();

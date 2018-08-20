@@ -39,20 +39,20 @@ bool GraphPass::runOnModule(llvm::Module &module) {
 
 char GraphPass::ID = 0;
 
-std::vector<Manifest> GraphPass::GetManifestsInOrder() {
+std::vector<std::shared_ptr<Manifest>> GraphPass::GetManifestsInOrder() {
   bool requireTopologicalSort = false;
 
   auto m = ManifestRegistry::GetAll();
   const auto input_size = m.size();
   for (const auto &kv : m) {
-    if (kv.second.postPatching) {
+    if (kv.second->postPatching) {
       requireTopologicalSort = true;
       break;
     }
   }
 
   auto indexes = Graph.manifestIndexes(requireTopologicalSort);
-  auto result = std::vector<Manifest>();
+  auto result = std::vector<std::shared_ptr<Manifest>>();
   std::transform(std::begin(indexes),
                  std::end(indexes),
                  std::back_inserter(result),

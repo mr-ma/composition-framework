@@ -11,9 +11,9 @@ namespace composition {
 typedef unsigned long ManifestIndex;
 class ManifestRegistry {
 public:
-  static void Add(Manifest m);
+  static void Add(std::shared_ptr<Manifest> m);
 
-  static std::unordered_map<ManifestIndex, Manifest> &GetAll();
+  static std::unordered_map<ManifestIndex, std::shared_ptr<Manifest>> &GetAll();
 
   static void Remove(ManifestIndex idx);
 
@@ -24,8 +24,8 @@ public:
 protected:
   static ManifestIndex index;
 
-  static std::unordered_map<ManifestIndex, Manifest> &RegisteredManifests() {
-    static std::unordered_map<ManifestIndex, Manifest> value = {};
+  static std::unordered_map<ManifestIndex, std::shared_ptr<Manifest>> &RegisteredManifests() {
+    static std::unordered_map<ManifestIndex, std::shared_ptr<Manifest>> value = {};
     return value;
   };
 };
