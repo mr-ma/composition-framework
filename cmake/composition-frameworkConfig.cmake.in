@@ -9,8 +9,8 @@ find_dependency(Boost 1.58 REQUIRED COMPONENTS graph)
 find_dependency(LLVM 6.0 REQUIRED CONFIG)
 list(REMOVE_AT CMAKE_MODULE_PATH -1)
 
-if(NOT TARGET composition-framework::CompositionFramework)
+if (NOT TARGET composition-framework::CompositionFramework)
     include("${composition-framework_CMAKE_DIR}/composition-frameworkTargets.cmake")
-endif()
+endif ()
 
 set(composition-framework_LIBRARIES composition-framework::CompositionFramework)
