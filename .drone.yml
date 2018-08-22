@@ -1,6 +1,6 @@
 pipeline:
   build:
-    image: dennisfischer/llvm:6.0
+    image: dennisfischer/llvm:6.0-json
     commands:
     - mkdir build/
     - cd build/
