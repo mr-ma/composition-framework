@@ -177,9 +177,8 @@ public:
       edgesInConflict.push_back(*ei);
     }
 
-    std::random_device rd;
-    std::mt19937 mt(rd());
-    std::shuffle(edgesInConflict.begin(), edgesInConflict.end(), mt);
+    auto rng = std::default_random_engine{};
+    std::shuffle(edgesInConflict.begin(), edgesInConflict.end(), rng);
     removeProtection(g[edgesInConflict.at(0)].index);
   }
 };
