@@ -8,6 +8,7 @@ list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_SOURCE_DIR}/cmake)
 ##
 find_package(Boost 1.58 REQUIRED COMPONENTS graph)
 find_package(LLVM 6.0 REQUIRED CONFIG)
+find_package(nlohmann_json REQUIRED)
 
 ##
 ## CONFIGURATION
@@ -52,6 +53,7 @@ add_library(CompositionFramework MODULE
 
         include/composition/metric/Coverage.hpp
         include/composition/metric/Performance.hpp
+        include/composition/metric/Weights.hpp
 
         include/composition/trace/TraceableValue.hpp
         include/composition/trace/PreservedValueRegistry.hpp
@@ -91,6 +93,7 @@ add_library(CompositionFramework MODULE
 
         src/composition/metric/Coverage.cpp
         src/composition/metric/Performance.cpp
+        src/composition/metric/Weights.cpp
 
         src/composition/trace/TraceableValue.cpp
         src/composition/trace/PreservedValueRegistry.cpp
@@ -124,7 +127,7 @@ endif ()
 
 target_compile_options(CompositionFramework PRIVATE -g)
 target_compile_features(CompositionFramework PUBLIC cxx_std_17)
-target_link_libraries(CompositionFramework PRIVATE Boost::graph)
+target_link_libraries(CompositionFramework PRIVATE Boost::graph nlohmann_json::nlohmann_json)
 
 ##
 ## INSTALL
