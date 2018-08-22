@@ -18,6 +18,8 @@ struct Weights {
   float connectivityInstructions;
   float connectivityFunctions;
   float connectivityProtections;
+
+  Weights();
 };
 
 void to_json(nlohmann::json & j, const Weights& w);
