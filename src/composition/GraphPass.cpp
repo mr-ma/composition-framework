@@ -9,6 +9,8 @@
 #include <composition/AnalysisRegistry.hpp>
 #include <composition/graph/util/dot.hpp>
 #include <composition/graph/util/graphml.hpp>
+#include <composition/metric/Weights.hpp>
+#include <nlohmann/json.hpp>
 
 using namespace llvm;
 
@@ -25,6 +27,13 @@ void GraphPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
 bool GraphPass::runOnModule(llvm::Module &M) {
   dbgs() << "GraphPass running\n";
 
+  Weights w{};
+  if(!WeightConfig.empty()) {
+    std::ifstream ifs(WeightConfig.getValue());
+    nlohmann::json j(ifs);
+
+    w = j;
+  }
   /*for(auto &F : M) {
     if(F.isDeclaration()) {
       continue;
