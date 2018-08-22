@@ -12,7 +12,7 @@
 namespace composition {
 class AnalysisPass : public llvm::ModulePass {
 private:
-  ProtectionGraph Graph{};
+  std::unique_ptr<ProtectionGraph> Graph{};
 public:
   static char ID;
 public:
@@ -20,7 +20,7 @@ public:
 
   AnalysisPass() : ModulePass(ID) {}
 
-  ProtectionGraph &getGraph();
+  std::unique_ptr<ProtectionGraph> getGraph();
 
   bool runOnModule(llvm::Module &M) override;
 

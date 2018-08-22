@@ -8,7 +8,7 @@
 namespace composition {
 class GraphPass : public llvm::ModulePass {
 private:
-  ProtectionGraph Graph{};
+  std::unique_ptr<ProtectionGraph> Graph{};
 public:
   static char ID;
 public:

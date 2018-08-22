@@ -3,9 +3,12 @@
 
 #include <unordered_set>
 #include <llvm/Pass.h>
+#include <llvm/Support/CommandLine.h>
 #include <composition/filter/FunctionInfo.hpp>
 
 namespace composition {
+
+extern llvm::cl::opt<std::string> FilterFile;
 
 class FunctionFilterPass : public llvm::ModulePass {
 public:

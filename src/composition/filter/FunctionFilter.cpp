@@ -8,7 +8,7 @@
 
 using namespace llvm;
 namespace composition {
-static cl::opt<std::string> FilterFile("filter-files", cl::Hidden, cl::desc("Path to function filter file"));
+cl::opt<std::string> FilterFile("filter-files", cl::Hidden, cl::desc("Path to function filter file"));
 
 //FunctionFilterPass
 void FunctionFilterPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {

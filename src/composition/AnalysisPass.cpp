@@ -1,5 +1,6 @@
 #include <llvm/IR/CallSite.h>
 #include <llvm/Analysis/CallGraph.h>
+#include <composition/options.hpp>
 #include <composition/AnalysisPass.hpp>
 #include <composition/AnalysisRegistry.hpp>
 #include <composition/trace/TraceableValue.hpp>
@@ -13,6 +14,7 @@ char AnalysisPass::ID = 0;
 
 bool AnalysisPass::doInitialization(Module &M) {
   dbgs() << "AnalysisPass loaded...\n";
+  Graph = std::make_unique<ProtectionGraph>();
 
   //The following code loads all the tags from the source code.
   //The tags are then applied to the function for which a tag was used.
@@ -51,17 +53,6 @@ void AnalysisPass::getAnalysisUsage(AnalysisUsage &AU) const {
 bool AnalysisPass::runOnModule(llvm::Module &M) {
   dbgs() << "AnalysisPass running\n";
 
-  //TODO #2 the following code should illustrate how to use the preserved value registry
-  //However, if it is used then tetris example fails with error.
-  /*auto arg1 = ConstantInt::get(Type::getInt32Ty(M.getContext()), static_cast<uint64_t>(1));
-  auto arg2 = ConstantInt::get(Type::getInt32Ty(M.getContext()), static_cast<uint64_t>(2));
-  PreservedValueRegistry::Register("comp-analysis",
-                                   arg1,
-                                   [this](const std::string &pass, llvm::Value *oldV, llvm::Value *newV) {
-                                     //assert ( false );
-                                   });
-  arg1->replaceAllUsesWith(arg2);*/
-
   auto manifests = ManifestRegistry::GetAll();
   size_t total = manifests.size();
   dbgs() << "Adding " << std::to_string(total) << " manifests to protection graph\n";
@@ -69,7 +60,7 @@ bool AnalysisPass::runOnModule(llvm::Module &M) {
   for (auto &m : manifests) {
     dbgs() << "#" << std::to_string(i++) << "/" << std::to_string(total) << "\r";
     for (const auto &c : m.second->constraints) {
-      Graph.addConstraint(m.first, c);
+      Graph->addConstraint(m.first, c);
     }
   }
   dbgs() << "#" << std::to_string(i) << "/" << std::to_string(total) << "\n";
@@ -94,34 +85,48 @@ bool AnalysisPass::runOnModule(llvm::Module &M) {
         }
 
         //Only direct calls are possible to track
-        Graph.addCFG(&F, Callee);
+        Graph->addCFG(&F, Callee);
       }
     }
   }
   dbgs() << "Done building CallGraph\n";
-  auto fg = filter_removed_graph(Graph.getGraph());
-  save_graph_to_dot(Graph.getGraph(), "graph_raw.dot");
-  save_graph_to_graphml(Graph.getGraph(), "graph_raw.graphml");
-  save_graph_to_dot(fg, "graph_raw_removed.dot");
-  save_graph_to_graphml(fg, "graph_raw_removed.graphml");
+  if (DumpGraphs) {
+    dbgs() << "Writing graphs\n";
+    auto fg = filter_removed_graph(Graph->getGraph());
+    save_graph_to_dot(Graph->getGraph(), "graph_raw.dot");
+    save_graph_to_graphml(Graph->getGraph(), "graph_raw.graphml");
+    save_graph_to_dot(fg, "graph_raw_removed.dot");
+    save_graph_to_graphml(fg, "graph_raw_removed.graphml");
+  }
+  dbgs() << "Expand graph to instructions\n";
   //Graph.expandToFunctions();
-  Graph.expandToInstructions();
-  save_graph_to_dot(Graph.getGraph(), "graph_expanded.dot");
-  save_graph_to_graphml(Graph.getGraph(), "graph_expanded.graphml");
-  save_graph_to_dot(fg, "graph_expanded_removed.dot");
-  save_graph_to_graphml(fg, "graph_expanded_removed.graphml");
+  Graph->expandToInstructions();
+  dbgs() << "Done\n";
+  if (DumpGraphs) {
+    dbgs() << "Writing graphs\n";
+    auto fg = filter_removed_graph(Graph->getGraph());
+    save_graph_to_dot(Graph->getGraph(), "graph_expanded.dot");
+    save_graph_to_graphml(Graph->getGraph(), "graph_expanded.graphml");
+    save_graph_to_dot(fg, "graph_expanded_removed.dot");
+    save_graph_to_graphml(fg, "graph_expanded_removed.graphml");
+  }
+  dbgs() << "Remove non instruction vertices from graph\n";
   //Graph.reduceToFunctions();
-  Graph.reduceToInstructions();
-  save_graph_to_dot(Graph.getGraph(), "graph_reduced.dot");
-  save_graph_to_graphml(Graph.getGraph(), "graph_reduced.graphml");
-  save_graph_to_dot(fg, "graph_reduced_removed.dot");
-  save_graph_to_graphml(fg, "graph_reduced_removed.graphml");
-
+  Graph->reduceToInstructions();
+  dbgs() << "Done\n";
+  if (DumpGraphs) {
+    dbgs() << "Writing graphs\n";
+    auto fg = filter_removed_graph(Graph->getGraph());
+    save_graph_to_dot(Graph->getGraph(), "graph_reduced.dot");
+    save_graph_to_graphml(Graph->getGraph(), "graph_reduced.graphml");
+    save_graph_to_dot(fg, "graph_reduced_removed.dot");
+    save_graph_to_graphml(fg, "graph_reduced_removed.graphml");
+  }
   return false;
 }
 
-ProtectionGraph &AnalysisPass::getGraph() {
-  return Graph;
+std::unique_ptr<ProtectionGraph> AnalysisPass::getGraph() {
+  return std::move(Graph);
 }
 
 static RegisterPass<AnalysisPass> X("constraint-analysis", "Constraint Analysis Pass",
