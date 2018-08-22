@@ -1,6 +1,7 @@
 #ifndef COMPOSITION_FRAMEWORK_GRAPH_PROTECTIONGRAPH_HPP
 #define COMPOSITION_FRAMEWORK_GRAPH_PROTECTIONGRAPH_HPP
 #include <utility>
+#include <random>
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/BasicBlock.h>
