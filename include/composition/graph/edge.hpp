@@ -18,10 +18,7 @@ struct edge_t {
       edge_idx_t index = 0,
       std::string name = "",
       edge_type type = edge_type::UNKNOWN
-  ) noexcept : index{index},
-               name{std::move(name)},
-               type{type} {
-  };
+  ) noexcept;;
 
   std::ostream &operator<<(std::ostream &os) noexcept;
 

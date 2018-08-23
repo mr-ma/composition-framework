@@ -24,11 +24,7 @@ struct vertex_t {
       std::string name = "",
       vertex_type type = vertex_type::UNKNOWN,
       std::unordered_map<ConstraintIndex, std::shared_ptr<Constraint>> constraints = {}
-  ) noexcept : index{index},
-               name{std::move(name)},
-               type{type},
-               constraints{std::move(constraints)} {
-  };
+  ) noexcept;;
 
   std::ostream &operator<<(std::ostream &os) noexcept;
 

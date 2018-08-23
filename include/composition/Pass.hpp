@@ -7,17 +7,15 @@ namespace composition {
 
 class Pass {
 public:
-  Pass() : IsRegistered_(false) {}
+  Pass();
 
-  explicit Pass(bool isRegistered) : IsRegistered_(isRegistered) {}
+  explicit Pass(bool isRegistered);
 
   virtual ~Pass() = default;
 
   // to determine if this instance class is an instance
   // of a derived class, registered to the factory.
-  bool IsRegistered() const {
-    return this->IsRegistered_;
-  }
+  bool IsRegistered() const;
 
 private:
   const bool IsRegistered_;

@@ -71,22 +71,9 @@ public:
                                                            edgeCache(that.edgeCache) {
   }
 
-  ProtectionGraph &operator=(ProtectionGraph &&that) noexcept {
-    ProtectionIdx = that.ProtectionIdx;
-    Protections = std::move(that.Protections);
+  ProtectionGraph &operator=(ProtectionGraph &&that) noexcept;;
 
-    auto index = index_map(that.Graph);
-    boost::copy_graph(that.Graph, this->Graph, vertex_index_map(boost::make_assoc_property_map(index)));
-    return *this;
-  };
-
-  void destroy() {
-    Graph = {};
-    ProtectionIdx = 0;
-    Protections.clear();
-    vertexCache.clear();
-    edgeCache.clear();
-  }
+  void destroy();
 
   graph_t &getGraph();
 

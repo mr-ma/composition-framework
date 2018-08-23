@@ -20,4 +20,13 @@ void ManifestRegistry::Add(std::shared_ptr<Manifest> m) {
   RegisteredManifests().insert({m->idx, std::move(m)});
 }
 
+void ManifestRegistry::destroy() {
+  RegisteredManifests().clear();
+}
+
+std::unordered_map<ManifestIndex, std::shared_ptr<Manifest>> &ManifestRegistry::RegisteredManifests() {
+  static std::unordered_map<ManifestIndex, std::shared_ptr<Manifest>> value = {};
+  return value;
+}
+
 }

@@ -29,6 +29,16 @@ bool vertex_t::operator!=(const vertex_t &rhs) noexcept {
   return !(*this == rhs);
 }
 
+vertex_t::vertex_t(vertex_idx_t index,
+                   std::string name,
+                   vertex_type type,
+                   std::unordered_map<ConstraintIndex, std::shared_ptr<Constraint>> constraints) noexcept :
+    index{index},
+    name{std::move(name)},
+    type{type},
+    constraints{std::move(constraints)} {
+}
+
 void assertType(llvm::Value *value, vertex_type type) {
   assert(value != nullptr && "Value for assertType is nullptr");
 

@@ -16,17 +16,12 @@ public:
 
   static void Remove(ManifestIndex idx);
 
-  static void destroy() {
-    RegisteredManifests().clear();
-  }
+  static void destroy();
 
 protected:
   static ManifestIndex index;
 
-  static std::unordered_map<ManifestIndex, std::shared_ptr<Manifest>> &RegisteredManifests() {
-    static std::unordered_map<ManifestIndex, std::shared_ptr<Manifest>> value = {};
-    return value;
-  };
+  static std::unordered_map<ManifestIndex, std::shared_ptr<Manifest>> &RegisteredManifests();;
 };
 }
 

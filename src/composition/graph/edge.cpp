@@ -21,4 +21,9 @@ bool edge_t::operator==(const edge_t &rhs) noexcept {
 bool edge_t::operator!=(const edge_t &rhs) noexcept {
   return !(*this == rhs);
 }
+
+edge_t::edge_t(edge_idx_t index, std::string name, edge_type type) noexcept : index{index},
+                                                                              name{std::move(name)},
+                                                                              type{type} {
+}
 }
