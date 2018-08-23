@@ -17,7 +17,6 @@ using namespace llvm;
 namespace composition {
 
 void GraphPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
-  dbgs() << "Ana usage Graph called\n";
   ModulePass::getAnalysisUsage(AU);
   AU.addRequiredTransitive<AnalysisPass>();
   //AU.addRequired<LazyBlockFrequencyInfoPass>();

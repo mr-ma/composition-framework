@@ -62,34 +62,39 @@ bool AnalysisPass::runOnModule(llvm::Module &M) {
     for (const auto &c : m.second->constraints) {
       Graph->addConstraint(m.first, c);
     }
+    m.second->dump();
   }
   dbgs() << "#" << std::to_string(i) << "/" << std::to_string(total) << "\n";
-  dbgs() << "Building CallGraph\n";
 
-  //TODO #1 It's probably better to use a callgraph here. However, using a callgraph leads to a SIGSEGV for no reason
-  //Printing and dumping of the callgraph works, but as soon as accessing it is tried the program behaves unexpectedly.
-  //Therefore, for now, only add direct call edges as CFG part to the graph.
-  for (auto &F : M) {
-    // Look for calls by this function.
-    for (auto &BB : F) {
-      for (auto &I : BB) {
-        Value *v = &cast<Value>(I);
-        CallSite CS(v);
-        if (!CS) {
-          continue;
+  if(AddCFG) {
+    dbgs() << "Building CallGraph\n";
+
+    //TODO #1 It's probably better to use a callgraph here. However, using a callgraph leads to a SIGSEGV for no reason
+    //Printing and dumping of the callgraph works, but as soon as accessing it is tried the program behaves unexpectedly.
+    //Therefore, for now, only add direct call edges as CFG part to the graph.
+    for (auto &F : M) {
+      // Look for calls by this function.
+      for (auto &BB : F) {
+        for (auto &I : BB) {
+          Value *v = &cast<Value>(I);
+          CallSite CS(v);
+          if (!CS) {
+            continue;
+          }
+
+          Function *Callee = CS.getCalledFunction();
+          if (!Callee) {
+            continue;
+          }
+
+          //Only direct calls are possible to track
+          Graph->addCFG(&F, Callee);
         }
-
-        Function *Callee = CS.getCalledFunction();
-        if (!Callee) {
-          continue;
-        }
-
-        //Only direct calls are possible to track
-        Graph->addCFG(&F, Callee);
       }
     }
+    dbgs() << "Done building CallGraph\n";
   }
-  dbgs() << "Done building CallGraph\n";
+
   if (DumpGraphs) {
     dbgs() << "Writing graphs\n";
     auto fg = filter_removed_graph(Graph->getGraph());

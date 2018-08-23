@@ -5,6 +5,7 @@
 
 namespace composition {
 extern llvm::cl::opt<bool> DumpGraphs;
+extern llvm::cl::opt<bool> AddCFG;
 extern llvm::cl::opt<std::string> WeightConfig;
 }
 #endif //COMPOSITION_FRAMEWORK_OPTIONS_HPP

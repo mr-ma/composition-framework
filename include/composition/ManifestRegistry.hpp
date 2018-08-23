@@ -8,7 +8,6 @@
 
 namespace composition {
 
-typedef unsigned long ManifestIndex;
 class ManifestRegistry {
 public:
   static void Add(std::shared_ptr<Manifest> m);

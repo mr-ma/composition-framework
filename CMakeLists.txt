@@ -105,7 +105,8 @@ add_library(CompositionFramework MODULE
         src/composition/GraphPass.cpp
         src/composition/ProtectionPass.cpp
         src/composition/ManifestRegistry.cpp
-        src/composition/options.cpp)
+        src/composition/options.cpp
+        src/composition/Manifest.cpp)
 
 add_library(composition-framework::CompositionFramework ALIAS CompositionFramework)
 

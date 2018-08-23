@@ -22,6 +22,7 @@
 #include <composition/graph/filter/dependency.hpp>
 #include <composition/graph/filter/removed.hpp>
 #include <composition/graph/filter/selfcycle.hpp>
+#include <composition/options.hpp>
 
 namespace composition {
 using ProtectionIndex = unsigned long;
@@ -129,8 +130,10 @@ public:
           changed = true;
           llvm::dbgs() << "Component " << std::to_string(i) << " contains cycle with " << std::to_string(vertexCount)
                        << " elements.\n";
-          save_graph_to_dot(component, "graph_component_" + std::to_string(i) + ".dot");
-          save_graph_to_graphml(component, "graph_component_" + std::to_string(i) + ".graphml");
+          if(DumpGraphs) {
+            save_graph_to_dot(component, "graph_component_" + std::to_string(i) + ".dot");
+            save_graph_to_graphml(component, "graph_component_" + std::to_string(i) + ".graphml");
+          }
           handleCycle(component);
           ++i;
         }
