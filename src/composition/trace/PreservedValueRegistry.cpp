@@ -1,38 +1,51 @@
 #include <utility>
-
 #include <string>
+#include <llvm/IR/Instruction.h>
+#include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Function.h>
 #include <composition/trace/PreservedValueRegistry.hpp>
 
 using namespace llvm;
 namespace composition {
 TraceableCallbackInfo PreservedValueRegistry::Register(const std::string &name, llvm::Value *v, const PreservedCallback &callback) {
-  //dbgs() << "Registering preserved value: ";
-  //v->print(dbgs());
-  //dbgs() << "\n";
-
-  auto info = TraceableCallbackInfo(name, nullptr, callback);
-  TraceableValues().getNumber(v, info);
-  return info;
+  return Register(name, v, nullptr, callback);
 }
 
 TraceableCallbackInfo PreservedValueRegistry::Register(const std::string &name, llvm::Value *v, const PresentCallback &callback) {
-  //dbgs() << "Registering present value: ";
-  //v->print(dbgs());
-  //dbgs() << "\n";
-
-  auto info = TraceableCallbackInfo(name, callback, nullptr);
-  TraceableValues().getNumber(v, info);
-  return info;
+  return Register(name, v, callback, nullptr);
 }
 
 TraceableCallbackInfo PreservedValueRegistry::Register(const std::string &name,
                                       llvm::Value *v,
                                       const PresentCallback &presentCallback,
                                       const PreservedCallback &preservedCallback) {
+  if(presentCallback) {
+    if(auto *I = dyn_cast<Instruction>(v)) {
+      LLVMContext &C = I->getContext();
+      MDNode *N = MDNode::get(C, MDString::get(C, "nosub"));
+      I->setMetadata("llvm.obfuscator.nosub", N);
+    }
+  }
 
-  //dbgs() << "Registering present preserved value: ";
-  //v->print(dbgs());
-  //dbgs() << "\n";
+  if(preservedCallback) {
+    if(auto *I = dyn_cast<Instruction>(v)) {
+      LLVMContext& C = I->getContext();
+      MDNode* N = MDNode::get(C, MDString::get(C, "nosub"));
+      I->setMetadata("llvm.obfuscator.nosub", N);
+    } else if(auto *B = dyn_cast<BasicBlock>(v)) {
+      for(auto &I : *B) {
+        LLVMContext &C = I.getContext();
+        MDNode *N = MDNode::get(C, MDString::get(C, "nosub"));
+        I.setMetadata("llvm.obfuscator.nosub", N);
+      }
+    } else if(auto *F = dyn_cast<Function>(v)) {
+      LLVMContext& C = F->getContext();
+      MDNode* N = MDNode::get(C, MDString::get(C, "nosub.nofla"));
+      F->setMetadata("llvm.obfuscator.nofla", N);
+      F->setMetadata("llvm.obfuscator.nosub", N);
+      F->setMetadata("llvm.obfuscator.nobcf", N);
+    }
+  }
 
   auto info = TraceableCallbackInfo(name, presentCallback, preservedCallback);
   TraceableValues().getNumber(v, info);
