@@ -28,7 +28,5 @@ bool ProtectionPass::runOnModule(llvm::Module &M) {
 }
 
 char ProtectionPass::ID = 0;
-static llvm::RegisterPass<ProtectionPass> X("constraint-protection", "Constraint Protection Pass",
-                                            true /* Only looks at CFG */,
-                                            true /* Analysis Pass */);
+static llvm::RegisterPass<ProtectionPass> X("constraint-protection", "Constraint Protection Pass", true, false);
 }

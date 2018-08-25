@@ -134,7 +134,5 @@ std::unique_ptr<ProtectionGraph> AnalysisPass::getGraph() {
   return std::move(Graph);
 }
 
-static RegisterPass<AnalysisPass> X("constraint-analysis", "Constraint Analysis Pass",
-                                    false /* Only looks at CFG */,
-                                    true /* Analysis Pass */);
+static RegisterPass<AnalysisPass> X("constraint-analysis", "Constraint Analysis Pass", true, true);
 }

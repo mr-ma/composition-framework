@@ -17,7 +17,6 @@ using namespace llvm;
 namespace composition {
 
 void GraphPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
-  ModulePass::getAnalysisUsage(AU);
   AU.addRequiredTransitive<AnalysisPass>();
   //AU.addRequired<LazyBlockFrequencyInfoPass>();
   AU.setPreservesAll();
@@ -96,7 +95,5 @@ bool GraphPass::doFinalization(Module &module) {
   return Pass::doFinalization(module);
 }
 
-static llvm::RegisterPass<GraphPass> X("constraint-graph", "Constraint Graph Pass",
-                                       false /* Only looks at CFG */,
-                                       true /* Analysis Pass */);
+static llvm::RegisterPass<GraphPass> X("constraint-graph", "Constraint Graph Pass", true, true);
 }
