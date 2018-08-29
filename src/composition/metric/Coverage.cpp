@@ -34,6 +34,15 @@ std::set<llvm::Instruction *> Coverage::ValueToInstructions(llvm::Function *v) {
   return instructions;
 }
 
+std::set<llvm::Instruction *> Coverage::ValueToInstructions(llvm::Module *v) {
+  std::set<llvm::Instruction *> instructions = {};
+  for (auto &F : *v) {
+    auto r = ValueToInstructions(&F);
+    instructions.insert(r.begin(), r.end());
+  }
+  return instructions;
+}
+
 std::set<llvm::BasicBlock *> Coverage::InstructionsToBasicBlocks(std::set<llvm::Instruction *> instructions) {
   std::set<llvm::BasicBlock *> basicBlocks = {};
 

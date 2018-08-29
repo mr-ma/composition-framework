@@ -15,6 +15,7 @@ public:
   static std::set<llvm::Instruction *> ValueToInstructions(llvm::Value *v);
   static std::set<llvm::Instruction *> ValueToInstructions(llvm::BasicBlock *v);
   static std::set<llvm::Instruction *> ValueToInstructions(llvm::Function *v);
+  static std::set<llvm::Instruction *> ValueToInstructions(llvm::Module *v);
   static std::set<llvm::BasicBlock *> InstructionsToBasicBlocks(std::set<llvm::Instruction *> instructions);
   static std::set<llvm::Function *> BasicBlocksToFunctions(std::set<llvm::BasicBlock *> basicBlocks);
 
