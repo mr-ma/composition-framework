@@ -11,10 +11,9 @@ void to_json(nlohmann::json &j, const Stats &s) {
       {"numberOfProtectedDistinctInstructions", s.numberOfProtectedDistinctInstructions},
       {"numberOfProtectedInstructionsByType", s.numberOfProtectedInstructionsByType},
       {"numberOfProtectedFunctionsByType", s.numberOfProtectedFunctionsByType},
-      {"avgInstructionConnectivity", s.avgInstructionConnectivity},
-      {"avgFunctionConnectivity", s.avgFunctionConnectivity},
-      {"stdInstructionConnectivity", s.stdInstructionConnectivity},
-      {"stdFunctionConnectivity", s.stdFunctionConnectivity},
+      {"instructionConnectivity", s.instructionConnectivity},
+      {"functionConnectivity", s.functionConnectivity},
+      {"protectionConnectivity", s.protectionConnectivity},
   };
 }
 
@@ -27,10 +26,10 @@ void from_json(const nlohmann::json &j, Stats &s) {
   s.numberOfProtectedInstructionsByType =
       j.at("numberOfProtectedInstructionsByType").get<std::map<std::string, size_t>>();
   s.numberOfProtectedFunctionsByType = j.at("numberOfProtectedFunctionsByType").get<std::map<std::string, size_t>>();
-  s.avgInstructionConnectivity = j.at("avgInstructionConnectivity").get<double>();
-  s.avgFunctionConnectivity = j.at("avgFunctionConnectivity").get<double>();
-  s.stdInstructionConnectivity = j.at("stdInstructionConnectivity").get<double>();
-  s.stdFunctionConnectivity = j.at("stdFunctionConnectivity").get<double>();
+  s.instructionConnectivity = j.at("instructionConnectivity").get<Connectivity>();
+  s.functionConnectivity = j.at("functionConnectivity").get<Connectivity>();
+  s.protectionConnectivity =
+      j.at("protectionConnectivity").get<std::map<std::string, std::pair<Connectivity, Connectivity>>>();
 }
 
 void Stats::dump(llvm::raw_ostream &o) {
@@ -58,9 +57,10 @@ void Stats::collect(std::set<llvm::Instruction *> allInstructions, std::vector<s
   this->numberOfManifests = manifests.size();
   this->numberOfAllInstructions = allInstructions.size();
 
-  std::unordered_map<llvm::Instruction *, size_t> instructionConnectivity;
+  std::unordered_map<llvm::Instruction *, size_t> instructionConnectivityMap;
+  std::unordered_map<std::string, std::unordered_map<llvm::Instruction *, size_t>> protectionConnectivityMap;
   for (auto &I : allInstructions) {
-    instructionConnectivity[I] = 0;
+    instructionConnectivityMap[I] = 0;
   }
 
   for (auto &m : manifests) {
@@ -72,7 +72,8 @@ void Stats::collect(std::set<llvm::Instruction *> allInstructions, std::vector<s
     this->protectedFunctions[m->name].insert(manifestFunctions.begin(), manifestFunctions.end());
 
     for (auto &I : manifestCoverage) {
-      instructionConnectivity[I]++;
+      instructionConnectivityMap[I]++;
+      protectionConnectivityMap[m->name][I]++;
     }
   }
 
@@ -86,37 +87,39 @@ void Stats::collect(std::set<llvm::Instruction *> allInstructions, std::vector<s
     this->numberOfProtectedFunctionsByType[protection] = functions.size();
     this->numberOfProtectedFunctions += functions.size();
   }
-  std::unordered_map<llvm::Function *, size_t> functionConnectivity;
+
+  std::tie(instructionConnectivity, functionConnectivity) = instructionFunctionConnectivity(instructionConnectivityMap);
+
+  for (const auto&[key, value] : protectionConnectivityMap) {
+    protectionConnectivity.insert({key, instructionFunctionConnectivity(value)});
+  }
+}
+
+std::pair<Connectivity,
+          Connectivity> Stats::instructionFunctionConnectivity(const std::unordered_map<llvm::Instruction *,
+                                                                                        size_t> &instructionConnectivityMap) {
+  std::unordered_map<llvm::Function *, size_t> functionConnectivityMap;
   std::vector<size_t> connectivity{};
-  connectivity.reserve(instructionConnectivity.size());
-  for (auto &[I, c] : instructionConnectivity) {
+  connectivity.reserve(instructionConnectivityMap.size());
+  for (auto &[I, c] : instructionConnectivityMap) {
     connectivity.push_back(c);
 
     if (I->getParent() == nullptr || I->getParent()->getParent() == nullptr) {
       continue;
     }
     auto *F = I->getFunction();
-    auto num = functionConnectivity[F];
-    functionConnectivity[F] = std::max(c, num);
+    auto num = functionConnectivityMap[F];
+    functionConnectivityMap[F] = std::max(c, num);
   }
-  std::tie(avgInstructionConnectivity, stdInstructionConnectivity) = this->calculateConnectivity(connectivity);
+  auto instConnectivity = Connectivity{connectivity};
 
   connectivity.clear();
-  connectivity.reserve(functionConnectivity.size());
-  for (auto &[_, c] : functionConnectivity) {
+  connectivity.reserve(functionConnectivityMap.size());
+  for (auto &[_, c] : functionConnectivityMap) {
     connectivity.push_back(c);
   }
-  std::tie(avgFunctionConnectivity, stdFunctionConnectivity) = this->calculateConnectivity(connectivity);
-}
+  auto funcConnectivity = Connectivity{connectivity};
 
-std::pair<double, double> Stats::calculateConnectivity(std::vector<size_t> v) {
-  double sum = std::accumulate(v.begin(), v.end(), 0.0);
-  double mean = sum / v.size();
-
-  std::vector<double> diff(v.size());
-  std::transform(v.begin(), v.end(), diff.begin(), std::bind2nd(std::minus<double>(), mean));
-  double sq_sum = std::inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
-  double stddev = std::sqrt(sq_sum / v.size());
-  return {mean, stddev};
+  return {instConnectivity, funcConnectivity};
 }
 }

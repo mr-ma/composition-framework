@@ -55,6 +55,7 @@ void Weights::dump(llvm::raw_ostream &o) {
 Weights::Weights(std::istream &i) {
   nlohmann::json j;
   i >> j;
+
   from_json(j, *this);
 }
 }
