@@ -11,14 +11,17 @@
 namespace composition {
 class Stats {
 public:
+  size_t numberOfManifests{};
   size_t numberOfAllInstructions{};
   size_t numberOfProtectedFunctions{};
   size_t numberOfProtectedInstructions{};
   size_t numberOfProtectedDistinctInstructions{};
   std::map<std::string, size_t> numberOfProtectedInstructionsByType{};
   std::map<std::string, size_t> numberOfProtectedFunctionsByType{};
-  double avgConnectivity{};
-  double stdConnectivity{};
+  double avgInstructionConnectivity{};
+  double avgFunctionConnectivity{};
+  double stdInstructionConnectivity{};
+  double stdFunctionConnectivity{};
 
   Stats() = default;
 
@@ -36,7 +39,7 @@ private:
   std::map<std::string, std::set<llvm::Instruction *>> protectedInstructions{};
   std::map<std::string, std::set<llvm::Function *>> protectedFunctions{};
 
-  void calculateConnectivity(std::vector<size_t> v);
+  std::pair<double, double> calculateConnectivity(std::vector<size_t> v);
 };
 void to_json(nlohmann::json &j, const Stats &s);
 

@@ -2,17 +2,18 @@
 
 namespace composition {
 void to_json(nlohmann::json &j, const Weights &w) {
-  j = nlohmann::json{{"explicitInstructionCoverage", w.explicitInstructionCoverage},
-                     {"implicitInstructionCoverage", w.implicitInstructionCoverage},
+  j = nlohmann::json{
+      {"explicitInstructionCoverage", w.explicitInstructionCoverage},
+      {"implicitInstructionCoverage", w.implicitInstructionCoverage},
 
-                     {"basicBlockProfileFrequency", w.basicBlockProfileFrequency},
-                     {"basicBlockProfileCount", w.basicBlockProfileCount},
-                     {"protectionCosts", w.protectionCosts},
+      {"basicBlockProfileFrequency", w.basicBlockProfileFrequency},
+      {"basicBlockProfileCount", w.basicBlockProfileCount},
+      {"protectionCosts", w.protectionCosts},
 
-                     {"connectivityManifest", w.connectivityManifest},
-                     {"connectivityInstructions", w.connectivityInstructions},
-                     {"connectivityFunctions", w.connectivityFunctions},
-                     {"connectivityProtections", w.connectivityProtections}
+      {"connectivityManifest", w.connectivityManifest},
+      {"connectivityInstructions", w.connectivityInstructions},
+      {"connectivityFunctions", w.connectivityFunctions},
+      {"connectivityProtections", w.connectivityProtections}
   };
 }
 
