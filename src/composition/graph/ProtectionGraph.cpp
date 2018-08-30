@@ -233,18 +233,13 @@ ProtectionIndex ProtectionGraph::addConstraint(std::shared_ptr<Manifest> m, std:
   graph_t &g = Graph;
 
   if (auto d = dyn_cast<Dependency>(c.get())) {
-    assert(d->getFrom() != nullptr && "Source edge is nullptr");
-    assert(d->getTo() != nullptr && "Target edge is nullptr");
-
     auto dstNode = this->add_vertex(d->getFrom());
     auto srcNode = this->add_vertex(d->getTo());
     this->add_edge(srcNode, dstNode, edge_t{ProtectionIdx, c->getInfo(), edge_type::DEPENDENCY});
   } else if (auto present = dyn_cast<Present>(c.get())) {
-    assert(present->getTarget() != nullptr);
     auto v = this->add_vertex(present->getTarget());
     g[v].constraints.insert({ProtectionIdx, c});
   } else if (auto preserved = dyn_cast<Preserved>(c.get())) {
-    assert(preserved->getTarget() != nullptr);
     auto v = this->add_vertex(preserved->getTarget());
     g[v].constraints.insert({ProtectionIdx, c});
   }
@@ -252,14 +247,7 @@ ProtectionIndex ProtectionGraph::addConstraint(std::shared_ptr<Manifest> m, std:
   return ProtectionIdx++;
 }
 
-std::vector<std::shared_ptr<Manifest>> ProtectionGraph::manifestIndexes(bool requireTopologicalSort) {
-  auto manifestSet = ManifestRegistry::GetAll();
-  std::vector<std::shared_ptr<Manifest>> manifests{manifestSet.begin(), manifestSet.end()};
-
-  if (!requireTopologicalSort) {
-    return manifests;
-  }
-
+std::vector<std::shared_ptr<Manifest>> ProtectionGraph::topologicalSortManifests(std::vector<std::shared_ptr<Manifest>> manifests) {
   auto rg = filter_removed_graph(Graph);
   auto fg = filter_dependency_graph(rg);
   auto sc = filter_selfcycle_graph(fg);
@@ -285,7 +273,6 @@ std::vector<std::shared_ptr<Manifest>> ProtectionGraph::manifestIndexes(bool req
     }
   }
 
-  assert(manifestSet.size() == manifests.size());
   return manifests;
 }
 
@@ -298,7 +285,7 @@ void ProtectionGraph::destroy() {
 
 ProtectionGraph &ProtectionGraph::operator=(ProtectionGraph &&that) noexcept {
   ProtectionIdx = that.ProtectionIdx;
-  Protections = std::move(that.Protections);
+  Protections = that.Protections;
 
   auto index = index_map(that.Graph);
   boost::copy_graph(that.Graph, this->Graph, vertex_index_map(boost::make_assoc_property_map(index)));

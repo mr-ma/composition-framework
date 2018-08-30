@@ -90,7 +90,7 @@ public:
     return ProtectionIdx++;
   }
 
-  std::vector<std::shared_ptr<Manifest>> manifestIndexes(bool requireTopologicalSort = false);
+  std::vector<std::shared_ptr<Manifest>> topologicalSortManifests(std::vector<std::shared_ptr<Manifest>> manifests);
 
   void removeManifest(std::shared_ptr<Manifest> m);
 
