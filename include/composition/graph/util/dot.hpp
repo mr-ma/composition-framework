@@ -27,13 +27,13 @@ void save_graph_to_dot(graph_t &g, std::ostream &out) noexcept {
 
   boost::dynamic_properties dp;
   dp.property("node_id", boost::make_assoc_property_map(index));
-  dp.property("label", get(&vertex_t::name, g));
-  dp.property("removed", get(&vertex_t::removed, g));
+  dp.property("label", boost::get(&vertex_t::name, g));
+  dp.property("removed", boost::get(&vertex_t::removed, g));
   dp.property("present", boost::make_assoc_property_map(isPresent));
   dp.property("preserved", boost::make_assoc_property_map(isPreserved));
 
-  dp.property("label", get(&edge_t::name, g));
-  dp.property("removed", get(&edge_t::removed, g));
+  dp.property("label", boost::get(&edge_t::name, g));
+  dp.property("removed", boost::get(&edge_t::removed, g));
   boost::write_graphviz_dp(out, g, dp);
 }
 }

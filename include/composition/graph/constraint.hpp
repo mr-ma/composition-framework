@@ -6,18 +6,18 @@
 
 namespace composition {
 
-enum class PresentConstraint : unsigned {
+enum class PresentConstraint : unsigned long {
   NONE = 0x00,
   PRESENT = 0x01,
   NOT_PRESENT = 0x02,
-  CONFLICT = PRESENT|NOT_PRESENT,
+  CONFLICT = static_cast<unsigned long>(PRESENT | NOT_PRESENT),
 };
 
-enum class PreservedConstraint : unsigned {
+enum class PreservedConstraint : unsigned long {
   NONE = 0x00,
   PRESERVED = 0x01,
   NOT_PRESERVED = 0x02,
-  CONFLICT = PRESERVED|NOT_PRESERVED,
+  CONFLICT = static_cast<unsigned long>(PRESERVED | NOT_PRESERVED),
 };
 ENABLE_BITMASK_OPERATORS(PresentConstraint);
 ENABLE_BITMASK_OPERATORS(PreservedConstraint);

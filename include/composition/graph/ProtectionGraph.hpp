@@ -10,6 +10,8 @@
 #include <llvm/Support/raw_ostream.h>
 #include <boost/graph/filtered_graph.hpp>
 #include <boost/graph/copy.hpp>
+#include <boost/bimap/bimap.hpp>
+#include <boost/bimap/multiset_of.hpp>
 #include <composition/ManifestRegistry.hpp>
 #include <composition/graph/graph.hpp>
 #include <composition/graph/constraint.hpp>
@@ -28,14 +30,14 @@ namespace composition {
 using ProtectionIndex = unsigned long;
 using VertexIndex = uintptr_t;
 using EdgeIndex = uintptr_t;
-
+using ProtectionMap = boost::bimaps::bimap<boost::bimaps::set_of<std::shared_ptr<Manifest>>,
+                                           boost::bimaps::multiset_of<ProtectionIndex>>;
 class ProtectionGraph {
 private:
   graph_t Graph{};
   ProtectionIndex ProtectionIdx{};
-  std::unordered_map<ProtectionIndex, ManifestIndex> Protections{};
+  ProtectionMap Protections{};
   std::unordered_map<VertexIndex, vd_t> vertexCache{};
-  std::unordered_map<EdgeIndex, ed_t> edgeCache{};
 
 private:
 
@@ -67,8 +69,7 @@ public:
   ProtectionGraph(const ProtectionGraph &&that) noexcept : ProtectionIdx(that.ProtectionIdx),
                                                            Protections(that.Protections),
                                                            Graph(that.Graph),
-                                                           vertexCache(that.vertexCache),
-                                                           edgeCache(that.edgeCache) {
+                                                           vertexCache(that.vertexCache) {
   }
 
   ProtectionGraph &operator=(ProtectionGraph &&that) noexcept;;
@@ -77,7 +78,7 @@ public:
 
   graph_t &getGraph();
 
-  ProtectionIndex addConstraint(ManifestIndex index, std::shared_ptr<Constraint> c);
+  ProtectionIndex addConstraint(std::shared_ptr<Manifest> m, std::shared_ptr<Constraint> c);
 
   template<typename T, typename S>
   ProtectionIndex addCFG(T parent, S child) {
@@ -89,9 +90,9 @@ public:
     return ProtectionIdx++;
   }
 
-  std::vector<ManifestIndex> manifestIndexes(bool requireTopologicalSort = false);
+  std::vector<std::shared_ptr<Manifest>> manifestIndexes(bool requireTopologicalSort = false);
 
-  void removeProtection(ProtectionIndex protectionID);
+  void removeManifest(std::shared_ptr<Manifest> m);
 
   void expandToInstructions();
 
@@ -102,22 +103,24 @@ public:
   void reduceToFunctions();
 
   template<typename T>
-  void dependencyConflictHandling(T &g) {
+  void conflictHandling(T &g) {
+    llvm::dbgs() << "Step 1: Removing cycles...\n";
     auto rg = filter_removed_graph(g);
     auto fg = filter_dependency_graph(rg);
 
-    bool changed;
+    //First detect cycles and remove all cycles.
+    bool hadConflicts;
     do {
-      changed = false;
+      hadConflicts = false;
       auto components = strong_components(fg);
       int i = 0;
       for (auto &component : components) {
         auto vertexCount = vertex_count(component);
         if (vertexCount != 1) {
-          changed = true;
+          hadConflicts = true;
           llvm::dbgs() << "Component " << std::to_string(i) << " contains cycle with " << std::to_string(vertexCount)
                        << " elements.\n";
-          if(DumpGraphs) {
+          if (DumpGraphs) {
             save_graph_to_dot(component, "graph_component_" + std::to_string(i) + ".dot");
             save_graph_to_graphml(component, "graph_component_" + std::to_string(i) + ".graphml");
           }
@@ -125,35 +128,32 @@ public:
           ++i;
         }
       }
-    } while (changed);
+    } while (hadConflicts);
 
-    std::vector<ProtectionIndex> leftProtections;
+    llvm::dbgs() << "Step 2: Removing remaining present/preserved conflicts...\n";
+    //Then remove remaining present/preserved conflicts.
+    do {
+      hadConflicts = false;
+
+      auto[presentManifest, preservedManifests] = detectPresentPreservedConflicts(g);
+      if (!presentManifest.empty() || !presentManifest.empty()) {
+        llvm::dbgs() << "Handling conflict...\n";
+      }
+    } while (hadConflicts);
+
+    llvm::dbgs() << "Step 3: Cleaning up...\n";
+    //Finally cleanup the protections.
+    std::vector<ProtectionIndex> remainingProtections;
     for (auto[it, it_end] = boost::edges(g); it != it_end; ++it) {
       auto e = g[*it];
-      leftProtections.push_back(e.index);
-    }
-
-    for (ProtectionIndex i = 0; i < ProtectionIdx; i++) {
-      if (std::find(leftProtections.begin(), leftProtections.end(), i) != leftProtections.end()) {
-        continue;
-      }
-
-      //Filtering for Dependency edge is needed as we otherwise remove manifests which contain other constraints
-      //like preserved or present as of right now
-      if (edgeCache.find(i) == edgeCache.end()) {
-        continue;
-      }
-
-      if (g[edgeCache.at(i)].type != edge_type::DEPENDENCY) {
-        continue;
-      }
-
-      removeProtection(i);
+      remainingProtections.push_back(e.index);
     }
   }
 
   template<typename graph_t>
   void handleCycle(graph_t &g) {
+    auto[presentIndexes, preservedIndexes] = detectPresentPreservedConflicts(g);
+
     llvm::dbgs() << "Handling cycle in component\n";
     for (auto[vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
       vd_t vd = *vi;
@@ -170,7 +170,39 @@ public:
 
     auto rng = std::default_random_engine{};
     std::shuffle(edgesInConflict.begin(), edgesInConflict.end(), rng);
-    removeProtection(g[edgesInConflict.at(0)].index);
+    removeManifest(Protections.right.find(g[edgesInConflict.at(0)].index)->second);
+  }
+
+  template<typename graph_t>
+  std::pair<std::set<ManifestIndex>, std::set<ManifestIndex>> detectPresentPreservedConflicts(graph_t &g) {
+    auto[isPresent, isPreserved] = constraint_map<PresentConstraint, PreservedConstraint>(g);
+
+    std::set<ManifestIndex> presentIndexes{};
+    for (auto[vd, p] : isPresent) {
+      if (p != PresentConstraint::CONFLICT) {
+        continue;
+      }
+
+      for (auto[index, c] : g[vd].constraints) {
+        if (llvm::isa<Present>(c.get())) {
+          presentIndexes.insert(index);
+        }
+      }
+    }
+
+    std::set<ManifestIndex> preservedIndexes{};
+    for (auto[vd, p] : isPreserved) {
+      if (p != PreservedConstraint::CONFLICT) {
+        continue;
+      }
+      for (auto[index, c] : g[vd].constraints) {
+        if (llvm::isa<Preserved>(c.get())) {
+          preservedIndexes.insert(index);
+        }
+      }
+    }
+
+    return {presentIndexes, preservedIndexes};
   }
 };
 }

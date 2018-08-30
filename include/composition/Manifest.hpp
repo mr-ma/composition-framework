@@ -11,8 +11,8 @@ namespace composition {
 
 class Manifest;
 
-typedef std::function<void(const Manifest &)> PatchFunction;
-typedef unsigned long ManifestIndex;
+using PatchFunction = std::function<void(const Manifest &)>;
+using ManifestIndex = unsigned long;
 
 class Manifest {
 public:

@@ -14,6 +14,10 @@ using namespace llvm;
 
 namespace composition {
 
+static llvm::RegisterPass<GraphPass> X("constraint-graph", "Constraint Graph Pass", true, true);
+
+char GraphPass::ID = 0;
+
 void GraphPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
   AU.addRequiredTransitive<AnalysisPass>();
   //AU.addRequired<LazyBlockFrequencyInfoPass>();
@@ -42,7 +46,7 @@ bool GraphPass::runOnModule(llvm::Module &M) {
   Graph = std::move(pass.getGraph());
   dbgs() << "GraphPass strong_components\n";
 
-  Graph->dependencyConflictHandling(Graph->getGraph());
+  Graph->conflictHandling(Graph->getGraph());
 
   if (DumpGraphs) {
     dbgs() << "Writing graphs\n";
@@ -60,29 +64,19 @@ bool GraphPass::runOnModule(llvm::Module &M) {
   return false;
 }
 
-char GraphPass::ID = 0;
-
-std::vector<std::shared_ptr<Manifest>> GraphPass::GetManifestsInOrder() {
+std::vector<std::shared_ptr<Manifest>> GraphPass::SortedManifests() {
   bool requireTopologicalSort = false;
 
-  auto m = ManifestRegistry::GetAll();
-  const auto input_size = m.size();
-  for (const auto &kv : m) {
-    if (kv.second->postPatching) {
+  auto manifests = ManifestRegistry::GetAll();
+  const auto input_size = manifests.size();
+  for (const auto &m : manifests) {
+    if (m->postPatching) {
       requireTopologicalSort = true;
       break;
     }
   }
 
-  auto indexes = Graph->manifestIndexes(requireTopologicalSort);
-  auto result = std::vector<std::shared_ptr<Manifest>>();
-  std::transform(std::begin(indexes),
-                 std::end(indexes),
-                 std::back_inserter(result),
-                 [m](const auto i) {
-                   return m.find(i)->second;
-                 });
-
+  auto result = Graph->manifestIndexes(requireTopologicalSort);
   assert(input_size == result.size());
   return result;
 }
@@ -92,6 +86,4 @@ bool GraphPass::doFinalization(Module &module) {
   ManifestRegistry::destroy();
   return Pass::doFinalization(module);
 }
-
-static llvm::RegisterPass<GraphPass> X("constraint-graph", "Constraint Graph Pass", true, true);
 }

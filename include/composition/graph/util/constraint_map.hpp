@@ -8,12 +8,12 @@
 
 namespace composition {
 
-template<typename s_t = size_t, typename graph_t>
-std::pair<std::map<typename graph_t::vertex_descriptor, s_t>,
-          std::map<typename graph_t::vertex_descriptor, s_t>> constraint_map(graph_t &g) {
+template<typename present_t = size_t, typename preserved_t = size_t, typename graph_t>
+std::pair<std::map<typename graph_t::vertex_descriptor, present_t>,
+          std::map<typename graph_t::vertex_descriptor, preserved_t>> constraint_map(graph_t &g) {
   using vd_t = typename graph_t::vertex_descriptor;
-  std::map<vd_t, s_t> isPresent;
-  std::map<vd_t, s_t> isPreserved;
+  std::map<vd_t, present_t> isPresent;
+  std::map<vd_t, preserved_t> isPreserved;
 
   for (auto vd :boost::make_iterator_range(boost::vertices(g))) {
     PresentConstraint present = PresentConstraint::NONE;
@@ -29,8 +29,8 @@ std::pair<std::map<typename graph_t::vertex_descriptor, s_t>,
                   present | PresentConstraint::PRESENT;
       }
     }
-    isPresent.insert({vd, static_cast<s_t>(present)});
-    isPreserved.insert({vd, static_cast<s_t>(preserved)});
+    isPresent.insert({vd, static_cast<present_t>(present)});
+    isPreserved.insert({vd, static_cast<preserved_t>(preserved)});
   }
 
   return {isPresent, isPreserved};

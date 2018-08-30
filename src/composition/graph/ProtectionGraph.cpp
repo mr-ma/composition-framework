@@ -41,7 +41,6 @@ ed_t ProtectionGraph::add_edge(vd_t s, vd_t d, edge_t e) {
   auto edge = boost::add_edge(s, d, g);
   assert(edge.second);
   g[edge.first] = std::move(e);
-  edgeCache.insert({ProtectionIdx, edge.first});
   return edge.first;
 }
 
@@ -50,23 +49,24 @@ void ProtectionGraph::remove_edge(ed_t ed) noexcept {
   g[ed].removed = true;
 }
 
-void ProtectionGraph::removeProtection(ProtectionIndex protectionID) {
+void ProtectionGraph::removeManifest(std::shared_ptr<Manifest> m) {
   graph_t &g = Graph;
 
-  ManifestRegistry::Remove(Protections.at(protectionID));
-  Protections.erase(protectionID);
+  for (auto[it, it_end] = Protections.left.equal_range(m); it != it_end; ++it) {
+    for (auto[ei, ei_end] = boost::edges(g); ei != ei_end; ++ei) {
+      auto &e = g[*ei];
+      if (e.index == it->second) {
+        remove_edge(*ei);
+      }
+    }
 
-  for (auto[ei, ei_end] = boost::edges(g); ei != ei_end; ++ei) {
-    auto &e = g[*ei];
-    if (e.index == protectionID) {
-      remove_edge(*ei);
+    for (auto[vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
+      auto &v = g[*vi];
+      v.constraints.erase(it->second);
     }
   }
-
-  for (auto[vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
-    auto &v = g[*vi];
-    v.constraints.erase(protectionID);
-  }
+  Protections.left.erase(m);
+  ManifestRegistry::Remove(m);
 }
 
 void ProtectionGraph::expandToInstructions() {
@@ -229,7 +229,7 @@ void ProtectionGraph::reduceToFunctions() {
   }
 }
 
-ProtectionIndex ProtectionGraph::addConstraint(ManifestIndex index, std::shared_ptr<Constraint> c) {
+ProtectionIndex ProtectionGraph::addConstraint(std::shared_ptr<Manifest> m, std::shared_ptr<Constraint> c) {
   graph_t &g = Graph;
 
   if (auto d = dyn_cast<Dependency>(c.get())) {
@@ -248,23 +248,16 @@ ProtectionIndex ProtectionGraph::addConstraint(ManifestIndex index, std::shared_
     auto v = this->add_vertex(preserved->getTarget());
     g[v].constraints.insert({ProtectionIdx, c});
   }
-  Protections.insert({ProtectionIdx, index});
+  Protections.insert({m, ProtectionIdx});
   return ProtectionIdx++;
 }
 
-std::vector<ManifestIndex> ProtectionGraph::manifestIndexes(bool requireTopologicalSort) {
-  auto allManifests = ManifestRegistry::GetAll();
-  auto uniqueM = std::set<ManifestIndex>();
-  std::transform(std::begin(allManifests),
-                 std::end(allManifests),
-                 std::inserter(uniqueM, std::end(uniqueM)),
-                 [](const auto &kv) { return kv.first; });
+std::vector<std::shared_ptr<Manifest>> ProtectionGraph::manifestIndexes(bool requireTopologicalSort) {
+  auto manifestSet = ManifestRegistry::GetAll();
+  std::vector<std::shared_ptr<Manifest>> manifests{manifestSet.begin(), manifestSet.end()};
 
-  const auto unique_size = uniqueM.size();
-
-  auto result = std::vector<ManifestIndex>{uniqueM.begin(), uniqueM.end()};
   if (!requireTopologicalSort) {
-    return result;
+    return manifests;
   }
 
   auto rg = filter_removed_graph(Graph);
@@ -274,8 +267,8 @@ std::vector<ManifestIndex> ProtectionGraph::manifestIndexes(bool requireTopologi
   for (auto[vi, vi_end] = boost::vertices(sc); vi != vi_end; ++vi) {
     for (auto[ei, ei_end] = boost::out_edges(*vi, sc); ei != ei_end; ++ei) {
       auto i = sc[*ei].index;
-      auto manifest = Protections.at(i);
-      result.erase(std::remove(result.begin(), result.end(), manifest), result.end());
+      auto manifest = Protections.right.find(i)->second;
+      manifests.erase(std::remove(manifests.begin(), manifests.end(), manifest), manifests.end());
     }
   }
 
@@ -283,17 +276,17 @@ std::vector<ManifestIndex> ProtectionGraph::manifestIndexes(bool requireTopologi
   for (auto v : sorted) {
     for (auto[ei, ei_end] = boost::out_edges(v, sc); ei != ei_end; ++ei) {
       auto i = sc[*ei].index;
-      auto manifest = Protections.at(i);
+      auto manifest = Protections.right.find(i)->second;
 
-      if (std::find(result.begin(), result.end(), manifest) != result.end()) {
+      if (std::find(manifests.begin(), manifests.end(), manifest) != manifests.end()) {
         continue;
       }
-      result.push_back(manifest);
+      manifests.push_back(manifest);
     }
   }
 
-  assert(unique_size == result.size());
-  return result;
+  assert(manifestSet.size() == manifests.size());
+  return manifests;
 }
 
 void ProtectionGraph::destroy() {
@@ -301,7 +294,6 @@ void ProtectionGraph::destroy() {
   ProtectionIdx = 0;
   Protections.clear();
   vertexCache.clear();
-  edgeCache.clear();
 }
 
 ProtectionGraph &ProtectionGraph::operator=(ProtectionGraph &&that) noexcept {

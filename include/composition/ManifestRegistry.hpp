@@ -3,7 +3,7 @@
 
 #include <cstdint>
 #include <string>
-#include <unordered_map>
+#include <set>
 #include <composition/Manifest.hpp>
 
 namespace composition {
@@ -12,16 +12,16 @@ class ManifestRegistry {
 public:
   static void Add(std::shared_ptr<Manifest> m);
 
-  static std::unordered_map<ManifestIndex, std::shared_ptr<Manifest>> &GetAll();
+  static std::set<std::shared_ptr<Manifest>> &GetAll();
 
-  static void Remove(ManifestIndex idx);
+  static void Remove(std::shared_ptr<Manifest> m);
 
   static void destroy();
 
 protected:
   static ManifestIndex index;
 
-  static std::unordered_map<ManifestIndex, std::shared_ptr<Manifest>> &RegisteredManifests();;
+  static std::set<std::shared_ptr<Manifest>> &RegisteredManifests();;
 };
 }
 

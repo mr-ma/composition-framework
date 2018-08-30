@@ -26,13 +26,13 @@ void save_graph_to_graphml(graph_t &g, std::ostream &out) noexcept {
   auto [isPresent, isPreserved] = constraint_map(g);
 
   boost::dynamic_properties dp;
-  dp.property("vertex_name", get(&vertex_t::name, g));
-  dp.property("vertex_removed", get(&vertex_t::removed, g));
+  dp.property("vertex_name", boost::get(&vertex_t::name, g));
+  dp.property("vertex_removed", boost::get(&vertex_t::removed, g));
   dp.property("vertex_present", boost::make_assoc_property_map(isPresent));
   dp.property("vertex_preserved", boost::make_assoc_property_map(isPreserved));
 
-  dp.property("edge_name", get(&edge_t::name, g));
-  dp.property("edge_removed", get(&edge_t::removed, g));
+  dp.property("edge_name", boost::get(&edge_t::name, g));
+  dp.property("edge_removed", boost::get(&edge_t::removed, g));
 
   boost::write_graphml(out, g, boost::make_assoc_property_map(index), dp);
 }

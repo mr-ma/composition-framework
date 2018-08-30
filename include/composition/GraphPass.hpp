@@ -14,7 +14,7 @@ public:
 public:
   GraphPass() : ModulePass(ID) {}
 
-  std::vector<std::shared_ptr<Manifest>> GetManifestsInOrder();
+  std::vector<std::shared_ptr<Manifest>> SortedManifests();
 
   void getAnalysisUsage(llvm::AnalysisUsage &usage) const override;
 

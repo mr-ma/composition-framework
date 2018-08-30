@@ -17,7 +17,7 @@ bool ProtectionPass::runOnModule(llvm::Module &M) {
   dbgs() << "ProtectionPass running\n";
 
   auto &pass = getAnalysis<GraphPass>();
-  auto manifests = pass.GetManifestsInOrder();
+  auto manifests = pass.SortedManifests();
 
   dbgs() << "Got " << manifests.size() << " manifests\n";
 
