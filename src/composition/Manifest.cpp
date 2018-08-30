@@ -44,6 +44,10 @@ std::set<llvm::Instruction *> Manifest::Coverage() const {
   return Coverage::ValueToInstructions(protectee);
 }
 
+std::set<llvm::Instruction *> Manifest::GuardInstructions() const {
+  return guardInstructions;
+}
+
 bool Manifest::operator<(const Manifest &other) const {
   return (idx < other.idx);
 }
@@ -57,13 +61,15 @@ Manifest::Manifest(std::string name,
                    PatchFunction patchFunction,
                    std::vector<std::shared_ptr<Constraint>> constraints,
                    bool postPatching,
-                   std::set<llvm::Value *> addedValues)
+                   std::set<llvm::Value *> undoValues,
+                   std::set<llvm::Instruction *> guardInstructions)
     : name(std::move(name)), protectee(protectee), patchFunction(std::move(patchFunction)),
-      constraints(std::move(constraints)), postPatching(postPatching), undoValues(std::move(addedValues)) {
+      constraints(std::move(constraints)), postPatching(postPatching), undoValues(std::move(undoValues)),
+      guardInstructions(std::move(guardInstructions)) {
 }
 
-std::string valueToName(llvm::Value* v) {
-  if(isa<Function>(v)) {
+std::string valueToName(llvm::Value *v) {
+  if (isa<Function>(v)) {
     return v->getName();
   }
   return std::to_string(v->getValueID());
@@ -71,7 +77,7 @@ std::string valueToName(llvm::Value* v) {
 
 void Manifest::dump() const {
   dbgs() << "Manifest " << idx << " (" << name << ") protecting " << valueToName(protectee) << ":\n";
-  if(constraints.empty()) {
+  if (constraints.empty()) {
     return;
   }
   dbgs() << "\tConstraints: \n";

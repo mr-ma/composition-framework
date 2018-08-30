@@ -54,7 +54,9 @@ bool GraphPass::runOnModule(llvm::Module &M) {
   }
   dbgs() << "GraphPass done\n";
 
-  //TODO create postpatching manifest order/export to json
+  //TODO Optimize, i.e., remove manifests to make the application run faster
+  //TODO Block places to prevent from obfuscation
+
   return false;
 }
 

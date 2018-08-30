@@ -11,7 +11,7 @@ namespace composition {
 
 class Manifest;
 
-typedef std::function<void(const Manifest&)> PatchFunction;
+typedef std::function<void(const Manifest &)> PatchFunction;
 typedef unsigned long ManifestIndex;
 
 class Manifest {
@@ -23,19 +23,23 @@ public:
   std::vector<std::shared_ptr<Constraint>> constraints;
   bool postPatching;
   std::set<llvm::Value *> undoValues;
+  std::set<llvm::Instruction *> guardInstructions;
 
   Manifest(std::string name,
            llvm::Value *protectee,
            PatchFunction patchFunction,
            std::vector<std::shared_ptr<Constraint>> constraints = {},
            bool postPatching = false,
-           std::set<llvm::Value *> addedValues = {});
+           std::set<llvm::Value *> undoValues = {},
+           std::set<llvm::Instruction *> guardInstructions = {});
 
   bool operator==(const Manifest &other) const;
 
   bool operator<(const Manifest &other) const;
 
   virtual std::set<llvm::Instruction *> Coverage() const;
+
+  virtual std::set<llvm::Instruction *> GuardInstructions() const;
 
   virtual void Redo() const;
 

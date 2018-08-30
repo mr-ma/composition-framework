@@ -68,15 +68,8 @@ add_library(CompositionFramework MODULE
         include/composition/Manifest.hpp
         include/composition/ManifestRegistry.hpp
         include/composition/Pass.hpp
-        include/composition/Protection.hpp
         include/composition/ProtectionPass.hpp
-        include/composition/ProtectionRegistry.hpp
         include/composition/options.hpp
-
-        include/composition/ConflictResolver.hpp
-        include/composition/ConflictResolverRegistry.hpp
-        include/composition/EnhancementResolver.hpp
-        include/composition/EnhancementResolverRegistry.hpp
 
         include/composition/util/functions.hpp
         include/composition/util/strings.hpp
@@ -111,7 +104,6 @@ add_library(CompositionFramework MODULE
         src/composition/ManifestRegistry.cpp
         src/composition/options.cpp
         src/composition/Manifest.cpp
-        src/composition/ProtectionRegistry.cpp
         src/composition/Pass.cpp
         src/composition/AnalysisRegistry.cpp)
 

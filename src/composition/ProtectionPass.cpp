@@ -24,6 +24,7 @@ bool ProtectionPass::runOnModule(llvm::Module &M) {
   for (auto &m : manifests) {
     m->Redo();
   }
+  //TODO create postpatching manifest order/export to json
 
   Stats s{};
   s.collect(&M, manifests);
