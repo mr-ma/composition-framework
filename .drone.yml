@@ -5,7 +5,7 @@ pipeline:
     - mkdir build/
     - cd build/
     - cmake ..
-    - cmake --build . -- -j4
+    - cmake --build . -- -j2
     when:
       branch: [ master, graph ]
 
