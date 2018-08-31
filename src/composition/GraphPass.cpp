@@ -28,7 +28,7 @@ bool GraphPass::runOnModule(llvm::Module &M) {
   dbgs() << "GraphPass running\n";
 
   Weights w;
-  if(!WeightConfig.empty()) {
+  if (!WeightConfig.empty()) {
     std::ifstream ifs(WeightConfig.getValue());
     w = Weights(ifs);
   }

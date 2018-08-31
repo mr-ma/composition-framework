@@ -14,13 +14,13 @@ class Performance {
   static uint64_t getBlockFreq(const llvm::BasicBlock *BB, llvm::BlockFrequencyInfo *BFI, bool useHeuristic = true);
 
   static uint64_t getNumOfCalls(llvm::Function &callerFunction, llvm::Function &calledFunction,
-                         llvm::function_ref<llvm::BlockFrequencyInfo *(llvm::Function &)> LookupBFI);
+                                llvm::function_ref<llvm::BlockFrequencyInfo *(llvm::Function &)> LookupBFI);
 
   static uint64_t getMaxFreq(llvm::Function &F, llvm::BlockFrequencyInfo *BFI, bool useHeuristic = true);
 
-  static  uint64_t getMaxFreq(llvm::Module &M,
-                      llvm::function_ref<llvm::BlockFrequencyInfo *(llvm::Function &)> LookupBFI,
-                      bool useHeuristic = true);
+  static uint64_t getMaxFreq(llvm::Module &M,
+                             llvm::function_ref<llvm::BlockFrequencyInfo *(llvm::Function &)> LookupBFI,
+                             bool useHeuristic = true);
 };
 }
 #endif //COMPOSITION_FRAMEWORK_METRIC_PERFORMANCE_HPP

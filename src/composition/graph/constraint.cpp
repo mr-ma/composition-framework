@@ -11,7 +11,8 @@ Constraint::ConstraintType Constraint::getType() const { return Type; }
 std::string Constraint::getInfo() const { return Info; }
 
 Dependency::Dependency(std::string info, llvm::Value *from, llvm::Value *to, bool weak)
-    : Constraint(ConstraintKind::CK_DEPENDENCY, ConstraintType::EDGE, std::move(info)), from(from), to(to), weak(weak) {}
+    : Constraint(ConstraintKind::CK_DEPENDENCY, ConstraintType::EDGE, std::move(info)), from(from), to(to),
+      weak(weak) {}
 
 llvm::Value *Dependency::getFrom() const {
   return from;

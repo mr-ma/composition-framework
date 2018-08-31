@@ -66,7 +66,7 @@ bool AnalysisPass::runOnModule(llvm::Module &M) {
   }
   dbgs() << "#" << std::to_string(i) << "/" << std::to_string(total) << "\n";
 
-  if(AddCFG) {
+  if (AddCFG) {
     dbgs() << "Building CallGraph\n";
 
     //TODO #1 It's probably better to use a callgraph here. However, using a callgraph leads to a SIGSEGV for no reason

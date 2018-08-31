@@ -23,7 +23,7 @@ void save_graph_to_graphml(graph_t &g, const std::string &filename) noexcept {
 template<typename graph_t>
 void save_graph_to_graphml(graph_t &g, std::ostream &out) noexcept {
   auto index = index_map(g);
-  auto [isPresent, isPreserved] = constraint_map(g);
+  auto[isPresent, isPreserved] = constraint_map(g);
 
   boost::dynamic_properties dp;
   dp.property("vertex_name", boost::get(&vertex_t::name, g));

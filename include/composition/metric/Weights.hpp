@@ -26,9 +26,9 @@ struct Weights {
   void dump(llvm::raw_ostream &o);
 };
 
-void to_json(nlohmann::json & j, const Weights& w);
+void to_json(nlohmann::json &j, const Weights &w);
 
-void from_json(const nlohmann::json& j, Weights& w);
+void from_json(const nlohmann::json &j, Weights &w);
 }
 
 #endif //COMPOSITION_FRAMEWORK_METRIC_WEIGHTS_HPP

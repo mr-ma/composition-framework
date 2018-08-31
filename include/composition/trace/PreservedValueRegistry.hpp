@@ -12,9 +12,9 @@ public:
   static TraceableCallbackInfo Register(const std::string &name, llvm::Value *v, const PreservedCallback &callback);
   static TraceableCallbackInfo Register(const std::string &name, llvm::Value *v, const PresentCallback &callback);
   static TraceableCallbackInfo Register(const std::string &name,
-                       llvm::Value *v,
-                       const PresentCallback &presentCallback,
-                       const PreservedCallback &preservedCallback);
+                                        llvm::Value *v,
+                                        const PresentCallback &presentCallback,
+                                        const PreservedCallback &preservedCallback);
 
   static void Clear();
 
