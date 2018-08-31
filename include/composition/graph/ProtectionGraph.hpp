@@ -2,6 +2,7 @@
 #define COMPOSITION_FRAMEWORK_GRAPH_PROTECTIONGRAPH_HPP
 #include <utility>
 #include <random>
+#include <algorithm>
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/BasicBlock.h>
@@ -30,8 +31,8 @@ namespace composition {
 using ProtectionIndex = unsigned long;
 using VertexIndex = uintptr_t;
 using EdgeIndex = uintptr_t;
-using ProtectionMap = boost::bimaps::bimap<boost::bimaps::set_of<std::shared_ptr<Manifest>>,
-                                           boost::bimaps::multiset_of<ProtectionIndex>>;
+using ProtectionMap = boost::bimaps::bimap<boost::bimaps::multiset_of<std::shared_ptr<Manifest>>, ProtectionIndex>;
+
 class ProtectionGraph {
 private:
   graph_t Graph{};
@@ -64,15 +65,18 @@ private:
 public:
   ProtectionGraph() = default;
 
-  ProtectionGraph(const ProtectionGraph &that) = delete;
+  ProtectionGraph(ProtectionGraph &that) = delete;
 
-  ProtectionGraph(const ProtectionGraph &&that) noexcept : ProtectionIdx(that.ProtectionIdx),
-                                                           Protections(that.Protections),
-                                                           Graph(that.Graph),
-                                                           vertexCache(that.vertexCache) {
+  ProtectionGraph(ProtectionGraph &&that) noexcept : ProtectionIdx(that.ProtectionIdx),
+                                                     Protections(that.Protections),
+                                                     vertexCache(that.vertexCache) {
+    auto index = index_map(that.Graph);
+    boost::copy_graph(that.Graph, this->Graph, vertex_index_map(boost::make_assoc_property_map(index)));
   }
 
-  ProtectionGraph &operator=(ProtectionGraph &&that) noexcept;;
+  ProtectionGraph &operator=(ProtectionGraph &that) = delete;
+
+  ProtectionGraph &operator=(ProtectionGraph &&that) = default;
 
   void destroy();
 
@@ -136,18 +140,25 @@ public:
       hadConflicts = false;
 
       auto[presentManifest, preservedManifests] = detectPresentPreservedConflicts(g);
-      if (!presentManifest.empty() || !presentManifest.empty()) {
+      if (!presentManifest.empty() || !preservedManifests.empty()) {
+        hadConflicts = true;
         llvm::dbgs() << "Handling conflict...\n";
+
+        std::vector<std::shared_ptr<Manifest>> merged{};
+        merged.reserve(presentManifest.size() + preservedManifests.size());
+        for (auto m : presentManifest) {
+          merged.push_back(m);
+        }
+        for (auto m : preservedManifests) {
+          merged.push_back(m);
+        }
+
+        std::random_device r;
+        auto rng = std::default_random_engine{r()};
+        std::shuffle(merged.begin(), merged.end(), rng);
+        removeManifest(*merged.begin());
       }
     } while (hadConflicts);
-
-    llvm::dbgs() << "Step 3: Cleaning up...\n";
-    //Finally cleanup the protections.
-    std::vector<ProtectionIndex> remainingProtections;
-    for (auto[it, it_end] = boost::edges(g); it != it_end; ++it) {
-      auto e = g[*it];
-      remainingProtections.push_back(e.index);
-    }
   }
 
   template<typename graph_t>
@@ -168,16 +179,18 @@ public:
       edgesInConflict.push_back(*ei);
     }
 
-    auto rng = std::default_random_engine{};
+    std::random_device r;
+    auto rng = std::default_random_engine{r()};
     std::shuffle(edgesInConflict.begin(), edgesInConflict.end(), rng);
     removeManifest(Protections.right.find(g[edgesInConflict.at(0)].index)->second);
   }
 
   template<typename graph_t>
-  std::pair<std::set<ManifestIndex>, std::set<ManifestIndex>> detectPresentPreservedConflicts(graph_t &g) {
+  std::pair<std::set<std::shared_ptr<Manifest>>, std::set<std::shared_ptr<Manifest>>> detectPresentPreservedConflicts(
+      graph_t &g) {
     auto[isPresent, isPreserved] = constraint_map<PresentConstraint, PreservedConstraint>(g);
 
-    std::set<ManifestIndex> presentIndexes{};
+    std::set<std::shared_ptr<Manifest>> presentManifests{};
     for (auto[vd, p] : isPresent) {
       if (p != PresentConstraint::CONFLICT) {
         continue;
@@ -185,24 +198,24 @@ public:
 
       for (auto[index, c] : g[vd].constraints) {
         if (llvm::isa<Present>(c.get())) {
-          presentIndexes.insert(index);
+          presentManifests.insert(Protections.right.find(index)->second);
         }
       }
     }
 
-    std::set<ManifestIndex> preservedIndexes{};
+    std::set<std::shared_ptr<Manifest>> preservedManifests{};
     for (auto[vd, p] : isPreserved) {
       if (p != PreservedConstraint::CONFLICT) {
         continue;
       }
       for (auto[index, c] : g[vd].constraints) {
         if (llvm::isa<Preserved>(c.get())) {
-          preservedIndexes.insert(index);
+          preservedManifests.insert(Protections.right.find(index)->second);
         }
       }
     }
 
-    return {presentIndexes, preservedIndexes};
+    return {presentManifests, preservedManifests};
   }
 };
 }

@@ -14,6 +14,8 @@ void Manifest::Undo() const {
   //TODO strictly speaking this function only removes the Instructions and GlobalVariables.
   //TODO however, if we wanted to remove basicblocks or functions we'd need to restore the correct controlflow
   //TODO for now, assume passes only add instructions
+  dbgs() << "Undoing manifest...\n";
+  dump();
   dbgs() << "Undoing " << undoValues.size() << " values\n";
   for (auto V : undoValues) {
     if (auto *F = llvm::dyn_cast<llvm::Function>(V)) {
@@ -49,11 +51,11 @@ std::set<llvm::Instruction *> Manifest::GuardInstructions() const {
 }
 
 bool Manifest::operator<(const Manifest &other) const {
-  return (idx < other.idx);
+  return (index < other.index);
 }
 
 bool Manifest::operator==(const Manifest &other) const {
-  return (idx == other.idx);
+  return (index == other.index);
 }
 
 Manifest::Manifest(std::string name,
@@ -76,7 +78,7 @@ std::string valueToName(llvm::Value *v) {
 }
 
 void Manifest::dump() const {
-  dbgs() << "Manifest " << idx << " (" << name << ") protecting " << valueToName(protectee) << ":\n";
+  dbgs() << "Manifest " << index << " (" << name << ") protecting " << valueToName(protectee) << ":\n";
   if (constraints.empty()) {
     return;
   }

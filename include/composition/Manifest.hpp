@@ -16,7 +16,7 @@ using ManifestIndex = unsigned long;
 
 class Manifest {
 public:
-  ManifestIndex idx{};
+  ManifestIndex index{};
   std::string name;
   llvm::Value *protectee;
   PatchFunction patchFunction;
@@ -32,6 +32,16 @@ public:
            bool postPatching = false,
            std::set<llvm::Value *> undoValues = {},
            std::set<llvm::Instruction *> guardInstructions = {});
+
+  Manifest() = delete;
+
+  Manifest(Manifest const &) = delete;
+
+  Manifest(Manifest &&) = default;
+
+  Manifest &operator=(Manifest const &) = delete;
+
+  Manifest &operator=(Manifest &&) = default;
 
   bool operator==(const Manifest &other) const;
 
@@ -54,7 +64,7 @@ namespace std {
 template<>
 struct hash<composition::Manifest> {
   size_t operator()(const composition::Manifest &pt) const {
-    return pt.idx;
+    return pt.index;
   }
 };
 }

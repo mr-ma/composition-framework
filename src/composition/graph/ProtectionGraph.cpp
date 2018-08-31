@@ -283,12 +283,4 @@ void ProtectionGraph::destroy() {
   vertexCache.clear();
 }
 
-ProtectionGraph &ProtectionGraph::operator=(ProtectionGraph &&that) noexcept {
-  ProtectionIdx = that.ProtectionIdx;
-  Protections = that.Protections;
-
-  auto index = index_map(that.Graph);
-  boost::copy_graph(that.Graph, this->Graph, vertex_index_map(boost::make_assoc_property_map(index)));
-  return *this;
-}
 }

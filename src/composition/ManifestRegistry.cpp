@@ -16,7 +16,7 @@ std::set<std::shared_ptr<Manifest>> &ManifestRegistry::GetAll() {
 }
 
 void ManifestRegistry::Add(std::shared_ptr<Manifest> m) {
-  m->idx = index++;
+  m->index = index++;
   RegisteredManifests().insert(std::move(m));
 }
 
