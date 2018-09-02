@@ -26,6 +26,8 @@
 #include <composition/graph/filter/removed.hpp>
 #include <composition/graph/filter/selfcycle.hpp>
 #include <composition/options.hpp>
+#include <composition/strategy/Strategy.hpp>
+#include <composition/strategy/Random.hpp>
 
 namespace composition {
 using ProtectionIndex = unsigned long;
@@ -107,7 +109,7 @@ public:
   void reduceToFunctions();
 
   template<typename T>
-  void conflictHandling(T &g) {
+  void conflictHandling(T &g, Strategy& strategy) {
     llvm::dbgs() << "Step 1: Removing cycles...\n";
     auto rg = filter_removed_graph(g);
     auto fg = filter_dependency_graph(rg);
@@ -128,7 +130,7 @@ public:
             save_graph_to_dot(component, "graph_component_" + std::to_string(i) + ".dot");
             save_graph_to_graphml(component, "graph_component_" + std::to_string(i) + ".graphml");
           }
-          handleCycle(component);
+          handleCycle(component, strategy);
           ++i;
         }
       }
@@ -139,31 +141,24 @@ public:
     do {
       hadConflicts = false;
 
-      auto[presentManifest, preservedManifests] = detectPresentPreservedConflicts(g);
-      if (!presentManifest.empty() || !preservedManifests.empty()) {
+      auto[presentManifests, preservedManifests] = detectPresentPreservedConflicts(g);
+      if (!presentManifests.empty() || !preservedManifests.empty()) {
         hadConflicts = true;
         llvm::dbgs() << "Handling conflict...\n";
 
         std::vector<std::shared_ptr<Manifest>> merged{};
-        merged.reserve(presentManifest.size() + preservedManifests.size());
-        for (auto m : presentManifest) {
-          merged.push_back(m);
-        }
-        for (auto m : preservedManifests) {
-          merged.push_back(m);
-        }
+        std::set_union(presentManifests.begin(), presentManifests.end(),
+            preservedManifests.begin(), preservedManifests.end(),
+            std::back_inserter(merged));
 
-        std::random_device r;
-        auto rng = std::default_random_engine{r()};
-        std::shuffle(merged.begin(), merged.end(), rng);
-        removeManifest(*merged.begin());
+        removeManifest(strategy.decidePresentPreserved(merged));
       }
     } while (hadConflicts);
   }
 
   template<typename graph_t>
-  void handleCycle(graph_t &g) {
-    auto[presentIndexes, preservedIndexes] = detectPresentPreservedConflicts(g);
+  void handleCycle(graph_t &g, Strategy& strategy) {
+    auto[presentManifests, preservedManifests] = detectPresentPreservedConflicts(g);
 
     llvm::dbgs() << "Handling cycle in component\n";
     for (auto[vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
@@ -174,15 +169,22 @@ public:
       llvm::dbgs() << std::to_string(v.index) << "\n";
     }
 
-    std::vector<ed_t> edgesInConflict{};
+    std::vector<std::shared_ptr<Manifest>> cyclicManifests{};
     for (auto[ei, ei_end] = boost::edges(g); ei != ei_end; ++ei) {
-      edgesInConflict.push_back(*ei);
+      cyclicManifests.push_back(Protections.right.find(g[*ei].index)->second);
     }
 
-    std::random_device r;
-    auto rng = std::default_random_engine{r()};
-    std::shuffle(edgesInConflict.begin(), edgesInConflict.end(), rng);
-    removeManifest(Protections.right.find(g[edgesInConflict.at(0)].index)->second);
+    std::set<std::shared_ptr<Manifest>> pre_merged{};
+    std::set_union(presentManifests.begin(), presentManifests.end(),
+                   preservedManifests.begin(), preservedManifests.end(),
+                   std::inserter(pre_merged, pre_merged.begin()));
+
+    std::vector<std::shared_ptr<Manifest>> merged{};
+    std::set_union(pre_merged.begin(), pre_merged.end(),
+                   cyclicManifests.begin(), cyclicManifests.end(),
+                   std::back_inserter(merged));
+
+    removeManifest(strategy.decideCycle(merged));
   }
 
   template<typename graph_t>

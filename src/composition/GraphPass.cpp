@@ -9,6 +9,7 @@
 #include <composition/graph/util/dot.hpp>
 #include <composition/graph/util/graphml.hpp>
 #include <composition/metric/Weights.hpp>
+#include <composition/strategy/Avoidance.hpp>
 
 using namespace llvm;
 
@@ -46,7 +47,23 @@ bool GraphPass::runOnModule(llvm::Module &M) {
   Graph = std::move(pass.getGraph());
   dbgs() << "GraphPass strong_components\n";
 
-  Graph->conflictHandling(Graph->getGraph());
+  std::random_device r{};
+  auto rng = std::default_random_engine{r()};
+  auto strategy = Random{rng};
+
+  /*
+  auto strategy = Avoidance{
+      {
+          {"cm", -1},
+          {"sc", 0},
+          {"cfi", 0},
+          {"oh", 1},
+          {"sroh", 2},
+      }
+  };
+  */
+
+  Graph->conflictHandling(Graph->getGraph(), strategy);
 
   if (DumpGraphs) {
     dbgs() << "Writing graphs\n";

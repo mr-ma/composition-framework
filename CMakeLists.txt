@@ -57,6 +57,11 @@ add_library(CompositionFramework MODULE
         include/composition/metric/Stats.hpp
         include/composition/metric/Connectivity.hpp
 
+        include/composition/strategy/Avoidance.hpp
+        include/composition/strategy/Random.hpp
+        include/composition/strategy/Strategy.hpp
+        include/composition/strategy/Weight.hpp
+
         include/composition/trace/TraceableValue.hpp
         include/composition/trace/PreservedValueRegistry.hpp
 
@@ -91,6 +96,9 @@ add_library(CompositionFramework MODULE
         src/composition/metric/Weights.cpp
         src/composition/metric/Stats.cpp
         src/composition/metric/Connectivity.cpp
+
+        src/composition/strategy/Avoidance.cpp
+        src/composition/strategy/Random.cpp
 
         src/composition/trace/TraceableValue.cpp
         src/composition/trace/PreservedValueRegistry.cpp
