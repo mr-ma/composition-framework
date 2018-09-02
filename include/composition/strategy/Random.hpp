@@ -1,6 +1,7 @@
 #ifndef COMPOSITION_FRAMEWORK_STRATEGY_RANDOM_HPP
 #define COMPOSITION_FRAMEWORK_STRATEGY_RANDOM_HPP
 
+#include <random>
 #include <composition/strategy/Strategy.hpp>
 
 namespace composition {

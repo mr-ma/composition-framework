@@ -59,7 +59,9 @@ bool AnalysisPass::runOnModule(llvm::Module &M) {
   auto manifests = ManifestRegistry::GetAll();
   size_t total = manifests.size();
   dbgs() << "Adding " << std::to_string(total) << " manifests to protection graph\n";
+  cStats.proposedManifests = total;
   size_t i = 0;
+  Profiler constructionProfiler{};
   for (auto &m : manifests) {
     dbgs() << "#" << std::to_string(i++) << "/" << std::to_string(total) << "\r";
     for (const auto &c : m->constraints) {
@@ -67,11 +69,12 @@ bool AnalysisPass::runOnModule(llvm::Module &M) {
     }
     m->dump();
   }
+  cStats.timeGraphConstruction += constructionProfiler.stop();
   dbgs() << "#" << std::to_string(i) << "/" << std::to_string(total) << "\n";
 
   if (AddCFG) {
     dbgs() << "Building CallGraph\n";
-
+    constructionProfiler.reset();
     //TODO #1 It's probably better to use a callgraph here. However, using a callgraph leads to a SIGSEGV for no reason
     //Printing and dumping of the callgraph works, but as soon as accessing it is tried the program behaves unexpectedly.
     //Therefore, for now, only add direct call edges as CFG part to the graph.
@@ -95,6 +98,7 @@ bool AnalysisPass::runOnModule(llvm::Module &M) {
         }
       }
     }
+    cStats.timeGraphConstruction += constructionProfiler.stop();
     dbgs() << "Done building CallGraph\n";
   }
 
@@ -108,7 +112,9 @@ bool AnalysisPass::runOnModule(llvm::Module &M) {
   }
   dbgs() << "Expand graph to instructions\n";
   //Graph.expandToFunctions();
+  constructionProfiler.reset();
   Graph->expandToInstructions();
+  cStats.timeGraphConstruction += constructionProfiler.stop();
   dbgs() << "Done\n";
   if (DumpGraphs) {
     dbgs() << "Writing graphs\n";
@@ -120,7 +126,9 @@ bool AnalysisPass::runOnModule(llvm::Module &M) {
   }
   dbgs() << "Remove non instruction vertices from graph\n";
   //Graph.reduceToFunctions();
+  constructionProfiler.reset();
   Graph->reduceToInstructions();
+  cStats.timeGraphConstruction += constructionProfiler.stop();
   dbgs() << "Done\n";
   if (DumpGraphs) {
     dbgs() << "Writing graphs\n";

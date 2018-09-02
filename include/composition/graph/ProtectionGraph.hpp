@@ -28,6 +28,7 @@
 #include <composition/options.hpp>
 #include <composition/strategy/Strategy.hpp>
 #include <composition/strategy/Random.hpp>
+#include <composition/profiler.hpp>
 
 namespace composition {
 using ProtectionIndex = unsigned long;
@@ -116,9 +117,13 @@ public:
 
     //First detect cycles and remove all cycles.
     bool hadConflicts;
+    Profiler sccProfiler{};
+    Profiler resolvingProfiler{};
     do {
       hadConflicts = false;
+      sccProfiler.reset();
       auto components = strong_components(fg);
+      cStats.timeCycleDetection += sccProfiler.stop();
       int i = 0;
       for (auto &component : components) {
         auto vertexCount = vertex_count(component);
@@ -130,7 +135,9 @@ public:
             save_graph_to_dot(component, "graph_component_" + std::to_string(i) + ".dot");
             save_graph_to_graphml(component, "graph_component_" + std::to_string(i) + ".graphml");
           }
+          resolvingProfiler.reset();
           handleCycle(component, strategy);
+          cStats.timeConflictResolving += resolvingProfiler.stop();
           ++i;
         }
       }
@@ -146,12 +153,14 @@ public:
         hadConflicts = true;
         llvm::dbgs() << "Handling conflict...\n";
 
+        resolvingProfiler.reset();
         std::vector<std::shared_ptr<Manifest>> merged{};
         std::set_union(presentManifests.begin(), presentManifests.end(),
-            preservedManifests.begin(), preservedManifests.end(),
-            std::back_inserter(merged));
+                       preservedManifests.begin(), preservedManifests.end(),
+                       std::back_inserter(merged));
 
         removeManifest(strategy->decidePresentPreserved(merged));
+        cStats.timeConflictResolving += resolvingProfiler.stop();
       }
     } while (hadConflicts);
   }

@@ -75,6 +75,7 @@ add_library(CompositionFramework MODULE
         include/composition/Pass.hpp
         include/composition/ProtectionPass.hpp
         include/composition/options.hpp
+        include/composition/Stats.hpp
 
         include/composition/util/functions.hpp
         include/composition/util/strings.hpp
@@ -107,6 +108,7 @@ add_library(CompositionFramework MODULE
         src/composition/util/functions.cpp
         src/composition/util/strings.cpp
 
+        src/composition/profiler.hpp
         src/composition/AnalysisPass.cpp
         src/composition/GraphPass.cpp
         src/composition/ProtectionPass.cpp
@@ -114,7 +116,8 @@ add_library(CompositionFramework MODULE
         src/composition/options.cpp
         src/composition/Manifest.cpp
         src/composition/Pass.cpp
-        src/composition/AnalysisRegistry.cpp)
+        src/composition/AnalysisRegistry.cpp
+        src/composition/CompositionStats.cpp)
 
 add_library(composition-framework::CompositionFramework ALIAS CompositionFramework)
 

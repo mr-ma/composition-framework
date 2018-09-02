@@ -2,8 +2,10 @@
 #define COMPOSITION_FRAMEWORK_OPTIONS_HPP
 
 #include <llvm/Support/CommandLine.h>
+#include <composition/Stats.hpp>
 
 namespace composition {
+extern CompositionStats cStats;
 extern llvm::cl::opt<bool> DumpGraphs;
 extern llvm::cl::opt<bool> AddCFG;
 extern llvm::cl::opt<std::string> WeightConfig;

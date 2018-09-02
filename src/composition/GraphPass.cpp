@@ -11,6 +11,7 @@
 #include <composition/metric/Weights.hpp>
 #include <composition/strategy/Avoidance.hpp>
 #include <composition/strategy/Weight.hpp>
+#include <composition/profiler.hpp>
 
 using namespace llvm;
 
@@ -28,7 +29,6 @@ void GraphPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
 
 bool GraphPass::runOnModule(llvm::Module &M) {
   dbgs() << "GraphPass running\n";
-
   Weights w;
   if (!WeightConfig.empty()) {
     std::ifstream ifs(WeightConfig.getValue());
@@ -68,7 +68,6 @@ bool GraphPass::runOnModule(llvm::Module &M) {
 
   if(strategies.find(UseStrategy.getValue()) == strategies.end()) {
     report_fatal_error("The given composition-framework strategy does not exist.", false);
-    return false;
   }
 
   auto &pass = getAnalysis<AnalysisPass>();

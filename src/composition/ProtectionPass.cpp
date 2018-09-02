@@ -1,9 +1,9 @@
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/Support/raw_os_ostream.h>
 #include <composition/GraphPass.hpp>
 #include <composition/ProtectionPass.hpp>
 #include <composition/trace/PreservedValueRegistry.hpp>
-#include <composition/metric/Stats.hpp>
 
 using namespace llvm;
 namespace composition {
@@ -24,15 +24,26 @@ bool ProtectionPass::runOnModule(llvm::Module &M) {
   auto manifests = pass.SortedManifests();
 
   dbgs() << "Got " << manifests.size() << " manifests\n";
+  cStats.actualManifests = manifests.size();
 
   for (auto &m : manifests) {
     m->Redo();
   }
   //TODO create postpatching manifest order/export to json
+  cStats.stats.collect(&M, manifests);
+  cStats.dump(dbgs());
 
-  Stats s{};
-  s.collect(&M, manifests);
-  s.dump(dbgs());
+  if(!DumpStats.empty()) {
+    auto fdStream = std::ofstream(DumpStats.getValue(), std::ofstream::out);
+    if(fdStream.good()) {
+      dbgs() << "Dumping stats to file: " << DumpStats.getValue() << "\n";
+      auto stream = raw_os_ostream(fdStream);
+      cStats.dump(stream);
+    } else {
+      dbgs() << "Could not dump stats\n";
+    }
+    fdStream.close();
+  }
 
   PreservedValueRegistry::Clear();
   return !manifests.empty();
