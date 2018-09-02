@@ -99,6 +99,7 @@ add_library(CompositionFramework MODULE
 
         src/composition/strategy/Avoidance.cpp
         src/composition/strategy/Random.cpp
+        src/composition/strategy/Weight.cpp
 
         src/composition/trace/TraceableValue.cpp
         src/composition/trace/PreservedValueRegistry.cpp

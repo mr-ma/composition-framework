@@ -1,6 +1,6 @@
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
-//#include <llvm/Analysis/LazyBlockFrequencyInfo.h>
+#include <llvm/Analysis/LazyBlockFrequencyInfo.h>
 #include <llvm/PassAnalysisSupport.h>
 #include <composition/options.hpp>
 #include <composition/GraphPass.hpp>
@@ -10,6 +10,7 @@
 #include <composition/graph/util/graphml.hpp>
 #include <composition/metric/Weights.hpp>
 #include <composition/strategy/Avoidance.hpp>
+#include <composition/strategy/Weight.hpp>
 
 using namespace llvm;
 
@@ -21,7 +22,7 @@ char GraphPass::ID = 0;
 
 void GraphPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
   AU.addRequiredTransitive<AnalysisPass>();
-  //AU.addRequired<LazyBlockFrequencyInfoPass>();
+  AU.addRequired<LazyBlockFrequencyInfoPass>();
   AU.setPreservesAll();
 }
 
@@ -33,26 +34,25 @@ bool GraphPass::runOnModule(llvm::Module &M) {
     std::ifstream ifs(WeightConfig.getValue());
     w = Weights(ifs);
   }
-  /*for(auto &F : M) {
-    if(F.isDeclaration()) {
+
+  std::unordered_map<llvm::Function *, llvm::BlockFrequencyInfo *> BFI{};
+  for (auto &F : M) {
+    if (F.isDeclaration()) {
       continue;
     }
     dbgs() << F.getName() << "\n";
     auto &bfiPass = getAnalysis<LazyBlockFrequencyInfoPass>(F);
     auto &lazy = bfiPass.getBFI();
     lazy.print(dbgs());
-  }*/
-
-  auto &pass = getAnalysis<AnalysisPass>();
-  Graph = std::move(pass.getGraph());
-  dbgs() << "GraphPass strong_components\n";
+    BFI.insert({&F, &lazy});
+  }
 
   std::random_device r{};
   auto rng = std::default_random_engine{r()};
-  auto strategy = Random{rng};
 
-  /*
-  auto strategy = Avoidance{
+  std::unordered_map<std::string, std::unique_ptr<Strategy>> strategies;
+  strategies.emplace("random", std::make_unique<Random>(rng));
+  strategies.emplace("avoidance", std::make_unique<Avoidance>(Avoidance(
       {
           {"cm", -1},
           {"sc", 0},
@@ -60,10 +60,21 @@ bool GraphPass::runOnModule(llvm::Module &M) {
           {"oh", 1},
           {"sroh", 2},
       }
-  };
-  */
+  )));
+  strategies.emplace("weight", std::make_unique<Weight>(
+      w,
+      BFI
+  ));
 
-  Graph->conflictHandling(Graph->getGraph(), strategy);
+  if(strategies.find(UseStrategy.getValue()) == strategies.end()) {
+    report_fatal_error("The given composition-framework strategy does not exist.", false);
+    return false;
+  }
+
+  auto &pass = getAnalysis<AnalysisPass>();
+  Graph = std::move(pass.getGraph());
+  dbgs() << "GraphPass strong_components\n";
+  Graph->conflictHandling(Graph->getGraph(), strategies.at("random"));
 
   if (DumpGraphs) {
     dbgs() << "Writing graphs\n";

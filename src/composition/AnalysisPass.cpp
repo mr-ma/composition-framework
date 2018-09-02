@@ -10,6 +10,9 @@
 
 using namespace llvm;
 namespace composition {
+
+static RegisterPass<AnalysisPass> X("constraint-analysis", "Constraint Analysis Pass", true, true);
+
 char AnalysisPass::ID = 0;
 
 bool AnalysisPass::doInitialization(Module &M) {
@@ -133,6 +136,4 @@ bool AnalysisPass::runOnModule(llvm::Module &M) {
 std::unique_ptr<ProtectionGraph> AnalysisPass::getGraph() {
   return std::move(Graph);
 }
-
-static RegisterPass<AnalysisPass> X("constraint-analysis", "Constraint Analysis Pass", true, true);
 }

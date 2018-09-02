@@ -8,6 +8,10 @@
 using namespace llvm;
 namespace composition {
 
+static llvm::RegisterPass<ProtectionPass> X("constraint-protection", "Constraint Protection Pass", true, false);
+
+char ProtectionPass::ID = 0;
+
 void ProtectionPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
   AU.setPreservesAll();
   AU.addRequiredTransitive<GraphPass>();
@@ -33,7 +37,4 @@ bool ProtectionPass::runOnModule(llvm::Module &M) {
   PreservedValueRegistry::Clear();
   return !manifests.empty();
 }
-
-char ProtectionPass::ID = 0;
-static llvm::RegisterPass<ProtectionPass> X("constraint-protection", "Constraint Protection Pass", true, false);
 }

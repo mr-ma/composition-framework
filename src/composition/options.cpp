@@ -7,4 +7,8 @@ cl::opt<bool> DumpGraphs("cf-dump-graphs", cl::Hidden, cl::desc("Graph files are
 cl::opt<bool> AddCFG("cf-add-cfg", cl::Hidden, cl::desc("Adds CFG edges to graphs"));
 cl::opt<std::string> WeightConfig
     ("cf-weights", cl::Hidden, cl::desc("Weights to influence the metrics used to decide if a conflict is resolved."));
+cl::opt<std::string> DumpStats
+    ("cf-stats", cl::Hidden, cl::desc("Dumps stats about the composition-framework to the given file."));
+cl::opt<std::string> UseStrategy
+    ("cf-strategy", cl::init("random"), cl::desc("Strategy to use to resolve conflicts."));
 }

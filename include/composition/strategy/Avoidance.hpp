@@ -7,7 +7,7 @@
 namespace composition {
 class Avoidance : public Strategy {
 public:
-  Avoidance(const std::unordered_map<std::string, int> &order);
+  explicit Avoidance(const std::unordered_map<std::string, int> &order);
   std::shared_ptr<Manifest> decideCycle(std::vector<std::shared_ptr<Manifest>> manifests) override;
   std::shared_ptr<Manifest> decidePresentPreserved(std::vector<std::shared_ptr<Manifest>> manifests) override;
 private:

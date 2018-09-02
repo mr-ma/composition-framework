@@ -109,7 +109,7 @@ public:
   void reduceToFunctions();
 
   template<typename T>
-  void conflictHandling(T &g, Strategy& strategy) {
+  void conflictHandling(T &g, const std::unique_ptr<Strategy> &strategy) {
     llvm::dbgs() << "Step 1: Removing cycles...\n";
     auto rg = filter_removed_graph(g);
     auto fg = filter_dependency_graph(rg);
@@ -151,19 +151,18 @@ public:
             preservedManifests.begin(), preservedManifests.end(),
             std::back_inserter(merged));
 
-        removeManifest(strategy.decidePresentPreserved(merged));
+        removeManifest(strategy->decidePresentPreserved(merged));
       }
     } while (hadConflicts);
   }
 
   template<typename graph_t>
-  void handleCycle(graph_t &g, Strategy& strategy) {
+  void handleCycle(graph_t &g, const std::unique_ptr<Strategy> &strategy) {
     auto[presentManifests, preservedManifests] = detectPresentPreservedConflicts(g);
 
     llvm::dbgs() << "Handling cycle in component\n";
     for (auto[vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
-      vd_t vd = *vi;
-      auto v = g[vd];
+      auto v = g[*vi];
 
       llvm::dbgs() << v.name << "\n";
       llvm::dbgs() << std::to_string(v.index) << "\n";
@@ -184,7 +183,7 @@ public:
                    cyclicManifests.begin(), cyclicManifests.end(),
                    std::back_inserter(merged));
 
-    removeManifest(strategy.decideCycle(merged));
+    removeManifest(strategy->decideCycle(merged));
   }
 
   template<typename graph_t>
