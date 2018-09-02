@@ -1,17 +1,14 @@
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Analysis/LazyBlockFrequencyInfo.h>
-#include <llvm/PassAnalysisSupport.h>
 #include <composition/options.hpp>
 #include <composition/GraphPass.hpp>
 #include <composition/AnalysisPass.hpp>
-#include <composition/AnalysisRegistry.hpp>
 #include <composition/graph/util/dot.hpp>
 #include <composition/graph/util/graphml.hpp>
 #include <composition/metric/Weights.hpp>
 #include <composition/strategy/Avoidance.hpp>
 #include <composition/strategy/Weight.hpp>
-#include <composition/profiler.hpp>
 
 using namespace llvm;
 
