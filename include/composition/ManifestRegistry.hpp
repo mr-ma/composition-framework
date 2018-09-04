@@ -21,7 +21,7 @@ public:
 protected:
   static ManifestIndex index;
 
-  static std::set<std::shared_ptr<Manifest>> &RegisteredManifests();;
+  static std::set<std::shared_ptr<Manifest>> &RegisteredManifests();
 };
 }
 

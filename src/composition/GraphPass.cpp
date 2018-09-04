@@ -68,7 +68,7 @@ bool GraphPass::runOnModule(llvm::Module &M) {
   }
 
   auto &pass = getAnalysis<AnalysisPass>();
-  Graph = std::move(pass.getGraph());
+  Graph = pass.getGraph();
   dbgs() << "GraphPass strong_components\n";
   Graph->conflictHandling(Graph->getGraph(), strategies.at("random"));
 
