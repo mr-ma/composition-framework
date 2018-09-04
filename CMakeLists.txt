@@ -23,11 +23,6 @@ set(Boost_USE_STATIC_RUNTIME OFF)
 ##
 
 add_library(CompositionFramework MODULE
-        include/composition/filter/FunctionFilter.hpp
-        include/composition/filter/FunctionInfo.hpp
-        include/composition/filter/ValueInfo.hpp
-        include/composition/filter/FilterInfo.hpp
-
         include/composition/graph/graph.hpp
         include/composition/graph/ProtectionGraph.hpp
         include/composition/graph/constraint.hpp
@@ -80,8 +75,6 @@ add_library(CompositionFramework MODULE
         include/composition/util/functions.hpp
         include/composition/util/strings.hpp
         include/composition/util/enums.hpp
-
-        src/composition/filter/FunctionFilter.cpp
 
         src/composition/graph/vertex.cpp
         src/composition/graph/vertex_type.cpp
