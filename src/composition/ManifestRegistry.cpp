@@ -3,7 +3,7 @@ namespace composition {
 ManifestIndex ManifestRegistry::index = 0;
 
 void ManifestRegistry::Remove(std::shared_ptr<Manifest> m) {
-  auto manifests = RegisteredManifests();
+  auto& manifests = RegisteredManifests();
   auto it = manifests.find(m);
   if (it != manifests.end()) {
     m->Undo();

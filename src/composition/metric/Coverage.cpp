@@ -46,7 +46,10 @@ std::set<llvm::Instruction *> Coverage::ValueToInstructions(llvm::Module *v) {
 std::set<llvm::BasicBlock *> Coverage::InstructionsToBasicBlocks(std::set<llvm::Instruction *> instructions) {
   std::set<llvm::BasicBlock *> basicBlocks = {};
 
-  for (auto &I : instructions) {
+  for (auto *I : instructions) {
+    if (I->getParent() == nullptr) {
+      continue;
+    }
     basicBlocks.insert(I->getParent());
   }
   return basicBlocks;
@@ -55,7 +58,10 @@ std::set<llvm::BasicBlock *> Coverage::InstructionsToBasicBlocks(std::set<llvm::
 std::set<llvm::Function *> Coverage::BasicBlocksToFunctions(std::set<llvm::BasicBlock *> basicBlocks) {
   std::set<llvm::Function *> functions = {};
 
-  for (auto &B : basicBlocks) {
+  for (auto *B : basicBlocks) {
+    if (B->getParent() == nullptr) {
+      continue;
+    }
     functions.insert(B->getParent());
   }
   return functions;

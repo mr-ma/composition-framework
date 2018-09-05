@@ -26,6 +26,13 @@ void GraphPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
 
 bool GraphPass::runOnModule(llvm::Module &M) {
   dbgs() << "GraphPass running\n";
+
+  dbgs() << "Dependencies start\n";
+  auto result = computeManifestDependencies(ManifestRegistry::GetAll());
+  //print_map(result.left);
+
+  dbgs() << "Dependencies end\n";
+
   Weights w;
   if (!WeightConfig.empty()) {
     std::ifstream ifs(WeightConfig.getValue());
@@ -63,7 +70,7 @@ bool GraphPass::runOnModule(llvm::Module &M) {
       BFI
   ));
 
-  if(strategies.find(UseStrategy.getValue()) == strategies.end()) {
+  if (strategies.find(UseStrategy.getValue()) == strategies.end()) {
     report_fatal_error("The given composition-framework strategy does not exist.", false);
   }
 
@@ -105,5 +112,70 @@ bool GraphPass::doFinalization(Module &module) {
   Graph->destroy();
   ManifestRegistry::destroy();
   return Pass::doFinalization(module);
+}
+
+GraphPass::ManifestDependencyMap GraphPass::computeManifestDependencies(std::set<std::shared_ptr<Manifest>> manifests) {
+  ManifestCoverageMap coverage{};
+  for (auto &m : manifests) {
+    for (auto &c : m->Coverage()) {
+      auto worked = coverage.insert({m, c});
+      assert(worked.second && "coverage");
+    }
+  }
+  dbgs() << "Coverage\n";
+  //print_map(coverage.left);
+
+  ManifestUndoMap undo{};
+  for (auto &m : manifests) {
+    for (auto &u : m->undoValues) {
+      auto worked = undo.insert({m, u});
+      assert(worked.second && "undo");
+    }
+  }
+  dbgs() << "Undo\n";
+  //print_map(undo.left);
+
+
+  ProtecteeManifestMap protection{};
+  for (auto &m : manifests) {
+    for (auto &p : m->GuardInstructions()) {
+      auto worked = protection.insert({p, m});
+      assert(worked.second && "protection");
+    }
+  }
+  dbgs() << "Protection \n";
+  //print_map(protection.left);
+
+  ManifestDependencyMap dependency{};
+  ManifestDependencyMap dependencyUndo{};
+
+  dbgs() << "Dependency\n";
+  for (auto &[p, m1] : protection.left) {
+    for (auto[it, it_end] = coverage.right.equal_range(p); it != it_end; ++it) {
+      if (m1 != it->second) {
+        dbgs() << it->second->index << " - " << m1->index << "\n";
+        auto worked = dependency.insert({it->second, m1});
+        assert(worked.second && "dependency");
+      }
+    }
+  }
+  dbgs() << "Dependency Undo\n";
+  for (auto &[m1, u1] : undo.left) {
+    for(auto u : u1->users()) {
+      for (auto[it, it_end] = undo.right.equal_range(u); it != it_end; ++it) {
+        if (m1 != it->second) {
+          dbgs() << it->second->index << " - " << m1->index << "\n";
+          auto worked = dependencyUndo.insert({it->second, m1});
+          assert(worked.second && "dependency");
+        }
+      }
+    }
+  }
+
+
+  dbgs() << "Dependency\n";
+  //print_map(dependency.left);
+
+  return dependency;
 }
 }

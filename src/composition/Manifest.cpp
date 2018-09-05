@@ -2,6 +2,7 @@
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/GlobalVariable.h>
+#include <llvm/IR/Constants.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
 #include <composition/Manifest.hpp>
@@ -18,6 +19,9 @@ void Manifest::Undo() const {
   dump();
   dbgs() << "Undoing " << undoValues.size() << " values\n";
   for (auto V : undoValues) {
+    if(!V->use_empty()) {
+      V->replaceAllUsesWith(UndefValue::get(V->getType()));
+    }
     if (auto *F = llvm::dyn_cast<llvm::Function>(V)) {
       for (auto &B : *F) {
         for (auto &I : B) {
