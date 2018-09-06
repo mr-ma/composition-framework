@@ -4,6 +4,7 @@
 #include <unordered_set>
 #include <cstdint>
 #include <llvm/IR/Value.h>
+#include <llvm/IR/ValueMap.h>
 #include <composition/graph/constraint.hpp>
 #include <composition/metric/Coverage.hpp>
 
@@ -22,6 +23,7 @@ public:
   PatchFunction patchFunction;
   std::vector<std::shared_ptr<Constraint>> constraints;
   bool postPatching;
+  llvm::ValueMap<llvm::Value*, bool> undoValuesMap{};
   std::set<llvm::Value *> undoValues;
   std::set<llvm::Instruction *> guardInstructions;
 

@@ -1,5 +1,6 @@
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/Support/Error.h>
 #include <llvm/Analysis/LazyBlockFrequencyInfo.h>
 #include <composition/options.hpp>
 #include <composition/GraphPass.hpp>
@@ -28,6 +29,8 @@ bool GraphPass::runOnModule(llvm::Module &M) {
   dbgs() << "GraphPass running\n";
 
   dbgs() << "Dependencies start\n";
+  cantFail(M.materializeAll(), "Materialize failed\n");
+
   auto result = computeManifestDependencies(ManifestRegistry::GetAll());
   //print_map(result.left);
 
@@ -127,8 +130,8 @@ GraphPass::ManifestDependencyMap GraphPass::computeManifestDependencies(std::set
 
   ManifestUndoMap undo{};
   for (auto &m : manifests) {
-    for (auto &u : m->undoValues) {
-      auto worked = undo.insert({m, u});
+    for (auto it : m->undoValuesMap) {
+      auto worked = undo.insert({m, it->first});
       assert(worked.second && "undo");
     }
   }
@@ -147,7 +150,6 @@ GraphPass::ManifestDependencyMap GraphPass::computeManifestDependencies(std::set
   //print_map(protection.left);
 
   ManifestDependencyMap dependency{};
-  ManifestDependencyMap dependencyUndo{};
 
   dbgs() << "Dependency\n";
   for (auto &[p, m1] : protection.left) {
@@ -159,19 +161,29 @@ GraphPass::ManifestDependencyMap GraphPass::computeManifestDependencies(std::set
       }
     }
   }
+
   dbgs() << "Dependency Undo\n";
-  for (auto &[m1, u1] : undo.left) {
-    for(auto u : u1->users()) {
+  std::unordered_map<std::shared_ptr<Manifest>, std::unordered_set<llvm::Value *>> manifestUsers{};
+
+  for (auto&[m, u] : undo.left) {
+    for (auto it = u->user_begin(), it_end = u->user_end(); it != it_end; ++it) {
+      if (isa<GlobalVariable>(*it))
+        continue;
+      manifestUsers[m].insert(*it);
+    }
+  }
+
+  std::unordered_map<std::shared_ptr<Manifest>, std::unordered_set<std::shared_ptr<Manifest>>> dependencyUndo{};
+  for (auto &[m, users] : manifestUsers) {
+    for (auto u : users) {
       for (auto[it, it_end] = undo.right.equal_range(u); it != it_end; ++it) {
-        if (m1 != it->second) {
-          dbgs() << it->second->index << " - " << m1->index << "\n";
-          auto worked = dependencyUndo.insert({it->second, m1});
-          assert(worked.second && "dependency");
+        if (m != it->second) {
+          dbgs() << it->second->index << " - " << m->index << "\n";
+          dependencyUndo[it->second].insert(m);
         }
       }
     }
   }
-
 
   dbgs() << "Dependency\n";
   //print_map(dependency.left);

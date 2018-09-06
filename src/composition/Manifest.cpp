@@ -72,13 +72,17 @@ Manifest::Manifest(std::string name,
     : name(std::move(name)), protectee(protectee), patchFunction(std::move(patchFunction)),
       constraints(std::move(constraints)), postPatching(postPatching), undoValues(std::move(undoValues)),
       guardInstructions(std::move(guardInstructions)) {
+
+  for(auto u : undoValues) {
+    undoValuesMap.insert({u, false});
+  }
 }
 
 std::string valueToName(llvm::Value *v) {
   if (isa<Function>(v)) {
     return v->getName();
   }
-  return std::to_string(v->getValueID());
+  return std::to_string(reinterpret_cast<uintptr_t>(v));
 }
 
 void Manifest::dump() const {

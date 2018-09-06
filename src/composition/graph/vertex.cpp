@@ -72,13 +72,8 @@ vertex_type llvmToVertexType(const llvm::Value *v) {
 
 std::string llvmToVertexName(const llvm::Value *v) {
   std::string name;
-  llvm::raw_string_ostream rso(name);
-  if (auto *I = llvm::dyn_cast<llvm::Instruction>(v)) {
-    I->print(rso);
-/*} else if (auto *B = dyn_cast<BasicBlock>(input)) {
-  B->print(rso);
-} else if(auto *F = dyn_cast<Function>(input)) {
-  F->print(rso);*/
+  if (llvm::isa<llvm::Instruction>(v)) {
+    name = std::to_string(reinterpret_cast<uintptr_t>(v));
   } else {
     name = v->getName();
   }
