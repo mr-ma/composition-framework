@@ -26,6 +26,10 @@ bool Dependency::classof(const Constraint *S) {
   return S->getKind() == ConstraintKind::CK_DEPENDENCY;
 }
 
+bool Dependency::isValid() {
+  return from.pointsToAliveValue() && to.pointsToAliveValue();
+}
+
 Present::Present(std::string info, llvm::Value *target, bool inverse)
     : Constraint(ConstraintKind::CK_PRESENT, ConstraintType::VERTEX, std::move(info)), target(target),
       inverse(inverse) {}
@@ -42,6 +46,10 @@ bool Present::classof(const Constraint *S) {
   return S->getKind() == ConstraintKind::CK_PRESENT;
 }
 
+bool Present::isValid() {
+  return target.pointsToAliveValue();
+}
+
 Preserved::Preserved(std::string info, llvm::Value *target, bool inverse)
     : Constraint(ConstraintKind::CK_PRESERVED, ConstraintType::VERTEX, std::move(info)), target(target),
       inverse(inverse) {}
@@ -56,6 +64,10 @@ bool Preserved::isInverse() const {
 
 bool Preserved::classof(const Constraint *S) {
   return S->getKind() == ConstraintKind::CK_PRESERVED;
+}
+
+bool Preserved::isValid() {
+  return target.pointsToAliveValue();
 }
 
 }

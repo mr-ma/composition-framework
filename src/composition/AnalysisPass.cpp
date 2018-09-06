@@ -65,8 +65,12 @@ bool AnalysisPass::runOnModule(llvm::Module &M) {
   for (auto &m : manifests) {
     m->Clean();
     dbgs() << "#" << std::to_string(i++) << "/" << std::to_string(total) << "\r";
-    for (const auto &c : m->constraints) {
-      Graph->addConstraint(m, c);
+    for (auto it = m->constraints.begin(), it_end = m->constraints.end(); it != it_end; ++it) {
+      if(!(*it)->isValid()) {
+        it = m->constraints.erase(it);
+        continue;
+      }
+      Graph->addConstraint(m, (*it));
     }
     m->dump();
   }

@@ -3,6 +3,7 @@
 #include <llvm/IR/Value.h>
 #include <llvm/Support/Casting.h>
 #include <composition/util/enums.hpp>
+#include <llvm/IR/ValueHandle.h>
 
 namespace composition {
 
@@ -47,12 +48,14 @@ public:
   ConstraintType getType() const;
 
   std::string getInfo() const;
+
+  virtual bool isValid() = 0;
 };
 
 class Dependency : public Constraint {
 private:
-  llvm::Value *from;
-  llvm::Value *to;
+  llvm::WeakTrackingVH from;
+  llvm::WeakTrackingVH to;
   bool weak;
 public:
   Dependency(std::string info, llvm::Value *from, llvm::Value *to, bool weak = false);
@@ -62,11 +65,13 @@ public:
   llvm::Value *getTo() const;
 
   static bool classof(const Constraint *S);
+
+  bool isValid() override;
 };
 
 class Present : public Constraint {
 private:
-  llvm::Value *target;
+  llvm::WeakTrackingVH target;
   bool inverse;
 public:
   Present(std::string info, llvm::Value *target, bool inverse = false);
@@ -76,11 +81,13 @@ public:
   bool isInverse() const;
 
   static bool classof(const Constraint *S);
+
+  bool isValid() override;
 };
 
 class Preserved : public Constraint {
 private:
-  llvm::Value *target;
+  llvm::WeakTrackingVH target;
   bool inverse;
 public:
   Preserved(std::string info, llvm::Value *target, bool inverse = false);
@@ -90,6 +97,8 @@ public:
   bool isInverse() const;
 
   static bool classof(const Constraint *S);
+
+  bool isValid() override;
 };
 
 }

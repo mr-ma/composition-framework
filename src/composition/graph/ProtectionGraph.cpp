@@ -342,7 +342,7 @@ void ProtectionGraph::computeManifestDependencies() {
     for (auto u : users) {
       for (auto[it, it_end] = undo.right.equal_range(u); it != it_end; ++it) {
         if (m != it->second) {
-          dbgs() << it->second->index << " - " << m->index << "\n";
+          //dbgs() << it->second->index << " - " << m->index << "\n";
           DependencyUndo.insert({it->second, m});
         }
       }
