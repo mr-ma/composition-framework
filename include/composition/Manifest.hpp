@@ -41,6 +41,8 @@ public:
 
   Manifest(Manifest &&) = default;
 
+  virtual ~Manifest() = default;
+
   Manifest &operator=(Manifest const &) = delete;
 
   Manifest &operator=(Manifest &&) = default;
@@ -53,7 +55,7 @@ public:
 
   virtual std::unordered_set<llvm::Instruction *> GuardInstructions() const;
 
-  virtual std::unordered_set<llvm::Value*> UndoValues() const;
+  virtual std::unordered_set<llvm::Value *> UndoValues() const;
 
   virtual void Redo() const;
 

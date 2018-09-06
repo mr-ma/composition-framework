@@ -34,7 +34,8 @@ public:
 
   void collect(llvm::Value *V, std::vector<std::shared_ptr<Manifest>> manifests);
 
-  void collect(std::unordered_set<llvm::Instruction *> allInstructions, std::vector<std::shared_ptr<Manifest>> manifests);
+  void collect(std::unordered_set<llvm::Instruction *> allInstructions,
+               std::vector<std::shared_ptr<Manifest>> manifests);
 private:
   std::set<llvm::Instruction *> protectedInstructionsDistinct{};
   std::map<std::string, std::set<llvm::Instruction *>> protectedInstructions{};

@@ -24,7 +24,7 @@ void Manifest::Undo() const {
       continue;
     }
 
-    if(!V->use_empty()) {
+    if (!V->use_empty()) {
       V->replaceAllUsesWith(UndefValue::get(V->getType()));
     }
     if (auto *F = llvm::dyn_cast<llvm::Function>(V)) {
@@ -52,7 +52,7 @@ void Manifest::Redo() const {
 }
 
 std::unordered_set<llvm::Instruction *> Manifest::Coverage() const {
-  if(protectee.pointsToAliveValue()) {
+  if (protectee.pointsToAliveValue()) {
     return Coverage::ValueToInstructions(protectee);
   }
   return {};
@@ -60,17 +60,17 @@ std::unordered_set<llvm::Instruction *> Manifest::Coverage() const {
 
 std::unordered_set<llvm::Instruction *> Manifest::GuardInstructions() const {
   std::unordered_set<llvm::Instruction *> guards{};
-  for(const auto &g : guardInstructions) {
-      if (auto *I = dyn_cast<llvm::Instruction>(g)) {
-        guards.insert(I);
-      }
+  for (const auto &g : guardInstructions) {
+    if (auto *I = dyn_cast<llvm::Instruction>(g)) {
+      guards.insert(I);
+    }
   }
   return guards;
 }
 
-std::unordered_set<llvm::Value*> Manifest::UndoValues() const {
+std::unordered_set<llvm::Value *> Manifest::UndoValues() const {
   std::unordered_set<llvm::Value *> undos{};
-  for(const auto &g : undoValues) {
+  for (const auto &g : undoValues) {
     if (auto *I = dyn_cast<llvm::Instruction>(g)) {
       undos.insert(I);
     }
@@ -97,10 +97,10 @@ Manifest::Manifest(std::string name,
       constraints(std::move(constraints)), postPatching(postPatching) {
 
   this->protectee = WeakTrackingVH(protectee);
-  for(auto u : undoValues) {
+  for (auto u : undoValues) {
     this->undoValues.emplace_back(u);
   }
-  for(auto g : guardInstructions) {
+  for (auto g : guardInstructions) {
     this->guardInstructions.emplace_back(g);
   }
 }
@@ -135,16 +135,15 @@ void Manifest::dump() const {
 }
 
 void Manifest::Clean() {
-  for(auto it = undoValues.begin(), it_end = undoValues.end(); it != it_end; ++it) {
-    if(!it->pointsToAliveValue()) {
+  for (auto it = undoValues.begin(), it_end = undoValues.end(); it != it_end; ++it) {
+    if (!it->pointsToAliveValue()) {
       it = undoValues.erase(it);
     }
   }
-  for(auto it = guardInstructions.begin(), it_end = guardInstructions.end(); it != it_end; ++it) {
-    if(!it->pointsToAliveValue()) {
+  for (auto it = guardInstructions.begin(), it_end = guardInstructions.end(); it != it_end; ++it) {
+    if (!it->pointsToAliveValue()) {
       it = guardInstructions.erase(it);
     }
   }
 }
-
 }
