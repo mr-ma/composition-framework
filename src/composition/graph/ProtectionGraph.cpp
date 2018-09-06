@@ -66,6 +66,11 @@ void ProtectionGraph::removeManifest(std::shared_ptr<Manifest> m) {
     }
   }
   Protections.left.erase(m);
+
+  for(auto [it, it_end] = DependencyUndo.right.equal_range(m); it != it_end; ++it) {
+    removeManifest(it->second);
+  }
+  DependencyUndo.right.erase(m);
   ManifestRegistry::Remove(m);
 }
 
@@ -281,6 +286,68 @@ void ProtectionGraph::destroy() {
   ProtectionIdx = 0;
   Protections.clear();
   vertexCache.clear();
+  DependencyUndo.clear();
+}
+
+void ProtectionGraph::computeManifestDependencies() {
+  /*ManifestCoverageMap coverage{};
+  for (auto &m : manifests) {
+    for (auto &c : m->Coverage()) {
+      auto worked = coverage.insert({m, c});
+      assert(worked.second && "coverage");
+    }
+  }
+  dbgs() << "Coverage\n";
+  //print_map(coverage.left);*/
+
+  /*ProtecteeManifestMap protection{};
+  for (auto &m : manifests) {
+    for (auto &p : m->GuardInstructions()) {
+      auto worked = protection.insert({p, m});
+      assert(worked.second && "protection");
+    }
+  }
+  dbgs() << "Protection \n";
+  //print_map(protection.left);
+
+  ManifestDependencyMap dependency{};
+
+  dbgs() << "Dependency\n";
+  for (auto &[p, m1] : protection.left) {
+    for (auto[it, it_end] = coverage.right.equal_range(p); it != it_end; ++it) {
+      if (m1 != it->second) {
+        dbgs() << it->second->index << " - " << m1->index << "\n";
+        auto worked = dependency.insert({it->second, m1});
+        assert(worked.second && "dependency");
+      }
+    }
+  }*/
+
+  ManifestUndoMap undo{};
+  for (auto &[m,i] : Protections.left) {
+    for (auto it : m->UndoValues()) {
+      auto worked = undo.insert({m, it});
+      assert(worked.second && "undo");
+    }
+  }
+  std::unordered_map<std::shared_ptr<Manifest>, std::unordered_set<llvm::Value *>> manifestUsers{};
+
+  for (auto&[m, u] : undo.left) {
+    for (auto it = u->user_begin(), it_end = u->user_end(); it != it_end; ++it) {
+      manifestUsers[m].insert(*it);
+    }
+  }
+
+  for (auto &[m, users] : manifestUsers) {
+    for (auto u : users) {
+      for (auto[it, it_end] = undo.right.equal_range(u); it != it_end; ++it) {
+        if (m != it->second) {
+          dbgs() << it->second->index << " - " << m->index << "\n";
+          DependencyUndo.insert({it->second, m});
+        }
+      }
+    }
+  }
 }
 
 }

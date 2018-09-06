@@ -28,13 +28,7 @@ void GraphPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
 bool GraphPass::runOnModule(llvm::Module &M) {
   dbgs() << "GraphPass running\n";
 
-  dbgs() << "Dependencies start\n";
-  cantFail(M.materializeAll(), "Materialize failed\n");
-
-  auto result = computeManifestDependencies(ManifestRegistry::GetAll());
-  //print_map(result.left);
-
-  dbgs() << "Dependencies end\n";
+  //cantFail(M.materializeAll(), "Materialize failed\n");
 
   Weights w;
   if (!WeightConfig.empty()) {
@@ -64,8 +58,10 @@ bool GraphPass::runOnModule(llvm::Module &M) {
           {"cm", -1},
           {"sc", 0},
           {"cfi", 0},
-          {"oh", 1},
-          {"sroh", 2},
+          {"oh_hash_", 1},
+          {"oh_assert_", 2},
+          {"sroh_hash", 1},
+          {"sroh_assert", 2},
       }
   )));
   strategies.emplace("weight", std::make_unique<Weight>(
@@ -79,6 +75,8 @@ bool GraphPass::runOnModule(llvm::Module &M) {
 
   auto &pass = getAnalysis<AnalysisPass>();
   Graph = pass.getGraph();
+  dbgs() << "Calculating Manifest dependencies\n";
+  Graph->computeManifestDependencies();
   dbgs() << "GraphPass strong_components\n";
   Graph->conflictHandling(Graph->getGraph(), strategies.at("random"));
 
@@ -95,7 +93,6 @@ bool GraphPass::runOnModule(llvm::Module &M) {
   //TODO Optimize, i.e., remove manifests to make the application run faster
   //TODO Block places to prevent from obfuscation
 
-  result.clear();
   return false;
 }
 
@@ -116,79 +113,5 @@ bool GraphPass::doFinalization(Module &module) {
   Graph->destroy();
   ManifestRegistry::destroy();
   return Pass::doFinalization(module);
-}
-
-GraphPass::ManifestDependencyMap GraphPass::computeManifestDependencies(std::set<std::shared_ptr<Manifest>> manifests) {
-  ManifestCoverageMap coverage{};
-  for (auto &m : manifests) {
-    for (auto &c : m->Coverage()) {
-      auto worked = coverage.insert({m, c});
-      assert(worked.second && "coverage");
-    }
-  }
-  dbgs() << "Coverage\n";
-  //print_map(coverage.left);
-
-  ManifestUndoMap undo{};
-  for (auto &m : manifests) {
-    for (auto it : m->UndoValues()) {
-      auto worked = undo.insert({m, it});
-      assert(worked.second && "undo");
-    }
-  }
-  dbgs() << "Undo\n";
-  //print_map(undo.left);
-
-
-  ProtecteeManifestMap protection{};
-  for (auto &m : manifests) {
-    for (auto &p : m->GuardInstructions()) {
-      auto worked = protection.insert({p, m});
-      assert(worked.second && "protection");
-    }
-  }
-  dbgs() << "Protection \n";
-  //print_map(protection.left);
-
-  ManifestDependencyMap dependency{};
-
-  dbgs() << "Dependency\n";
-  for (auto &[p, m1] : protection.left) {
-    for (auto[it, it_end] = coverage.right.equal_range(p); it != it_end; ++it) {
-      if (m1 != it->second) {
-        dbgs() << it->second->index << " - " << m1->index << "\n";
-        auto worked = dependency.insert({it->second, m1});
-        assert(worked.second && "dependency");
-      }
-    }
-  }
-
-  dbgs() << "Dependency Undo\n";
-  std::unordered_map<std::shared_ptr<Manifest>, std::unordered_set<llvm::Value *>> manifestUsers{};
-
-  for (auto&[m, u] : undo.left) {
-    for (auto it = u->user_begin(), it_end = u->user_end(); it != it_end; ++it) {
-      if (isa<GlobalVariable>(*it))
-        continue;
-      manifestUsers[m].insert(*it);
-    }
-  }
-
-  std::unordered_map<std::shared_ptr<Manifest>, std::unordered_set<std::shared_ptr<Manifest>>> dependencyUndo{};
-  for (auto &[m, users] : manifestUsers) {
-    for (auto u : users) {
-      for (auto[it, it_end] = undo.right.equal_range(u); it != it_end; ++it) {
-        if (m != it->second) {
-          dbgs() << it->second->index << " - " << m->index << "\n";
-          dependencyUndo[it->second].insert(m);
-        }
-      }
-    }
-  }
-
-  dbgs() << "Dependency\n";
-  //print_map(dependency.left);
-
-  return dependency;
 }
 }

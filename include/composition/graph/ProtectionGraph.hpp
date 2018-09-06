@@ -36,12 +36,19 @@ using VertexIndex = uintptr_t;
 using EdgeIndex = uintptr_t;
 using ProtectionMap = boost::bimaps::bimap<boost::bimaps::multiset_of<std::shared_ptr<Manifest>>, ProtectionIndex>;
 
+//using ManifestCoverageMap = boost::bimaps::bimap<boost::bimaps::multiset_of<std::shared_ptr<Manifest>>, boost::bimaps::multiset_of<llvm::Instruction*>>;
+//using ProtecteeManifestMap = boost::bimaps::bimap<boost::bimaps::multiset_of<llvm::Instruction*>, std::shared_ptr<Manifest>>;
+using ManifestUndoMap = boost::bimaps::bimap<boost::bimaps::multiset_of<std::shared_ptr<Manifest>>, boost::bimaps::multiset_of<llvm::Value*>>;
+using ManifestDependencyMap = boost::bimaps::bimap<boost::bimaps::multiset_of<std::shared_ptr<Manifest>>, boost::bimaps::multiset_of<std::shared_ptr<Manifest>>>;
+
+
 class ProtectionGraph {
 private:
   graph_t Graph{};
   ProtectionIndex ProtectionIdx{};
   ProtectionMap Protections{};
   std::unordered_map<VertexIndex, vd_t> vertexCache{};
+  ManifestDependencyMap DependencyUndo{};
 
 private:
 
@@ -109,6 +116,8 @@ public:
 
   void reduceToFunctions();
 
+  void computeManifestDependencies();
+
   template<typename T>
   void conflictHandling(T &g, const std::unique_ptr<Strategy> &strategy) {
     llvm::dbgs() << "Step 1: Removing cycles...\n";
@@ -173,8 +182,8 @@ public:
     for (auto[vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
       auto v = g[*vi];
 
-      llvm::dbgs() << v.name << "\n";
-      llvm::dbgs() << std::to_string(v.index) << "\n";
+      //llvm::dbgs() << v.name << "\n";
+      //llvm::dbgs() << std::to_string(v.index) << "\n";
     }
 
     std::vector<std::shared_ptr<Manifest>> cyclicManifests{};

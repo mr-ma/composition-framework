@@ -18,31 +18,43 @@ void Manifest::Undo() const {
   dbgs() << "Undoing manifest...\n";
   dump();
   dbgs() << "Undoing " << undoValues.size() << " values\n";
-  for (auto V : undoValues) {
+  for (const auto &V : undoValues) {
     if (llvm::isa<llvm::Constant>(V)) {
-      dbgs() << "Todo undo constants\n";
+      //Constants may not be deleted!
       continue;
     }
-
+    dbgs() << *V << "\n";
+    llvm::Value* v_copy = V;
     if (!V->use_empty()) {
       V->replaceAllUsesWith(UndefValue::get(V->getType()));
     }
-    if (auto *F = llvm::dyn_cast<llvm::Function>(V)) {
+
+    if (llvm::isa<llvm::UndefValue>(v_copy)) {
+      //UndefValues are constants and may not be deleted!
+      continue;
+    }
+
+    if (auto *F = llvm::dyn_cast<llvm::Function>(v_copy)) {
       for (auto &B : *F) {
         for (auto &I : B) {
+          I.replaceAllUsesWith(UndefValue::get(I.getType()));
           I.eraseFromParent();
         }
+        B.replaceAllUsesWith(UndefValue::get(B.getType()));
+        B.eraseFromParent();
       }
-    } else if (auto *B = llvm::dyn_cast<llvm::BasicBlock>(V)) {
+      F->eraseFromParent();
+    } else if (auto *B = llvm::dyn_cast<llvm::BasicBlock>(v_copy)) {
       for (auto &I : *B) {
         I.eraseFromParent();
       }
-    } else if (auto *I = llvm::dyn_cast<llvm::Instruction>(V)) {
+    } else if (auto *I = llvm::dyn_cast<llvm::Instruction>(v_copy)) {
       I->eraseFromParent();
-    } else if (auto *G = llvm::dyn_cast<llvm::GlobalVariable>(V)) {
+    } else if (auto *G = llvm::dyn_cast<llvm::GlobalVariable>(v_copy)) {
       G->eraseFromParent();
     } else {
       dbgs() << "Failed to undo\n";
+      dbgs() << v_copy->getValueID() << "\n";
     }
   }
 }

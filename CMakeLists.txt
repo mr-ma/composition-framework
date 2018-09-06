@@ -75,6 +75,7 @@ add_library(CompositionFramework MODULE
         include/composition/util/functions.hpp
         include/composition/util/strings.hpp
         include/composition/util/enums.hpp
+        include/composition/util/print_map.hpp
 
         src/composition/graph/vertex.cpp
         src/composition/graph/vertex_type.cpp
