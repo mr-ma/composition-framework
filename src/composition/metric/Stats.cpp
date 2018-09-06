@@ -53,7 +53,7 @@ void Stats::collect(llvm::Module *M, std::vector<std::shared_ptr<Manifest>> mani
   collect(Coverage::ValueToInstructions(M), std::move(manifests));
 }
 
-void Stats::collect(std::set<llvm::Instruction *> allInstructions, std::vector<std::shared_ptr<Manifest>> manifests) {
+void Stats::collect(std::unordered_set<llvm::Instruction *> allInstructions, std::vector<std::shared_ptr<Manifest>> manifests) {
   this->numberOfManifests = manifests.size();
   this->numberOfAllInstructions = allInstructions.size();
 

@@ -19,14 +19,14 @@ class Manifest {
 public:
   ManifestIndex index{};
   std::string name;
-  llvm::Value *protectee;
+  llvm::WeakTrackingVH protectee;
   PatchFunction patchFunction;
   std::vector<std::shared_ptr<Constraint>> constraints;
   bool postPatching;
-  llvm::ValueMap<llvm::Value*, bool> undoValuesMap{};
-  std::set<llvm::Value *> undoValues;
-  std::set<llvm::Instruction *> guardInstructions;
-
+private:
+  std::vector<llvm::WeakTrackingVH> undoValues{};
+  std::vector<llvm::WeakTrackingVH> guardInstructions{};
+public:
   Manifest(std::string name,
            llvm::Value *protectee,
            PatchFunction patchFunction,
@@ -49,15 +49,19 @@ public:
 
   bool operator<(const Manifest &other) const;
 
-  virtual std::set<llvm::Instruction *> Coverage() const;
+  virtual std::unordered_set<llvm::Instruction *> Coverage() const;
 
-  virtual std::set<llvm::Instruction *> GuardInstructions() const;
+  virtual std::unordered_set<llvm::Instruction *> GuardInstructions() const;
+
+  virtual std::unordered_set<llvm::Value*> UndoValues() const;
 
   virtual void Redo() const;
 
   virtual void Undo() const;
 
   virtual void dump() const;
+
+  void Clean();
 };
 
 }

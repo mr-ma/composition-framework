@@ -1,8 +1,8 @@
 #include <composition/metric/Coverage.hpp>
 namespace composition {
 
-std::set<llvm::Instruction *> Coverage::ValueToInstructions(llvm::Value *v) {
-  std::set<llvm::Instruction *> instructions = {};
+std::unordered_set<llvm::Instruction *> Coverage::ValueToInstructions(llvm::Value *v) {
+  std::unordered_set<llvm::Instruction *> instructions = {};
 
   if (auto *F = llvm::dyn_cast<llvm::Function>(v)) {
     auto r = ValueToInstructions(F);
@@ -16,8 +16,8 @@ std::set<llvm::Instruction *> Coverage::ValueToInstructions(llvm::Value *v) {
   return instructions;
 }
 
-std::set<llvm::Instruction *> Coverage::ValueToInstructions(llvm::BasicBlock *v) {
-  std::set<llvm::Instruction *> instructions = {};
+std::unordered_set<llvm::Instruction *> Coverage::ValueToInstructions(llvm::BasicBlock *v) {
+  std::unordered_set<llvm::Instruction *> instructions = {};
   for (auto &I : *v) {
     instructions.insert(&I);
   }
@@ -25,8 +25,8 @@ std::set<llvm::Instruction *> Coverage::ValueToInstructions(llvm::BasicBlock *v)
 
 }
 
-std::set<llvm::Instruction *> Coverage::ValueToInstructions(llvm::Function *v) {
-  std::set<llvm::Instruction *> instructions = {};
+std::unordered_set<llvm::Instruction *> Coverage::ValueToInstructions(llvm::Function *v) {
+  std::unordered_set<llvm::Instruction *> instructions = {};
   for (auto &B : *v) {
     auto r = ValueToInstructions(&B);
     instructions.insert(r.begin(), r.end());
@@ -34,8 +34,8 @@ std::set<llvm::Instruction *> Coverage::ValueToInstructions(llvm::Function *v) {
   return instructions;
 }
 
-std::set<llvm::Instruction *> Coverage::ValueToInstructions(llvm::Module *v) {
-  std::set<llvm::Instruction *> instructions = {};
+std::unordered_set<llvm::Instruction *> Coverage::ValueToInstructions(llvm::Module *v) {
+  std::unordered_set<llvm::Instruction *> instructions = {};
   for (auto &F : *v) {
     auto r = ValueToInstructions(&F);
     instructions.insert(r.begin(), r.end());
@@ -43,8 +43,8 @@ std::set<llvm::Instruction *> Coverage::ValueToInstructions(llvm::Module *v) {
   return instructions;
 }
 
-std::set<llvm::BasicBlock *> Coverage::InstructionsToBasicBlocks(std::set<llvm::Instruction *> instructions) {
-  std::set<llvm::BasicBlock *> basicBlocks = {};
+std::unordered_set<llvm::BasicBlock *> Coverage::InstructionsToBasicBlocks(std::unordered_set<llvm::Instruction *> instructions) {
+  std::unordered_set<llvm::BasicBlock *> basicBlocks = {};
 
   for (auto *I : instructions) {
     if (I->getParent() == nullptr) {
@@ -55,8 +55,8 @@ std::set<llvm::BasicBlock *> Coverage::InstructionsToBasicBlocks(std::set<llvm::
   return basicBlocks;
 }
 
-std::set<llvm::Function *> Coverage::BasicBlocksToFunctions(std::set<llvm::BasicBlock *> basicBlocks) {
-  std::set<llvm::Function *> functions = {};
+std::unordered_set<llvm::Function *> Coverage::BasicBlocksToFunctions(std::unordered_set<llvm::BasicBlock *> basicBlocks) {
+  std::unordered_set<llvm::Function *> functions = {};
 
   for (auto *B : basicBlocks) {
     if (B->getParent() == nullptr) {

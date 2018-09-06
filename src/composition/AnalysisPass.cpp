@@ -63,6 +63,7 @@ bool AnalysisPass::runOnModule(llvm::Module &M) {
   size_t i = 0;
   Profiler constructionProfiler{};
   for (auto &m : manifests) {
+    m->Clean();
     dbgs() << "#" << std::to_string(i++) << "/" << std::to_string(total) << "\r";
     for (const auto &c : m->constraints) {
       Graph->addConstraint(m, c);

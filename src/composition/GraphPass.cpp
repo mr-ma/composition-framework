@@ -95,6 +95,7 @@ bool GraphPass::runOnModule(llvm::Module &M) {
   //TODO Optimize, i.e., remove manifests to make the application run faster
   //TODO Block places to prevent from obfuscation
 
+  result.clear();
   return false;
 }
 
@@ -130,8 +131,8 @@ GraphPass::ManifestDependencyMap GraphPass::computeManifestDependencies(std::set
 
   ManifestUndoMap undo{};
   for (auto &m : manifests) {
-    for (auto it : m->undoValuesMap) {
-      auto worked = undo.insert({m, it->first});
+    for (auto it : m->UndoValues()) {
+      auto worked = undo.insert({m, it});
       assert(worked.second && "undo");
     }
   }
