@@ -1,6 +1,8 @@
 extern "C" {
 void guardMe(const unsigned int address, const unsigned int length, const unsigned int expectedHash) {} ;
 
+void response() {} ;
+
 void do_assert(long long *hash, long long expected) {} ;
 
 void assert(long long *hash, long long expected) {} ;
