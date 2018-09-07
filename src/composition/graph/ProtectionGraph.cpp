@@ -67,7 +67,7 @@ void ProtectionGraph::removeManifest(std::shared_ptr<Manifest> m) {
   }
   Protections.left.erase(m);
 
-  for(auto [it, it_end] = DependencyUndo.right.equal_range(m); it != it_end; ++it) {
+  for (auto[it, it_end] = DependencyUndo.right.equal_range(m); it != it_end; ++it) {
     removeManifest(it->second);
   }
   DependencyUndo.right.erase(m);
@@ -324,7 +324,7 @@ void ProtectionGraph::computeManifestDependencies() {
   }*/
 
   ManifestUndoMap undo{};
-  for (auto &[m,i] : Protections.left) {
+  for (auto &[m, i] : Protections.left) {
     for (auto it : m->UndoValues()) {
       auto worked = undo.insert({m, it});
       assert(worked.second && "undo");

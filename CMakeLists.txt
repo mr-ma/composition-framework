@@ -115,6 +115,11 @@ add_library(CompositionFramework MODULE
 
 add_library(composition-framework::CompositionFramework ALIAS CompositionFramework)
 
+add_library(CompositionFrameworkHook SHARED
+        hook/hook.cpp)
+
+add_library(composition-framework::CompositionFrameworkHook ALIAS CompositionFrameworkHook)
+
 target_include_directories(CompositionFramework
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

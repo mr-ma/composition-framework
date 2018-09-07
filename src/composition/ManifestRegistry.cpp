@@ -1,11 +1,15 @@
+#include <llvm/Support/Debug.h>
 #include <composition/ManifestRegistry.hpp>
+
 namespace composition {
 ManifestIndex ManifestRegistry::index = 0;
 
 void ManifestRegistry::Remove(std::shared_ptr<Manifest> m) {
-  auto& manifests = RegisteredManifests();
+  auto &manifests = RegisteredManifests();
   auto it = manifests.find(m);
   if (it != manifests.end()) {
+    llvm::dbgs() << "Undoing manifest...\n";
+    m->dump();
     m->Undo();
     manifests.erase(it);
   }

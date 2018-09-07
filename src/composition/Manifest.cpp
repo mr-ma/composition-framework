@@ -12,11 +12,6 @@ using namespace llvm;
 
 namespace composition {
 void Manifest::Undo() const {
-  //TODO strictly speaking this function only removes the Instructions and GlobalVariables.
-  //TODO however, if we wanted to remove basicblocks or functions we'd need to restore the correct controlflow
-  //TODO for now, assume passes only add instructions
-  dbgs() << "Undoing manifest...\n";
-  dump();
   dbgs() << "Undoing " << undoValues.size() << " values\n";
   for (const auto &V : undoValues) {
     if (llvm::isa<llvm::Constant>(V)) {
@@ -24,7 +19,7 @@ void Manifest::Undo() const {
       continue;
     }
     dbgs() << *V << "\n";
-    llvm::Value* v_copy = V;
+    llvm::Value *v_copy = V;
     if (!V->use_empty()) {
       V->replaceAllUsesWith(UndefValue::get(V->getType()));
     }
@@ -73,7 +68,7 @@ std::unordered_set<llvm::Instruction *> Manifest::Coverage() const {
 std::unordered_set<llvm::Instruction *> Manifest::GuardInstructions() const {
   std::unordered_set<llvm::Instruction *> guards{};
   for (const auto &g : guardInstructions) {
-    if (auto *I = dyn_cast<llvm::Instruction>(g)) {
+    if (auto *I = llvm::dyn_cast<llvm::Instruction>(g)) {
       guards.insert(I);
     }
   }
@@ -83,7 +78,7 @@ std::unordered_set<llvm::Instruction *> Manifest::GuardInstructions() const {
 std::unordered_set<llvm::Value *> Manifest::UndoValues() const {
   std::unordered_set<llvm::Value *> undos{};
   for (const auto &g : undoValues) {
-    if (auto *I = dyn_cast<llvm::Instruction>(g)) {
+    if (auto *I = llvm::dyn_cast<llvm::Instruction>(g)) {
       undos.insert(I);
     }
   }
@@ -124,19 +119,28 @@ std::string valueToName(llvm::Value *v) {
   return std::to_string(reinterpret_cast<uintptr_t>(v));
 }
 
-void Manifest::dump() const {
-  dbgs() << "Manifest " << index << " (" << name << ") protecting " << valueToName(protectee) << ":\n";
+void Manifest::dump() {
+  if(protectee.pointsToAliveValue()) {
+    dbgs() << "Manifest " << index << " (" << name << ") protecting " << valueToName(protectee) << ":\n";
+  } else {
+    dbgs() << "Manifest " << index << " (" << name << "): \n";
+  }
   if (constraints.empty()) {
     return;
   }
   dbgs() << "\tConstraints: \n";
-  for (const auto &c : constraints) {
-    dbgs() << "\t\t" << c->getInfo() << " ";
-    if (auto d = dyn_cast<Dependency>(c.get())) {
+
+  for (auto it = constraints.begin(), it_end = constraints.end(); it != it_end; ++it) {
+    if (!(*it)->isValid()) {
+      it = constraints.erase(it);
+      continue;
+    }
+    dbgs() << "\t\t" << (*it)->getInfo() << " ";
+    if (auto d = dyn_cast<Dependency>((*it).get())) {
       dbgs() << "Dependency between " << valueToName(d->getFrom()) << " and " << valueToName(d->getTo());
-    } else if (auto present = dyn_cast<Present>(c.get())) {
+    } else if (auto present = dyn_cast<Present>((*it).get())) {
       dbgs() << "Present of " << valueToName(present->getTarget());
-    } else if (auto preserved = dyn_cast<Preserved>(c.get())) {
+    } else if (auto preserved = dyn_cast<Preserved>((*it).get())) {
       dbgs() << "Preserved of " << valueToName(preserved->getTarget());
 
     } else {

@@ -61,7 +61,7 @@ public:
 
   virtual void Undo() const;
 
-  virtual void dump() const;
+  virtual void dump();
 
   void Clean();
 };
