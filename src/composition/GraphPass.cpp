@@ -78,7 +78,7 @@ bool GraphPass::runOnModule(llvm::Module &M) {
   dbgs() << "Calculating Manifest dependencies\n";
   Graph->computeManifestDependencies();
   dbgs() << "GraphPass strong_components\n";
-  Graph->conflictHandling(Graph->getGraph(), strategies.at("random"));
+  Graph->conflictHandling(Graph->getGraph(), strategies.at(UseStrategy.getValue()));
 
   if (DumpGraphs) {
     dbgs() << "Writing graphs\n";
