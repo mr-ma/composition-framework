@@ -115,10 +115,12 @@ add_library(CompositionFramework MODULE
 
 add_library(composition-framework::CompositionFramework ALIAS CompositionFramework)
 
-add_library(CompositionFrameworkHook SHARED
+add_library(rtlib SHARED
         hook/hook.cpp)
 
-add_library(composition-framework::CompositionFrameworkHook ALIAS CompositionFrameworkHook)
+add_library(composition-framework::CompositionFrameworkHook ALIAS rtlib)
+
+target_compile_options(rtlib PRIVATE -g)
 
 target_include_directories(CompositionFramework
         PUBLIC
