@@ -131,7 +131,7 @@ void Manifest::dump() {
   dbgs() << "\tConstraints: \n";
 
   for (auto it = constraints.begin(), it_end = constraints.end(); it != it_end; ++it) {
-    if (!(*it)->isValid()) {
+    if (!(*it) || !(*it)->isValid()) {
       it = constraints.erase(it);
       continue;
     }
