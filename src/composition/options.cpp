@@ -12,4 +12,6 @@ cl::opt<std::string> DumpStats
     ("cf-stats", cl::Hidden, cl::desc("Dumps stats about the composition to the given file."));
 cl::opt<std::string> UseStrategy
     ("cf-strategy", cl::init("random"), cl::desc("Strategy to use to resolve conflicts."));
+cl::opt<std::string> PatchInfo
+    ("cf-patchinfo", cl::init("cf-patchinfo.json"), cl::desc("Dumps the patching information to the given file."));
 }

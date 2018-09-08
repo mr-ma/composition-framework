@@ -23,6 +23,7 @@ public:
   PatchFunction patchFunction;
   std::vector<std::shared_ptr<Constraint>> constraints;
   bool postPatching;
+  std::string patchInfo;
 private:
   std::vector<llvm::WeakTrackingVH> undoValues{};
   std::vector<llvm::WeakTrackingVH> guardInstructions{};
@@ -33,7 +34,8 @@ public:
            std::vector<std::shared_ptr<Constraint>> constraints = {},
            bool postPatching = false,
            std::set<llvm::Value *> undoValues = {},
-           std::set<llvm::Instruction *> guardInstructions = {});
+           std::set<llvm::Instruction *> guardInstructions = {},
+           std::string patchInfo = {});
 
   Manifest() = delete;
 

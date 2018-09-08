@@ -13,6 +13,7 @@ public:
   void getAnalysisUsage(llvm::AnalysisUsage &AU) const override;
 
   bool runOnModule(llvm::Module &M) override;
+  void writeToFile(std::vector<std::pair<std::string, std::string>> patchInfos);
 };
 }
 

@@ -176,8 +176,6 @@ public:
 
   template<typename graph_t>
   void handleCycle(graph_t &g, const std::unique_ptr<Strategy> &strategy) {
-    auto[presentManifests, preservedManifests] = detectPresentPreservedConflicts(g);
-
     llvm::dbgs() << "Handling cycle in component\n";
     for (auto[vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
       auto v = g[*vi];
@@ -186,20 +184,15 @@ public:
       //llvm::dbgs() << std::to_string(v.index) << "\n";
     }
 
-    std::vector<std::shared_ptr<Manifest>> cyclicManifests{};
+    std::set<std::shared_ptr<Manifest>> cyclicManifests{};
     for (auto[ei, ei_end] = boost::edges(g); ei != ei_end; ++ei) {
-      cyclicManifests.push_back(Protections.right.find(g[*ei].index)->second);
+      cyclicManifests.insert(Protections.right.find(g[*ei].index)->second);
     }
 
-    std::set<std::shared_ptr<Manifest>> pre_merged{};
-    std::set_union(presentManifests.begin(), presentManifests.end(),
-                   preservedManifests.begin(), preservedManifests.end(),
-                   std::inserter(pre_merged, pre_merged.begin()));
-
     std::vector<std::shared_ptr<Manifest>> merged{};
-    std::set_union(pre_merged.begin(), pre_merged.end(),
-                   cyclicManifests.begin(), cyclicManifests.end(),
-                   std::back_inserter(merged));
+    for (auto &el : cyclicManifests) {
+      merged.push_back(el);
+    }
 
     removeManifest(strategy->decideCycle(merged));
   }

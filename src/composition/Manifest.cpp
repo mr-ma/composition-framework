@@ -1,3 +1,5 @@
+#include <utility>
+
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Function.h>
@@ -99,9 +101,10 @@ Manifest::Manifest(std::string name,
                    std::vector<std::shared_ptr<Constraint>> constraints,
                    bool postPatching,
                    std::set<llvm::Value *> undoValues,
-                   std::set<llvm::Instruction *> guardInstructions)
-    : name(std::move(name)), patchFunction(std::move(patchFunction)),
-      constraints(std::move(constraints)), postPatching(postPatching) {
+                   std::set<llvm::Instruction *> guardInstructions,
+                   std::string patchInfo)
+    : name(std::move(name)), patchFunction(std::move(patchFunction)), constraints(std::move(constraints)),
+      postPatching(postPatching), patchInfo(std::move(patchInfo)) {
 
   this->protectee = WeakTrackingVH(protectee);
   for (auto u : undoValues) {
@@ -120,7 +123,7 @@ std::string valueToName(llvm::Value *v) {
 }
 
 void Manifest::dump() {
-  if(protectee.pointsToAliveValue()) {
+  if (protectee.pointsToAliveValue()) {
     dbgs() << "Manifest " << index << " (" << name << ") protecting " << valueToName(protectee) << ":\n";
   } else {
     dbgs() << "Manifest " << index << " (" << name << "): \n";

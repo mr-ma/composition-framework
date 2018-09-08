@@ -1,6 +1,7 @@
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/raw_os_ostream.h>
+#include <nlohmann/json.hpp>
 #include <composition/GraphPass.hpp>
 #include <composition/ProtectionPass.hpp>
 #include <composition/trace/PreservedValueRegistry.hpp>
@@ -26,16 +27,22 @@ bool ProtectionPass::runOnModule(llvm::Module &M) {
   dbgs() << "Got " << manifests.size() << " manifests\n";
   cStats.actualManifests = manifests.size();
 
+  std::vector<std::pair<std::string, std::string>> patchInfos{};
   for (auto &m : manifests) {
     m->Redo();
+    if (m->postPatching) {
+      patchInfos.emplace_back(m->name, m->patchInfo);
+    }
   }
-  //TODO create postpatching manifest order/export to json
+
+  writeToFile(patchInfos);
+
   cStats.stats.collect(&M, manifests);
   cStats.dump(dbgs());
 
-  if(!DumpStats.empty()) {
+  if (!DumpStats.empty()) {
     auto fdStream = std::ofstream(DumpStats.getValue(), std::ofstream::out);
-    if(fdStream.good()) {
+    if (fdStream.good()) {
       dbgs() << "Dumping stats to file: " << DumpStats.getValue() << "\n";
       auto stream = raw_os_ostream(fdStream);
       cStats.dump(stream);
@@ -47,5 +54,12 @@ bool ProtectionPass::runOnModule(llvm::Module &M) {
 
   PreservedValueRegistry::Clear();
   return !manifests.empty();
+}
+
+void ProtectionPass::writeToFile(std::vector<std::pair<std::string, std::string>> patchInfos) {
+  nlohmann::json j = patchInfos;
+  std::ofstream file(PatchInfo.getValue());
+  file << j;
+  file.close();
 }
 }
