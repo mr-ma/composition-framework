@@ -29,6 +29,9 @@ bool ProtectionPass::runOnModule(llvm::Module &M) {
 
   std::vector<std::pair<std::string, std::string>> patchInfos{};
   for (auto &m : manifests) {
+    if (!m->Clean()) {
+      llvm_unreachable("Manifest not clean...");
+    }
     m->Redo();
     if (m->postPatching) {
       patchInfos.emplace_back(m->name, m->patchInfo);
@@ -59,7 +62,7 @@ bool ProtectionPass::runOnModule(llvm::Module &M) {
 void ProtectionPass::writeToFile(std::vector<std::pair<std::string, std::string>> patchInfos) {
   nlohmann::json j = patchInfos;
   std::ofstream file(PatchInfo.getValue());
-  file << j;
+  file << j.dump(4);
   file.close();
 }
 }

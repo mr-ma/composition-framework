@@ -10,8 +10,11 @@ void guardMe(const unsigned int address, const unsigned int length, const unsign
 
 void response() {}
 
-void do_assert(long long *hash, long long expected) {
-  response();
+void do_assert(const long long *hash, long long expected) {
+  if (*hash != expected) {
+    printf("%lli - %lli\n", *hash, expected);
+    response();
+  }
 }
 
 void assert(long long *hash, long long expected) {

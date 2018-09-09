@@ -65,7 +65,7 @@ public:
 
   virtual void dump();
 
-  void Clean();
+  bool Clean();
 };
 
 }

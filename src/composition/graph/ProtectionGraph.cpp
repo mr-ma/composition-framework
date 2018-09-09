@@ -265,9 +265,9 @@ std::vector<std::shared_ptr<Manifest>> ProtectionGraph::topologicalSortManifests
     }
   }
 
-  auto sorted = topological_sort(sc);
+  auto sorted = reverse_topological_sort(sc);
   for (auto v : sorted) {
-    for (auto[ei, ei_end] = boost::out_edges(v, sc); ei != ei_end; ++ei) {
+    for (auto[ei, ei_end] = boost::in_edges(v, sc); ei != ei_end; ++ei) {
       auto i = sc[*ei].index;
       auto manifest = Protections.right.find(i)->second;
 

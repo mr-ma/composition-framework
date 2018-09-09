@@ -71,9 +71,15 @@ vertex_type llvmToVertexType(const llvm::Value *v) {
 }
 
 std::string llvmToVertexName(const llvm::Value *v) {
-  std::string name;
-  if (llvm::isa<llvm::Instruction>(v)) {
-    name = std::to_string(reinterpret_cast<uintptr_t>(v));
+  std::string name{};
+  if (auto *I = llvm::dyn_cast<llvm::Instruction>(v)) {
+    if (I->getParent() != nullptr && I->getParent()->getParent() != nullptr) {
+      name =
+          I->getFunction()->getName().str() + "_" + std::to_string(reinterpret_cast<uintptr_t>(I->getFunction())) + "_";
+    }
+    name += std::to_string(reinterpret_cast<uintptr_t>(v));
+  } else if (auto *F = llvm::dyn_cast<llvm::Function>(v)) {
+    name = F->getName().str() + "_" + std::to_string(reinterpret_cast<uintptr_t>(F));
   } else {
     name = v->getName();
   }

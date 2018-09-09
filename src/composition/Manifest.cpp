@@ -153,7 +153,7 @@ void Manifest::dump() {
   }
 }
 
-void Manifest::Clean() {
+bool Manifest::Clean() {
   for (auto it = undoValues.begin(), it_end = undoValues.end(); it != it_end; ++it) {
     if (!it->pointsToAliveValue()) {
       it = undoValues.erase(it);
@@ -164,5 +164,11 @@ void Manifest::Clean() {
       it = guardInstructions.erase(it);
     }
   }
+  for (auto it = constraints.begin(), it_end = constraints.end(); it != it_end; ++it) {
+    if (!(*it)->isValid()) {
+      return false;
+    }
+  }
+  return true;
 }
 }

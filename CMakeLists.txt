@@ -22,7 +22,7 @@ set(Boost_USE_STATIC_RUNTIME OFF)
 ## create target and add include path
 ##
 
-add_library(CompositionFramework MODULE
+add_library(CompositionFramework SHARED
         include/composition/graph/graph.hpp
         include/composition/graph/ProtectionGraph.hpp
         include/composition/graph/constraint.hpp
@@ -200,3 +200,9 @@ export(
 )
 
 export(PACKAGE composition-framework)
+
+
+##
+## Test
+##
+add_subdirectory(test)

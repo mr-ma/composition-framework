@@ -63,16 +63,15 @@ bool AnalysisPass::runOnModule(llvm::Module &M) {
   size_t i = 0;
   Profiler constructionProfiler{};
   for (auto &m : manifests) {
-    m->Clean();
+    if (!m->Clean()) {
+      ManifestRegistry::Remove(m);
+      continue;
+    }
     dbgs() << "#" << std::to_string(i++) << "/" << std::to_string(total) << "\r";
     for (auto it = m->constraints.begin(), it_end = m->constraints.end(); it != it_end; ++it) {
-      if(!(*it)->isValid()) {
-        it = m->constraints.erase(it);
-        continue;
-      }
       Graph->addConstraint(m, (*it));
     }
-    m->dump();
+    //m->dump();
   }
   cStats.timeGraphConstruction += constructionProfiler.stop();
   dbgs() << "#" << std::to_string(i) << "/" << std::to_string(total) << "\n";
