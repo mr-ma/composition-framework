@@ -1,0 +1,54 @@
+{
+  "patchers": {
+    "sc": [
+      [
+        "python",
+        "/home/dennis/self-checksumming/patcher/dump_pipe.py",
+        "{BINARY}",
+        "sc_guide.txt",
+        "/home/dennis/build/cfbuild/patch_guide"
+      ]
+    ],
+    "oh": [
+      [
+        "python",
+        "/home/dennis/sip-oblivious-hashing/patcher/patchAsserts.py",
+        "-b",
+        "{BINARY}",
+        "-n",
+        "{BINARY}_patched",
+        "-s",
+        "/home/dennis/build/cfbuild/oh.stats",
+        "-p",
+        "/home/dennis/sip-oblivious-hashing/assertions/gdb_script_for_do_assert.txt",
+        "-m",
+        "oh_guide.txt",
+        "-g",
+        "{ARGS}"
+      ],
+      [
+        "mv",
+        "{BINARY}_patched",
+        "{BINARY}"
+      ]
+    ]
+  },
+  "finalizers": [
+    [
+      "python",
+      "/home/dennis/sip-oblivious-hashing/patcher/patchAsserts.py",
+      "-b",
+      "{BINARY}",
+      "-n",
+      "{BINARY}_patched",
+      "-s",
+      "/home/dennis/build/cfbuild/oh.stats",
+      "-p",
+      "/home/dennis/sip-oblivious-hashing/assertions/gdb_script_for_do_assert.txt",
+      "-f",
+      "True",
+      "-g",
+      "{ARGS}"
+    ]
+  ]
+}

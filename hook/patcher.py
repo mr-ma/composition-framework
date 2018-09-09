@@ -1,7 +1,6 @@
 import json
-import sys
-
 import subprocess
+import argparse
 
 
 def load_patch_info(patch_filename):
@@ -9,52 +8,84 @@ def load_patch_info(patch_filename):
         return json.load(fd)
 
 
-def main(binary, patch_filename):
-    patch_info = load_patch_info(patch_filename)
-    patchers = {
-        "sc": [["python", "/home/dennis/self-checksumming/patcher/dump_pipe.py", binary, "sc_guide.txt",
-                "/home/dennis/build/cfbuild/patch_guide"]],
-        "oh_assert_": [["python", "/home/dennis/sip-oblivious-hashing/patcher/patchAsserts.py", "-b", binary, "-n",
-                        binary + "_patched", "-s", "/home/dennis/build/cfbuild/oh.stats", "-p",
-                        "/home/dennis/sip-oblivious-hashing/assertions/gdb_script_for_do_assert.txt", "-m",
-                        "oh_assert__guide.txt"],
-                       ["mv", binary + "_patched", binary]],
-        "sroh_assert": [["python", "/home/dennis/sip-oblivious-hashing/patcher/patchAsserts.py", "-b", binary, "-n",
-                         binary + "_patched", "-s", "/home/dennis/build/cfbuild/oh.stats", "-p",
-                         "/home/dennis/sip-oblivious-hashing/assertions/gdb_script_for_do_assert.txt", "-m",
-                         "sroh_assert_guide.txt"],
-                        ["mv", binary + "_patched", binary]],
-    }
+def main(binary, patch_filename, patcher_configname, args):
+    # load patchers from file
+    with open(patcher_configname) as f:
+        patcher_config = json.load(f)
 
+    patchers = patcher_config["patchers"]
+    # replace placeholders {BINARY} and {ARGS} in all commands
+    for patcher in patchers:
+        cmds = []
+        for cmd in patchers[patcher]:
+            tmp_cmd = []
+            for el in cmd:
+                el = el.replace("{BINARY}", binary)
+                el = el.replace("{ARGS}", args)
+                tmp_cmd.append(el)
+            cmds.append(tmp_cmd)
+
+        patchers[patcher] = cmds
+
+    # load the patch manifest
+    patch_info = load_patch_info(patch_filename)
+
+    # collect patch steps that can be executed in a combined step.
     collected_info = ""
     last_patcher = ""
     for patcher, info in patch_info:
+        # combine the different oh asserts
+        if patcher == "oh_assert_" or patcher == "oh_assert" or patcher == "sroh_assert":
+            patcher = "oh"
+
         if patcher != last_patcher:
             if last_patcher != "":
+                # patcher changed, run the combined step
                 run_patcher(binary, collected_info, last_patcher, patchers[last_patcher])
                 collected_info = ""
-
             last_patcher = patcher
 
+        # aggregate the information
         collected_info += info
 
+    # run the patcher for the last iteration
     run_patcher(binary, collected_info, last_patcher, patchers[last_patcher])
 
-    with open("oh_assert_" + "_guide.txt", 'w') as fd:
-        fd.write("")
-    subprocess.call(["python", "/home/dennis/sip-oblivious-hashing/patcher/patchAsserts.py", "-b", binary, "-n",
-                     binary + "_patched", "-s", "/home/dennis/build/cfbuild/oh.stats", "-p",
-                     "/home/dennis/sip-oblivious-hashing/assertions/gdb_script_for_do_assert.txt", "-f", "True",
-                     "-m", "oh_assert__guide.txt"])
+    # finalize
+    finalizers = patcher_config["finalizers"]
+    # replace placeholders {BINARY} and {ARGS} in all commands
+    tmp_finalizers = []
+    for finalizer in finalizers:
+        cmds = []
+        for el in finalizer:
+            el = el.replace("{BINARY}", binary)
+            el = el.replace("{ARGS}", args)
+            cmds.append(el)
+        tmp_finalizers.append(cmds)
+
+    for finalizer in tmp_finalizers:
+        subprocess.call(finalizer)
 
 
 def run_patcher(binary, collected_info, last_patcher, commands):
+    # wite the patch guide information
     with open(last_patcher + "_guide.txt", 'w') as fd:
         fd.write(collected_info)
+
+    # run the patcher commands
     for cmd in commands:
         subprocess.call(cmd)
+
+    # chmod +x the binary ??
     subprocess.call(["chmod", "+x", binary])
 
 
 if __name__ == '__main__':
-    main(sys.argv[1], sys.argv[2])
+    parser = argparse.ArgumentParser(description='Process step-wise post-patching.')
+    parser.add_argument('binary', metavar='BINARY', type=str, help='a binary that receives post-patching')
+    parser.add_argument('-m', dest='manifest', type=str, help='the manifest to run post-patching', required=True)
+    parser.add_argument('-p', dest='patchers', type=str, help='file containing the patchers', required=True)
+    parser.add_argument('--args', dest='args', type=str, default='',
+                        help='arguments that are passed to the patchers for running the program')
+    args = parser.parse_args()
+    main(args.binary, args.manifest, args.patchers, args.args)
