@@ -4,6 +4,11 @@ project(composition-framework VERSION 0.4.0 LANGUAGES CXX)
 list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_SOURCE_DIR}/cmake)
 
 ##
+## Config
+##
+set(CompositionFramework_BuildTests "OFF" CACHE BOOLEAN "")
+
+##
 ## Dependencies
 ##
 find_package(Boost 1.58 REQUIRED COMPONENTS graph)
@@ -205,4 +210,6 @@ export(PACKAGE composition-framework)
 ##
 ## Test
 ##
-add_subdirectory(test)
+if (CompositionFramework_BuildTests)
+    add_subdirectory(test)
+endif ()
