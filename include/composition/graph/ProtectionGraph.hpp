@@ -38,9 +38,10 @@ using ProtectionMap = boost::bimaps::bimap<boost::bimaps::multiset_of<std::share
 
 //using ManifestCoverageMap = boost::bimaps::bimap<boost::bimaps::multiset_of<std::shared_ptr<Manifest>>, boost::bimaps::multiset_of<llvm::Instruction*>>;
 //using ProtecteeManifestMap = boost::bimaps::bimap<boost::bimaps::multiset_of<llvm::Instruction*>, std::shared_ptr<Manifest>>;
-using ManifestUndoMap = boost::bimaps::bimap<boost::bimaps::multiset_of<std::shared_ptr<Manifest>>, boost::bimaps::multiset_of<llvm::Value*>>;
-using ManifestDependencyMap = boost::bimaps::bimap<boost::bimaps::multiset_of<std::shared_ptr<Manifest>>, boost::bimaps::multiset_of<std::shared_ptr<Manifest>>>;
-
+using ManifestUndoMap = boost::bimaps::bimap<boost::bimaps::multiset_of<std::shared_ptr<Manifest>>,
+                                             boost::bimaps::multiset_of<llvm::Value *>>;
+using ManifestDependencyMap = boost::bimaps::bimap<boost::bimaps::multiset_of<std::shared_ptr<Manifest>>,
+                                                   boost::bimaps::multiset_of<std::shared_ptr<Manifest>>>;
 
 class ProtectionGraph {
 private:
@@ -131,6 +132,21 @@ public:
     do {
       hadConflicts = false;
       sccProfiler.reset();
+
+      bool hasOneCycle = false;
+      try {
+        auto sc = filter_selfcycle_graph(fg);
+        topological_sort(sc);
+      }
+      catch (boost::not_a_dag) {
+        hasOneCycle = true;
+      }
+
+      if(!hasOneCycle) {
+        cStats.timeCycleDetection += sccProfiler.stop();
+        break;
+      }
+
       auto components = strong_components(fg);
       cStats.timeCycleDetection += sccProfiler.stop();
       int i = 0;
