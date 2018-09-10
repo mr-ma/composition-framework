@@ -59,7 +59,9 @@ bool GraphPass::runOnModule(llvm::Module &M) {
           {"sc", 0},
           {"cfi", 0},
           {"oh_hash_", 1},
+          {"oh_hash", 1},
           {"oh_assert_", 2},
+          {"oh_assert", 2},
           {"sroh_hash", 1},
           {"sroh_assert", 2},
       }

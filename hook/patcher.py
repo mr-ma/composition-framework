@@ -8,7 +8,7 @@ def load_patch_info(patch_filename):
         return json.load(fd)
 
 
-def main(binary, patch_filename, patcher_configname, args):
+def main(binary, patch_filename, patcher_configname, args, output):
     # load patchers from file
     with open(patcher_configname) as f:
         patcher_config = json.load(f)
@@ -22,6 +22,7 @@ def main(binary, patch_filename, patcher_configname, args):
             for el in cmd:
                 el = el.replace("{BINARY}", binary)
                 el = el.replace("{ARGS}", args)
+                el = el.replace("{OUTPUT}", output)
                 tmp_cmd.append(el)
             cmds.append(tmp_cmd)
 
@@ -41,7 +42,7 @@ def main(binary, patch_filename, patcher_configname, args):
         if patcher != last_patcher:
             if last_patcher != "":
                 # patcher changed, run the combined step
-                run_patcher(binary, collected_info, last_patcher, patchers[last_patcher])
+                run_patcher(binary, collected_info, last_patcher, patchers[last_patcher], output)
                 collected_info = ""
             last_patcher = patcher
 
@@ -49,7 +50,7 @@ def main(binary, patch_filename, patcher_configname, args):
         collected_info += info
 
     # run the patcher for the last iteration
-    run_patcher(binary, collected_info, last_patcher, patchers[last_patcher])
+    run_patcher(binary, collected_info, last_patcher, patchers[last_patcher], output)
 
     # finalize
     finalizers = patcher_config["finalizers"]
@@ -60,6 +61,7 @@ def main(binary, patch_filename, patcher_configname, args):
         for el in finalizer:
             el = el.replace("{BINARY}", binary)
             el = el.replace("{ARGS}", args)
+            el = el.replace("{OUTPUT}", output)
             cmds.append(el)
         tmp_finalizers.append(cmds)
 
@@ -67,9 +69,9 @@ def main(binary, patch_filename, patcher_configname, args):
         subprocess.call(finalizer)
 
 
-def run_patcher(binary, collected_info, last_patcher, commands):
+def run_patcher(binary, collected_info, last_patcher, commands, output):
     # wite the patch guide information
-    with open(last_patcher + "_guide.txt", 'w') as fd:
+    with open(output + "/" + last_patcher + "_guide.txt", 'w') as fd:
         fd.write(collected_info)
 
     # run the patcher commands
@@ -87,5 +89,6 @@ if __name__ == '__main__':
     parser.add_argument('-p', dest='patchers', type=str, help='file containing the patchers', required=True)
     parser.add_argument('--args', dest='args', type=str, default='',
                         help='arguments that are passed to the patchers for running the program')
+    parser.add_argument('-o', dest='output', type=str, help='the output directory', required=True)
     args = parser.parse_args()
-    main(args.binary, args.manifest, args.patchers, args.args)
+    main(args.binary, args.manifest, args.patchers, args.args, args.output)
