@@ -3,28 +3,30 @@
     "sc": [
       [
         "python",
-        "/home/dennis/self-checksumming/patcher/dump_pipe.py",
+        "/home/dennis/Desktop/self-checksumming/patcher/dump_pipe.py",
         "{BINARY}",
         "sc_guide.txt",
-        "/home/dennis/build/cfbuild/patch_guide"
+        "/home/dennis/Desktop/tests/cfbuild/patch_guide"
       ]
     ],
     "oh": [
       [
         "python",
-        "/home/dennis/sip-oblivious-hashing/patcher/patchAsserts.py",
+        "/home/dennis/Desktop/sip-oblivious-hashing/patcher/patchAsserts.py",
         "-b",
         "{BINARY}",
         "-n",
         "{BINARY}_patched",
         "-s",
-        "/home/dennis/build/cfbuild/oh.stats",
+        "/home/dennis/Desktop/tests/cfbuild/oh.stats",
         "-p",
-        "/home/dennis/sip-oblivious-hashing/assertions/gdb_script_for_do_assert.txt",
+        "/home/dennis/Desktop/sip-oblivious-hashing/assertions/gdb_script_for_do_assert.txt",
         "-m",
         "oh_guide.txt",
         "-g",
-        "{ARGS}"
+        "{ARGS}",
+        "-d",
+        "True"
       ],
       [
         "mv",
@@ -35,16 +37,26 @@
   },
   "finalizers": [
     [
+      "rm",
+      "oh_guide.txt"
+    ],
+    [
+      "touch",
+      "oh_guide.txt"
+    ],
+    [
       "python",
-      "/home/dennis/sip-oblivious-hashing/patcher/patchAsserts.py",
+      "/home/dennis/Desktop/sip-oblivious-hashing/patcher/patchAsserts.py",
       "-b",
       "{BINARY}",
       "-n",
       "{BINARY}_patched",
       "-s",
-      "/home/dennis/build/cfbuild/oh.stats",
+      "/home/dennis/Desktop/tests/cfbuild/oh.stats",
       "-p",
-      "/home/dennis/sip-oblivious-hashing/assertions/gdb_script_for_do_assert.txt",
+      "/home/dennis/Desktop/sip-oblivious-hashing/assertions/gdb_script_for_do_assert.txt",
+      "-m",
+      "oh_guide.txt",
       "-f",
       "True",
       "-g",

@@ -258,7 +258,7 @@ std::vector<std::shared_ptr<Manifest>> ProtectionGraph::topologicalSortManifests
   auto sc = filter_selfcycle_graph(fg);
 
   for (auto[vi, vi_end] = boost::vertices(sc); vi != vi_end; ++vi) {
-    for (auto[ei, ei_end] = boost::out_edges(*vi, sc); ei != ei_end; ++ei) {
+    for (auto[ei, ei_end] = boost::in_edges(*vi, sc); ei != ei_end; ++ei) {
       auto i = sc[*ei].index;
       auto manifest = Protections.right.find(i)->second;
       manifests.erase(std::remove(manifests.begin(), manifests.end(), manifest), manifests.end());
