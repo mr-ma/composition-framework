@@ -30,6 +30,8 @@ def main(binary, patch_filename, patcher_configname, args, output):
 
     # load the patch manifest
     patch_info = load_patch_info(patch_filename)
+    if len(patch_info) == 0:
+        return
 
     # collect patch steps that can be executed in a combined step.
     collected_info = ""
