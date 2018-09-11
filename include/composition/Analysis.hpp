@@ -13,8 +13,8 @@ namespace composition {
 template<typename T>
 class ComposableAnalysis : public Pass {
 public:
-  void addProtection(std::shared_ptr<Manifest> m) {
-    ManifestRegistry::Add(std::move(m));
+  void addProtection(Manifest* m) {
+    ManifestRegistry::Add(m);
   }
 
   void addPreserved(const std::string &name, llvm::Value *value, const PreservedCallback &callback) {

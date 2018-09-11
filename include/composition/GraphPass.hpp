@@ -15,7 +15,7 @@ public:
 public:
   GraphPass() : ModulePass(ID) {}
 
-  std::vector<std::shared_ptr<Manifest>> SortedManifests();
+  std::vector<Manifest*> SortedManifests();
 
   void getAnalysisUsage(llvm::AnalysisUsage &usage) const override;
 

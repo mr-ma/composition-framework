@@ -98,9 +98,9 @@ bool GraphPass::runOnModule(llvm::Module &M) {
   return false;
 }
 
-std::vector<std::shared_ptr<Manifest>> GraphPass::SortedManifests() {
+std::vector<Manifest*> GraphPass::SortedManifests() {
   auto manifestSet = ManifestRegistry::GetAll();
-  std::vector<std::shared_ptr<Manifest>> manifests{manifestSet.begin(), manifestSet.end()};
+  std::vector<Manifest*> manifests{manifestSet.begin(), manifestSet.end()};
 
   for (const auto &m : manifestSet) {
     if (m->postPatching) {

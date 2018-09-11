@@ -8,11 +8,11 @@ namespace composition {
 class Avoidance : public Strategy {
 public:
   explicit Avoidance(const std::unordered_map<std::string, int> &order);
-  std::shared_ptr<Manifest> decideCycle(std::vector<std::shared_ptr<Manifest>> manifests) override;
-  std::shared_ptr<Manifest> decidePresentPreserved(std::vector<std::shared_ptr<Manifest>> manifests) override;
+  Manifest* decideCycle(std::vector<Manifest*> manifests) override;
+  Manifest* decidePresentPreserved(std::vector<Manifest*> manifests) override;
 private:
   std::unordered_map<std::string, int> order;
-  std::shared_ptr<Manifest> decide(std::vector<std::shared_ptr<Manifest>> manifests);
+  Manifest* decide(std::vector<Manifest*> manifests);
 };
 }
 #endif //COMPOSITION_FRAMEWORK_STRATEGY_AVOIDANCE_HPP

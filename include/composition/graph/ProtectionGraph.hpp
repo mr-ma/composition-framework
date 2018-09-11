@@ -34,14 +34,14 @@ namespace composition {
 using ProtectionIndex = unsigned long;
 using VertexIndex = uintptr_t;
 using EdgeIndex = uintptr_t;
-using ProtectionMap = boost::bimaps::bimap<boost::bimaps::multiset_of<std::shared_ptr<Manifest>>, ProtectionIndex>;
+using ProtectionMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest*>, ProtectionIndex>;
 
-//using ManifestCoverageMap = boost::bimaps::bimap<boost::bimaps::multiset_of<std::shared_ptr<Manifest>>, boost::bimaps::multiset_of<llvm::Instruction*>>;
-//using ProtecteeManifestMap = boost::bimaps::bimap<boost::bimaps::multiset_of<llvm::Instruction*>, std::shared_ptr<Manifest>>;
-using ManifestUndoMap = boost::bimaps::bimap<boost::bimaps::multiset_of<std::shared_ptr<Manifest>>,
+//using ManifestCoverageMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest*>, boost::bimaps::multiset_of<llvm::Instruction*>>;
+//using ProtecteeManifestMap = boost::bimaps::bimap<boost::bimaps::multiset_of<llvm::Instruction*>, Manifest*>;
+using ManifestUndoMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest*>,
                                              boost::bimaps::multiset_of<llvm::Value *>>;
-using ManifestDependencyMap = boost::bimaps::bimap<boost::bimaps::multiset_of<std::shared_ptr<Manifest>>,
-                                                   boost::bimaps::multiset_of<std::shared_ptr<Manifest>>>;
+using ManifestDependencyMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest*>,
+                                                   boost::bimaps::multiset_of<Manifest*>>;
 
 class ProtectionGraph {
 private:
@@ -93,7 +93,7 @@ public:
 
   graph_t &getGraph();
 
-  ProtectionIndex addConstraint(std::shared_ptr<Manifest> m, std::shared_ptr<Constraint> c);
+  ProtectionIndex addConstraint(Manifest* m, std::shared_ptr<Constraint> c);
 
   template<typename T, typename S>
   ProtectionIndex addCFG(T parent, S child) {
@@ -105,9 +105,9 @@ public:
     return ProtectionIdx++;
   }
 
-  std::vector<std::shared_ptr<Manifest>> topologicalSortManifests(std::vector<std::shared_ptr<Manifest>> manifests);
+  std::vector<Manifest*> topologicalSortManifests(std::vector<Manifest*> manifests);
 
-  void removeManifest(std::shared_ptr<Manifest> m);
+  void removeManifest(Manifest* m);
 
   void expandToInstructions();
 
@@ -179,7 +179,7 @@ public:
         llvm::dbgs() << "Handling conflict...\n";
 
         resolvingProfiler.reset();
-        std::vector<std::shared_ptr<Manifest>> merged{};
+        std::vector<Manifest*> merged{};
         std::set_union(presentManifests.begin(), presentManifests.end(),
                        preservedManifests.begin(), preservedManifests.end(),
                        std::back_inserter(merged));
@@ -200,12 +200,12 @@ public:
       //llvm::dbgs() << std::to_string(v.index) << "\n";
     }
 
-    std::set<std::shared_ptr<Manifest>> cyclicManifests{};
+    std::set<Manifest*> cyclicManifests{};
     for (auto[ei, ei_end] = boost::edges(g); ei != ei_end; ++ei) {
       cyclicManifests.insert(Protections.right.find(g[*ei].index)->second);
     }
 
-    std::vector<std::shared_ptr<Manifest>> merged{};
+    std::vector<Manifest*> merged{};
     for (auto &el : cyclicManifests) {
       merged.push_back(el);
     }
@@ -214,11 +214,11 @@ public:
   }
 
   template<typename graph_t>
-  std::pair<std::set<std::shared_ptr<Manifest>>, std::set<std::shared_ptr<Manifest>>> detectPresentPreservedConflicts(
+  std::pair<std::set<Manifest*>, std::set<Manifest*>> detectPresentPreservedConflicts(
       graph_t &g) {
     auto[isPresent, isPreserved] = constraint_map<PresentConstraint, PreservedConstraint>(g);
 
-    std::set<std::shared_ptr<Manifest>> presentManifests{};
+    std::set<Manifest*> presentManifests{};
     for (auto[vd, p] : isPresent) {
       if (p != PresentConstraint::CONFLICT) {
         continue;
@@ -231,7 +231,7 @@ public:
       }
     }
 
-    std::set<std::shared_ptr<Manifest>> preservedManifests{};
+    std::set<Manifest*> preservedManifests{};
     for (auto[vd, p] : isPreserved) {
       if (p != PreservedConstraint::CONFLICT) {
         continue;

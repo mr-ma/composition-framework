@@ -18,11 +18,11 @@ public:
   size_t numberOfProtectedFunctions{};
   size_t numberOfProtectedInstructions{};
   size_t numberOfProtectedDistinctInstructions{};
-  std::map<std::string, size_t> numberOfProtectedInstructionsByType{};
-  std::map<std::string, size_t> numberOfProtectedFunctionsByType{};
+  std::unordered_map<std::string, size_t> numberOfProtectedInstructionsByType{};
+  std::unordered_map<std::string, size_t> numberOfProtectedFunctionsByType{};
   Connectivity instructionConnectivity{};
   Connectivity functionConnectivity{};
-  std::map<std::string, std::pair<Connectivity, Connectivity>> protectionConnectivity{};
+  std::unordered_map<std::string, std::pair<Connectivity, Connectivity>> protectionConnectivity{};
 
   Stats() = default;
 
@@ -30,16 +30,15 @@ public:
 
   void dump(llvm::raw_ostream &o);
 
-  void collect(llvm::Module *M, std::vector<std::shared_ptr<Manifest>> manifests);
+  void collect(llvm::Module *M, std::vector<Manifest *> manifests);
 
-  void collect(llvm::Value *V, std::vector<std::shared_ptr<Manifest>> manifests);
+  void collect(llvm::Value *V, std::vector<Manifest *> manifests);
 
-  void collect(std::unordered_set<llvm::Instruction *> allInstructions,
-               std::vector<std::shared_ptr<Manifest>> manifests);
+  void collect(std::unordered_set<llvm::Instruction *> allInstructions, std::vector<Manifest *> manifests);
 private:
-  std::set<llvm::Instruction *> protectedInstructionsDistinct{};
-  std::map<std::string, std::set<llvm::Instruction *>> protectedInstructions{};
-  std::map<std::string, std::set<llvm::Function *>> protectedFunctions{};
+  std::unordered_set<llvm::Instruction *> protectedInstructionsDistinct{};
+  std::map<std::string, std::unordered_set<llvm::Instruction *>> protectedInstructions{};
+  std::map<std::string, std::unordered_set<llvm::Function *>> protectedFunctions{};
 
   std::pair<Connectivity,
             Connectivity> instructionFunctionConnectivity(const std::unordered_map<llvm::Instruction *,

@@ -3,25 +3,25 @@
 
 #include <cstdint>
 #include <string>
-#include <set>
+#include <unordered_set>
 #include <composition/Manifest.hpp>
 
 namespace composition {
 
 class ManifestRegistry {
 public:
-  static void Add(std::shared_ptr<Manifest> m);
+  static void Add(Manifest* m);
 
-  static std::set<std::shared_ptr<Manifest>> &GetAll();
+  static std::unordered_set<Manifest*> &GetAll();
 
-  static void Remove(std::shared_ptr<Manifest> m);
+  static void Remove(Manifest* m);
 
   static void destroy();
 
 protected:
   static ManifestIndex index;
 
-  static std::set<std::shared_ptr<Manifest>> &RegisteredManifests();
+  static std::unordered_set<Manifest*> &RegisteredManifests();
 };
 }
 

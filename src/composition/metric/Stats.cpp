@@ -24,12 +24,13 @@ void from_json(const nlohmann::json &j, Stats &s) {
   s.numberOfProtectedInstructions = j.at("numberOfProtectedInstructions").get<size_t>();
   s.numberOfProtectedDistinctInstructions = j.at("numberOfProtectedDistinctInstructions").get<size_t>();
   s.numberOfProtectedInstructionsByType =
-      j.at("numberOfProtectedInstructionsByType").get<std::map<std::string, size_t>>();
-  s.numberOfProtectedFunctionsByType = j.at("numberOfProtectedFunctionsByType").get<std::map<std::string, size_t>>();
+      j.at("numberOfProtectedInstructionsByType").get<std::unordered_map<std::string, size_t>>();
+  s.numberOfProtectedFunctionsByType =
+      j.at("numberOfProtectedFunctionsByType").get<std::unordered_map<std::string, size_t>>();
   s.instructionConnectivity = j.at("instructionConnectivity").get<Connectivity>();
   s.functionConnectivity = j.at("functionConnectivity").get<Connectivity>();
   s.protectionConnectivity =
-      j.at("protectionConnectivity").get<std::map<std::string, std::pair<Connectivity, Connectivity>>>();
+      j.at("protectionConnectivity").get<std::unordered_map<std::string, std::pair<Connectivity, Connectivity>>>();
 }
 
 void Stats::dump(llvm::raw_ostream &o) {
@@ -45,15 +46,15 @@ Stats::Stats(std::istream &i) {
   from_json(j, *this);
 }
 
-void Stats::collect(llvm::Value *V, std::vector<std::shared_ptr<Manifest>> manifests) {
+void Stats::collect(llvm::Value *V, std::vector<Manifest *> manifests) {
   collect(Coverage::ValueToInstructions(V), std::move(manifests));
 }
 
-void Stats::collect(llvm::Module *M, std::vector<std::shared_ptr<Manifest>> manifests) {
+void Stats::collect(llvm::Module *M, std::vector<Manifest *> manifests) {
   collect(Coverage::ValueToInstructions(M), std::move(manifests));
 }
 
-void Stats::collect(std::unordered_set<llvm::Instruction *> allInstructions, std::vector<std::shared_ptr<Manifest>> manifests) {
+void Stats::collect(std::unordered_set<llvm::Instruction *> allInstructions, std::vector<Manifest *> manifests) {
   this->numberOfManifests = manifests.size();
   this->numberOfAllInstructions = allInstructions.size();
 

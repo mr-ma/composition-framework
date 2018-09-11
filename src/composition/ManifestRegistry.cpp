@@ -4,7 +4,7 @@
 namespace composition {
 ManifestIndex ManifestRegistry::index = 0;
 
-void ManifestRegistry::Remove(std::shared_ptr<Manifest> m) {
+void ManifestRegistry::Remove(Manifest* m) {
   auto &manifests = RegisteredManifests();
   auto it = manifests.find(m);
   if (it != manifests.end()) {
@@ -15,21 +15,21 @@ void ManifestRegistry::Remove(std::shared_ptr<Manifest> m) {
   }
 }
 
-std::set<std::shared_ptr<Manifest>> &ManifestRegistry::GetAll() {
+std::unordered_set<Manifest*> &ManifestRegistry::GetAll() {
   return RegisteredManifests();
 }
 
-void ManifestRegistry::Add(std::shared_ptr<Manifest> m) {
+void ManifestRegistry::Add(Manifest* m) {
   m->index = index++;
-  RegisteredManifests().insert(std::move(m));
+  RegisteredManifests().insert(m);
 }
 
 void ManifestRegistry::destroy() {
   RegisteredManifests().clear();
 }
 
-std::set<std::shared_ptr<Manifest>> &ManifestRegistry::RegisteredManifests() {
-  static std::set<std::shared_ptr<Manifest>> value = {};
+std::unordered_set<Manifest*> &ManifestRegistry::RegisteredManifests() {
+  static std::unordered_set<Manifest*> value = {};
   return value;
 }
 

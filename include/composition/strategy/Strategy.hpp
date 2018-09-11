@@ -8,8 +8,8 @@ class Strategy {
 public:
   virtual ~Strategy() = default;
 
-  virtual std::shared_ptr<Manifest> decideCycle(std::vector<std::shared_ptr<Manifest>> manifests) = 0;
-  virtual std::shared_ptr<Manifest> decidePresentPreserved(std::vector<std::shared_ptr<Manifest>> manifests) = 0;
+  virtual Manifest* decideCycle(std::vector<Manifest*> manifests) = 0;
+  virtual Manifest* decidePresentPreserved(std::vector<Manifest*> manifests) = 0;
 };
 }
 

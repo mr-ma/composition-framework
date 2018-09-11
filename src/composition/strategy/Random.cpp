@@ -3,15 +3,15 @@
 namespace composition {
 Random::Random(const std::default_random_engine &RNG) : RNG(RNG) {}
 
-std::shared_ptr<Manifest> Random::decideCycle(std::vector<std::shared_ptr<Manifest>> manifests) {
+Manifest* Random::decideCycle(std::vector<Manifest*> manifests) {
   return decide(manifests);
 }
 
-std::shared_ptr<Manifest> Random::decidePresentPreserved(std::vector<std::shared_ptr<Manifest>> manifests) {
+Manifest* Random::decidePresentPreserved(std::vector<Manifest*> manifests) {
   return decide(manifests);
 }
 
-std::shared_ptr<Manifest> Random::decide(std::vector<std::shared_ptr<Manifest>> manifests) {
+Manifest* Random::decide(std::vector<Manifest*> manifests) {
   std::shuffle(manifests.begin(), manifests.end(), RNG);
   return *manifests.begin();
 }

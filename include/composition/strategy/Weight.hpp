@@ -10,12 +10,12 @@ namespace composition {
 class Weight : public Strategy {
 public:
   Weight(const Weights &W, const std::unordered_map<llvm::Function *, llvm::BlockFrequencyInfo *> &BFI);
-  std::shared_ptr<Manifest> decideCycle(std::vector<std::shared_ptr<Manifest>> manifests) override;
-  std::shared_ptr<Manifest> decidePresentPreserved(std::vector<std::shared_ptr<Manifest>> manifests) override;
+  Manifest* decideCycle(std::vector<Manifest*> manifests) override;
+  Manifest* decidePresentPreserved(std::vector<Manifest*> manifests) override;
 private:
   Weights W;
   std::unordered_map<llvm::Function *, llvm::BlockFrequencyInfo *> BFI;
-  std::shared_ptr<Manifest> decide(std::vector<std::shared_ptr<Manifest>> manifests);
+  Manifest* decide(std::vector<Manifest*> manifests);
 
   using Score = unsigned int;
   Score calculateScore(const Manifest &m);

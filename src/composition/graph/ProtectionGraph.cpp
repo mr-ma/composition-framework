@@ -49,7 +49,7 @@ void ProtectionGraph::remove_edge(ed_t ed) noexcept {
   g[ed].removed = true;
 }
 
-void ProtectionGraph::removeManifest(std::shared_ptr<Manifest> m) {
+void ProtectionGraph::removeManifest(Manifest* m) {
   graph_t &g = Graph;
 
   for (auto[it, it_end] = Protections.left.equal_range(m); it != it_end; ++it) {
@@ -234,7 +234,7 @@ void ProtectionGraph::reduceToFunctions() {
   }
 }
 
-ProtectionIndex ProtectionGraph::addConstraint(std::shared_ptr<Manifest> m, std::shared_ptr<Constraint> c) {
+ProtectionIndex ProtectionGraph::addConstraint(Manifest* m, std::shared_ptr<Constraint> c) {
   graph_t &g = Graph;
 
   if (auto d = dyn_cast<Dependency>(c.get())) {
@@ -252,7 +252,7 @@ ProtectionIndex ProtectionGraph::addConstraint(std::shared_ptr<Manifest> m, std:
   return ProtectionIdx++;
 }
 
-std::vector<std::shared_ptr<Manifest>> ProtectionGraph::topologicalSortManifests(std::vector<std::shared_ptr<Manifest>> manifests) {
+std::vector<Manifest*> ProtectionGraph::topologicalSortManifests(std::vector<Manifest*> manifests) {
   auto rg = filter_removed_graph(Graph);
   auto fg = filter_dependency_graph(rg);
   auto sc = filter_selfcycle_graph(fg);
@@ -330,7 +330,7 @@ void ProtectionGraph::computeManifestDependencies() {
       assert(worked.second && "undo");
     }
   }
-  std::unordered_map<std::shared_ptr<Manifest>, std::unordered_set<llvm::Value *>> manifestUsers{};
+  std::unordered_map<Manifest*, std::unordered_set<llvm::Value *>> manifestUsers{};
 
   for (auto&[m, u] : undo.left) {
     for (auto it = u->user_begin(), it_end = u->user_end(); it != it_end; ++it) {
