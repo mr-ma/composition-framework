@@ -1,11 +1,20 @@
 import json
 import subprocess
 import argparse
+import os
 
 
 def load_patch_info(patch_filename):
     with open(patch_filename) as fd:
         return json.load(fd)
+
+
+def read_args(filename):
+    if not os.path.isfile(filename):
+        return ''
+
+    with open(filename, 'r') as f:
+        return " ".join(f.read().splitlines())
 
 
 def main(binary, patch_filename, patcher_configname, args, output):
@@ -77,6 +86,7 @@ def run_patcher(binary, collected_info, last_patcher, commands, output):
         fd.write(collected_info)
 
     # run the patcher commands
+    print(commands)
     for cmd in commands:
         subprocess.call(cmd)
 
@@ -91,6 +101,12 @@ if __name__ == '__main__':
     parser.add_argument('-p', dest='patchers', type=str, help='file containing the patchers', required=True)
     parser.add_argument('--args', dest='args', type=str, default='',
                         help='arguments that are passed to the patchers for running the program')
+    parser.add_argument('--args-path', dest='argspath', type=str, default='',
+                        help='arguments that are passed to the patchers for running the program')
     parser.add_argument('-o', dest='output', type=str, help='the output directory', required=True)
     args = parser.parse_args()
+
+    if args.args == "" and args.argspath != "":
+        args.args = read_args(args.argspath)
+
     main(args.binary, args.manifest, args.patchers, args.args, args.output)
