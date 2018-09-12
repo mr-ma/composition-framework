@@ -40,6 +40,7 @@ ed_t ProtectionGraph::add_edge(vd_t s, vd_t d, edge_t e) {
   graph_t &g = Graph;
   auto edge = boost::add_edge(s, d, g);
   assert(edge.second);
+  edgeCache[e.index] = edge.first;
   g[edge.first] = std::move(e);
   return edge.first;
 }
@@ -49,15 +50,13 @@ void ProtectionGraph::remove_edge(ed_t ed) noexcept {
   g[ed].removed = true;
 }
 
-void ProtectionGraph::removeManifest(Manifest* m) {
+void ProtectionGraph::removeManifest(Manifest *m) {
   graph_t &g = Graph;
 
   for (auto[it, it_end] = Protections.left.equal_range(m); it != it_end; ++it) {
-    for (auto[ei, ei_end] = boost::edges(g); ei != ei_end; ++ei) {
-      auto &e = g[*ei];
-      if (e.index == it->second) {
-        remove_edge(*ei);
-      }
+    auto edgeIt = edgeCache.find(it->second);
+    if(edgeIt != edgeCache.end()) {
+        remove_edge(edgeIt->second);
     }
 
     for (auto[vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
@@ -234,7 +233,7 @@ void ProtectionGraph::reduceToFunctions() {
   }
 }
 
-ProtectionIndex ProtectionGraph::addConstraint(Manifest* m, std::shared_ptr<Constraint> c) {
+ProtectionIndex ProtectionGraph::addConstraint(Manifest *m, std::shared_ptr<Constraint> c) {
   graph_t &g = Graph;
 
   if (auto d = dyn_cast<Dependency>(c.get())) {
@@ -252,33 +251,42 @@ ProtectionIndex ProtectionGraph::addConstraint(Manifest* m, std::shared_ptr<Cons
   return ProtectionIdx++;
 }
 
-std::vector<Manifest*> ProtectionGraph::topologicalSortManifests(std::vector<Manifest*> manifests) {
+std::vector<Manifest *> ProtectionGraph::topologicalSortManifests(std::unordered_set<Manifest *> manifests) {
   auto rg = filter_removed_graph(Graph);
   auto fg = filter_dependency_graph(rg);
   auto sc = filter_selfcycle_graph(fg);
 
+  std::set<Manifest*> all{manifests.begin(), manifests.end()};
+  std::set<Manifest *> seen{};
   for (auto[vi, vi_end] = boost::vertices(sc); vi != vi_end; ++vi) {
     for (auto[ei, ei_end] = boost::in_edges(*vi, sc); ei != ei_end; ++ei) {
       auto i = sc[*ei].index;
       auto manifest = Protections.right.find(i)->second;
-      manifests.erase(std::remove(manifests.begin(), manifests.end(), manifest), manifests.end());
+      seen.insert(manifest);
     }
   }
 
+  std::vector<Manifest *> result{};
+  std::set_difference(all.begin(), all.end(),
+                      seen.begin(), seen.end(),
+                      std::back_inserter(result));
+
+  seen.clear();
   auto sorted = reverse_topological_sort(sc);
   for (auto v : sorted) {
     for (auto[ei, ei_end] = boost::in_edges(v, sc); ei != ei_end; ++ei) {
       auto i = sc[*ei].index;
       auto manifest = Protections.right.find(i)->second;
 
-      if (std::find(manifests.begin(), manifests.end(), manifest) != manifests.end()) {
+      if (seen.find(manifest) != seen.end()) {
         continue;
       }
-      manifests.push_back(manifest);
+      seen.insert(manifest);
+      result.push_back(manifest);
     }
   }
 
-  return manifests;
+  return result;
 }
 
 void ProtectionGraph::destroy() {
@@ -330,7 +338,7 @@ void ProtectionGraph::computeManifestDependencies() {
       assert(worked.second && "undo");
     }
   }
-  std::unordered_map<Manifest*, std::unordered_set<llvm::Value *>> manifestUsers{};
+  std::unordered_map<Manifest *, std::unordered_set<llvm::Value *>> manifestUsers{};
 
   for (auto&[m, u] : undo.left) {
     for (auto it = u->user_begin(), it_end = u->user_end(); it != it_end; ++it) {

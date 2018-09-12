@@ -13,8 +13,8 @@ using EdgeProperties = boost::property<boost::edge_index_t, int, edge_t>;
 using GraphProperties = boost::property<boost::graph_name_t, std::string>;
 
 typedef boost::adjacency_list<
-    boost::listS,
-    boost::listS,
+    boost::vecS,
+    boost::vecS,
     boost::bidirectionalS,
     VertexProperties,
     EdgeProperties,

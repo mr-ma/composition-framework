@@ -1,7 +1,7 @@
 #ifndef COMPOSITION_FRAMEWORK_GRAPHPASS_H
 #define COMPOSITION_FRAMEWORK_GRAPHPASS_H
 
-#include <vector>
+#include <set>
 #include <llvm/Pass.h>
 #include <composition/graph/ProtectionGraph.hpp>
 #include <composition/Manifest.hpp>

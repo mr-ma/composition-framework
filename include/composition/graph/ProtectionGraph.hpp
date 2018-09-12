@@ -49,6 +49,7 @@ private:
   ProtectionIndex ProtectionIdx{};
   ProtectionMap Protections{};
   std::unordered_map<VertexIndex, vd_t> vertexCache{};
+  std::unordered_map<EdgeIndex, ed_t> edgeCache{};
   ManifestDependencyMap DependencyUndo{};
 
 private:
@@ -105,7 +106,7 @@ public:
     return ProtectionIdx++;
   }
 
-  std::vector<Manifest*> topologicalSortManifests(std::vector<Manifest*> manifests);
+  std::vector<Manifest*> topologicalSortManifests(std::unordered_set<Manifest*> manifests);
 
   void removeManifest(Manifest* m);
 
