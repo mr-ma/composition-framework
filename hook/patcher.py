@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import json
 import subprocess
 import argparse
@@ -88,6 +89,7 @@ def run_patcher(binary, collected_info, last_patcher, commands, output):
     # run the patcher commands
     print(commands)
     for cmd in commands:
+        print(" ".join(cmd))
         subprocess.call(cmd)
 
     # chmod +x the binary ??

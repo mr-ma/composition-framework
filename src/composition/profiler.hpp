@@ -18,8 +18,8 @@ public:
   }
 
   double stop() {
-    auto d = std::chrono::high_resolution_clock::now() - p;
-    return std::chrono::duration_cast<std::chrono::duration<double>>(d).count();
+    auto d = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::high_resolution_clock::now() - p);
+    return d.count();
   }
 };
 

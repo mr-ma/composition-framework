@@ -12,7 +12,7 @@ void response() {}
 
 void do_assert(const long long *hash, long long expected) {
   if (*hash != expected) {
-    printf("%lli - %lli\n", *hash, expected);
+    printf("$%lli$%lli$\n", *hash, expected);
     response();
   }
 }
