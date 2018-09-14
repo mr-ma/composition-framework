@@ -16,12 +16,12 @@ namespace composition {
 void Manifest::Undo() const {
   dbgs() << "Undoing " << undoValues.size() << " values\n";
   for (const auto &V : undoValues) {
-    if (llvm::isa<llvm::Constant>(V)) {
+    if (llvm::isa<llvm::Constant>(&*V)) {
       //Constants may not be deleted!
       continue;
     }
     dbgs() << *V << "\n";
-    llvm::Value *v_copy = V;
+    llvm::Value *v_copy = (&*V);
     if (!V->use_empty()) {
       V->replaceAllUsesWith(UndefValue::get(V->getType()));
     }
@@ -62,7 +62,7 @@ void Manifest::Redo() const {
 
 std::unordered_set<llvm::Instruction *> Manifest::Coverage() const {
   if (protectee.pointsToAliveValue()) {
-    return Coverage::ValueToInstructions(protectee);
+    return Coverage::ValueToInstructions(&*protectee);
   }
   return {};
 }
@@ -70,7 +70,7 @@ std::unordered_set<llvm::Instruction *> Manifest::Coverage() const {
 std::unordered_set<llvm::Instruction *> Manifest::GuardInstructions() const {
   std::unordered_set<llvm::Instruction *> guards{};
   for (const auto &g : guardInstructions) {
-    if (auto *I = llvm::dyn_cast<llvm::Instruction>(g)) {
+    if (auto *I = llvm::dyn_cast<llvm::Instruction>(&*g)) {
       guards.insert(I);
     }
   }
@@ -80,7 +80,7 @@ std::unordered_set<llvm::Instruction *> Manifest::GuardInstructions() const {
 std::unordered_set<llvm::Value *> Manifest::UndoValues() const {
   std::unordered_set<llvm::Value *> undos{};
   for (const auto &g : undoValues) {
-    if (auto *I = llvm::dyn_cast<llvm::Instruction>(g)) {
+    if (auto *I = llvm::dyn_cast<llvm::Instruction>(&*g)) {
       undos.insert(I);
     }
   }
@@ -106,7 +106,7 @@ Manifest::Manifest(std::string name,
     : name(std::move(name)), patchFunction(std::move(patchFunction)), constraints(std::move(constraints)),
       postPatching(postPatching), patchInfo(std::move(patchInfo)) {
 
-  this->protectee = WeakTrackingVH(protectee);
+  this->protectee = ManifestValueHandle(protectee);
   for (auto u : undoValues) {
     this->undoValues.emplace_back(u);
   }
@@ -124,7 +124,7 @@ std::string valueToName(llvm::Value *v) {
 
 void Manifest::dump() {
   if (protectee.pointsToAliveValue()) {
-    dbgs() << "Manifest " << index << " (" << name << ") protecting " << valueToName(protectee) << ":\n";
+    dbgs() << "Manifest " << index << " (" << name << ") protecting " << valueToName(&*protectee) << ":\n";
   } else {
     dbgs() << "Manifest " << index << " (" << name << "): \n";
   }
@@ -164,8 +164,8 @@ bool Manifest::Clean() {
       it = guardInstructions.erase(it);
     }
   }
-  for (auto it = constraints.begin(), it_end = constraints.end(); it != it_end; ++it) {
-    if (!(*it)->isValid()) {
+  for (auto &constraint : constraints) {
+    if (!constraint->isValid()) {
       return false;
     }
   }

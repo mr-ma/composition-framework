@@ -35,6 +35,7 @@ bool ProtectionPass::runOnModule(llvm::Module &M) {
   size_t total = manifests.size();
   for (auto &m : manifests) {
     if (!m->Clean()) {
+      dbgs() << "Manifest no clean\n";
       llvm_unreachable("Manifest not clean...");
     }
     dbgs() << "#" << std::to_string(i++) << "/" << std::to_string(total) << "\r";

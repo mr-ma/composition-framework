@@ -4,9 +4,9 @@
 #include <unordered_set>
 #include <cstdint>
 #include <llvm/IR/Value.h>
-#include <llvm/IR/ValueMap.h>
 #include <composition/graph/constraint.hpp>
 #include <composition/metric/Coverage.hpp>
+#include <composition/ManifestValueHandle.hpp>
 
 namespace composition {
 
@@ -19,14 +19,14 @@ class Manifest {
 public:
   ManifestIndex index{};
   std::string name;
-  llvm::WeakTrackingVH protectee;
+  ManifestValueHandle protectee;
   PatchFunction patchFunction;
   std::vector<std::shared_ptr<Constraint>> constraints;
   bool postPatching;
   std::string patchInfo;
 private:
-  std::vector<llvm::WeakTrackingVH> undoValues{};
-  std::vector<llvm::WeakTrackingVH> guardInstructions{};
+  std::vector<ManifestValueHandle> undoValues{};
+  std::vector<ManifestValueHandle> guardInstructions{};
 public:
   Manifest(std::string name,
            llvm::Value *protectee,

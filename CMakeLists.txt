@@ -71,6 +71,7 @@ add_library(CompositionFramework SHARED
         include/composition/AnalysisRegistry.hpp
         include/composition/GraphPass.hpp
         include/composition/Manifest.hpp
+        include/composition/ManifestValueHandle.hpp
         include/composition/ManifestRegistry.hpp
         include/composition/Pass.hpp
         include/composition/ProtectionPass.hpp
@@ -116,7 +117,8 @@ add_library(CompositionFramework SHARED
         src/composition/Manifest.cpp
         src/composition/Pass.cpp
         src/composition/AnalysisRegistry.cpp
-        src/composition/CompositionStats.cpp)
+        src/composition/CompositionStats.cpp
+        src/composition/ManifestValueHandle.cpp)
 
 add_library(composition-framework::CompositionFramework ALIAS CompositionFramework)
 
