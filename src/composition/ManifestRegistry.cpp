@@ -1,35 +1,40 @@
 #include <llvm/Support/Debug.h>
+#include <llvm/Support/raw_os_ostream.h>
 #include <composition/ManifestRegistry.hpp>
 
 namespace composition {
 ManifestIndex ManifestRegistry::index = 0;
 
-void ManifestRegistry::Remove(Manifest* m) {
+void ManifestRegistry::Remove(Manifest *m) {
   auto &manifests = RegisteredManifests();
-  auto it = manifests.find(m);
-  if (it != manifests.end()) {
+
+  if (manifests.find(m) != manifests.end()) {
     llvm::dbgs() << "Undoing manifest...\n";
     m->dump();
     m->Undo();
-    manifests.erase(it);
+    manifests.erase(m);
+    delete m;
   }
 }
 
-std::unordered_set<Manifest*> &ManifestRegistry::GetAll() {
+std::unordered_set<Manifest *> &ManifestRegistry::GetAll() {
   return RegisteredManifests();
 }
 
-void ManifestRegistry::Add(Manifest* m) {
+void ManifestRegistry::Add(Manifest *m) {
   m->index = index++;
   RegisteredManifests().insert(m);
 }
 
 void ManifestRegistry::destroy() {
+  for (auto *m : RegisteredManifests()) {
+    delete m;
+  }
   RegisteredManifests().clear();
 }
 
-std::unordered_set<Manifest*> &ManifestRegistry::RegisteredManifests() {
-  static std::unordered_set<Manifest*> value = {};
+std::unordered_set<Manifest *> &ManifestRegistry::RegisteredManifests() {
+  static std::unordered_set<Manifest *> value = {};
   return value;
 }
 

@@ -8,12 +8,14 @@ namespace composition {
 #ifndef NDEBUG
 void ManifestValueHandle::deleted() {
   dbgs() << "Value deleted from: " << getPassName() << "\n";
-  llvm_unreachable("Value deleted");
+  //llvm_unreachable("Value deleted");
+  this->RemoveFromUseList();
+  this->clearValPtr();
 }
 
 void ManifestValueHandle::allUsesReplacedWith(Value *value) {
   dbgs() << "Value RAUWED from: " << getPassName() << "\n";
-  llvm_unreachable("Value RAUWED");
+  //llvm_unreachable("Value RAUWED");
 }
 
 llvm::Value *ManifestValueHandle::operator=(llvm::Value *RHS) {

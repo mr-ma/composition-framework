@@ -98,15 +98,15 @@ bool GraphPass::runOnModule(llvm::Module &M) {
   return false;
 }
 
-std::vector<Manifest*> GraphPass::SortedManifests() {
+std::vector<Manifest *> GraphPass::SortedManifests() {
   auto manifestSet = ManifestRegistry::GetAll();
 
-  for (const auto &m : manifestSet) {
+  for (auto *m : manifestSet) {
     if (m->postPatching) {
       return Graph->topologicalSortManifests(manifestSet);
     }
   }
-  std::vector<Manifest*> result{manifestSet.begin(), manifestSet.end()};
+  std::vector<Manifest *> result{manifestSet.begin(), manifestSet.end()};
 
   return result;
 }

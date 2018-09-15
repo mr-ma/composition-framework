@@ -40,7 +40,7 @@ ed_t ProtectionGraph::add_edge(vd_t s, vd_t d, edge_t e) {
   graph_t &g = Graph;
   auto edge = boost::add_edge(s, d, g);
   assert(edge.second);
-  edgeCache[e.index] = edge.first;
+  edgeCache.insert({e.index, edge.first});
   g[edge.first] = std::move(e);
   return edge.first;
 }
@@ -54,14 +54,12 @@ void ProtectionGraph::removeManifest(Manifest *m) {
   graph_t &g = Graph;
 
   for (auto[it, it_end] = Protections.left.equal_range(m); it != it_end; ++it) {
-    auto edgeIt = edgeCache.find(it->second);
-    if(edgeIt != edgeCache.end()) {
-        remove_edge(edgeIt->second);
+    for (auto [ei, ei_end] = edgeCache.left.equal_range(it->second); ei != ei_end; ++ei) {
+      remove_edge(ei->second);
     }
 
     for (auto[vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
-      auto &v = g[*vi];
-      v.constraints.erase(it->second);
+      g[*vi].constraints.erase(it->second);
     }
   }
   Protections.left.erase(m);
@@ -246,6 +244,8 @@ ProtectionIndex ProtectionGraph::addConstraint(Manifest *m, std::shared_ptr<Cons
   } else if (auto preserved = dyn_cast<Preserved>(c.get())) {
     auto v = this->add_vertex(preserved->getTarget());
     g[v].constraints.insert({ProtectionIdx, c});
+  } else {
+    llvm_unreachable("Constraint unknown!");
   }
   Protections.insert({m, ProtectionIdx});
   return ProtectionIdx++;
@@ -261,8 +261,13 @@ std::vector<Manifest *> ProtectionGraph::topologicalSortManifests(std::unordered
   for (auto[vi, vi_end] = boost::vertices(sc); vi != vi_end; ++vi) {
     for (auto[ei, ei_end] = boost::in_edges(*vi, sc); ei != ei_end; ++ei) {
       auto i = sc[*ei].index;
-      auto manifest = Protections.right.find(i)->second;
-      seen.insert(manifest);
+      auto it = Protections.right.find(i);
+      if (it == Protections.right.end()) {
+        llvm_unreachable("Protection was lost.");
+      }
+      auto m = it->second;
+
+      seen.insert(m);
     }
   }
 

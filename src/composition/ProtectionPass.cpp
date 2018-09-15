@@ -24,8 +24,7 @@ bool ProtectionPass::runOnModule(llvm::Module &M) {
   auto &pass = getAnalysis<GraphPass>();
   auto manifests = pass.SortedManifests();
 
-  size_t sizePre = manifests.size();
-  assert(sizePre == ManifestRegistry::GetAll().size());
+  assert(manifests.size() == ManifestRegistry::GetAll().size());
 
   dbgs() << "Got " << manifests.size() << " manifests\n";
   cStats.actualManifests = manifests.size();
@@ -33,9 +32,9 @@ bool ProtectionPass::runOnModule(llvm::Module &M) {
   std::vector<std::pair<std::string, std::string>> patchInfos{};
   size_t i = 0;
   size_t total = manifests.size();
-  for (auto &m : manifests) {
+  for (auto* m : manifests) {
+    dbgs() << m << "-" << m->name << "-" << m->index << "\n";
     if (!m->Clean()) {
-      dbgs() << "Manifest no clean\n";
       llvm_unreachable("Manifest not clean...");
     }
     dbgs() << "#" << std::to_string(i++) << "/" << std::to_string(total) << "\r";

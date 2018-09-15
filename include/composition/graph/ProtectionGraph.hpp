@@ -34,6 +34,7 @@ namespace composition {
 using ProtectionIndex = unsigned long;
 using VertexIndex = uintptr_t;
 using EdgeIndex = uintptr_t;
+using EdgeCacheMap = boost::bimaps::bimap<boost::bimaps::multiset_of<EdgeIndex>, ed_t>;
 using ProtectionMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest*>, ProtectionIndex>;
 
 //using ManifestCoverageMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest*>, boost::bimaps::multiset_of<llvm::Instruction*>>;
@@ -49,7 +50,7 @@ private:
   ProtectionIndex ProtectionIdx{};
   ProtectionMap Protections{};
   std::unordered_map<VertexIndex, vd_t> vertexCache{};
-  std::unordered_map<EdgeIndex, ed_t> edgeCache{};
+  EdgeCacheMap edgeCache{};
   ManifestDependencyMap DependencyUndo{};
 
 private:
