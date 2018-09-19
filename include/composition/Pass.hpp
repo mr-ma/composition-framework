@@ -2,20 +2,23 @@
 #define COMPOSITION_FRAMEWORK_PASS_HPP
 
 #include <string>
+#include <llvm/Support/ErrorHandling.h>
+#include <functional>
+#include <llvm/Pass.h>
 
 namespace composition {
 
-class Pass {
+class Pass : public llvm::ModulePass {
 public:
-  Pass();
+  explicit Pass(char &pid, bool isRegistered);
 
-  explicit Pass(bool isRegistered);
-
-  virtual ~Pass() = default;
+  ~Pass() override = default;
 
   // to determine if this instance class is an instance
   // of a derived class, registered to the factory.
   bool IsRegistered() const;
+
+  virtual void finalizeComposition() {};
 
 private:
   const bool IsRegistered_;

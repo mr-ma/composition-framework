@@ -10,18 +10,18 @@ namespace composition {
 
 class ManifestRegistry {
 public:
-  static void Add(Manifest* m);
+  static void Add(Manifest *m);
 
-  static std::unordered_set<Manifest*> &GetAll();
+  static std::unordered_set<Manifest *> &GetAll();
 
-  static void Remove(Manifest* m);
+  static void Remove(Manifest *m);
 
   static void destroy();
 
 protected:
   static ManifestIndex index;
 
-  static std::unordered_set<Manifest*> &RegisteredManifests();
+  static std::unordered_set<Manifest *> &RegisteredManifests();
 };
 }
 

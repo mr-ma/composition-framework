@@ -13,7 +13,7 @@ namespace composition {
 template<typename T>
 class ComposableAnalysis : public Pass {
 public:
-  void addProtection(Manifest* m) {
+  void addProtection(Manifest *m) {
     ManifestRegistry::Add(m);
   }
 
@@ -29,7 +29,7 @@ protected:
   // to determine if the class definition is registered
   const static bool IsRegistered_;
 
-  ComposableAnalysis() : Pass(IsRegistered_) {}
+  ComposableAnalysis() : Pass(T::ID, IsRegistered_) {}
 };
 
 template<typename T>

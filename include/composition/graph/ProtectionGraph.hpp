@@ -35,14 +35,14 @@ using ProtectionIndex = unsigned long;
 using VertexIndex = uintptr_t;
 using EdgeIndex = uintptr_t;
 using EdgeCacheMap = boost::bimaps::bimap<boost::bimaps::multiset_of<EdgeIndex>, ed_t>;
-using ProtectionMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest*>, ProtectionIndex>;
+using ProtectionMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest *>, ProtectionIndex>;
 
 //using ManifestCoverageMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest*>, boost::bimaps::multiset_of<llvm::Instruction*>>;
 //using ProtecteeManifestMap = boost::bimaps::bimap<boost::bimaps::multiset_of<llvm::Instruction*>, Manifest*>;
-using ManifestUndoMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest*>,
+using ManifestUndoMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest *>,
                                              boost::bimaps::multiset_of<llvm::Value *>>;
-using ManifestDependencyMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest*>,
-                                                   boost::bimaps::multiset_of<Manifest*>>;
+using ManifestDependencyMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest *>,
+                                                   boost::bimaps::multiset_of<Manifest *>>;
 
 class ProtectionGraph {
 private:
@@ -95,7 +95,7 @@ public:
 
   graph_t &getGraph();
 
-  ProtectionIndex addConstraint(Manifest* m, std::shared_ptr<Constraint> c);
+  ProtectionIndex addConstraint(Manifest *m, std::shared_ptr<Constraint> c);
 
   template<typename T, typename S>
   ProtectionIndex addCFG(T parent, S child) {
@@ -107,9 +107,9 @@ public:
     return ProtectionIdx++;
   }
 
-  std::vector<Manifest*> topologicalSortManifests(std::unordered_set<Manifest*> manifests);
+  std::vector<Manifest *> topologicalSortManifests(std::unordered_set<Manifest *> manifests);
 
-  void removeManifest(Manifest* m);
+  void removeManifest(Manifest *m);
 
   void expandToInstructions();
 
@@ -144,7 +144,7 @@ public:
         hasOneCycle = true;
       }
 
-      if(!hasOneCycle) {
+      if (!hasOneCycle) {
         cStats.timeCycleDetection += sccProfiler.stop();
         break;
       }
@@ -181,7 +181,7 @@ public:
         llvm::dbgs() << "Handling conflict...\n";
 
         resolvingProfiler.reset();
-        std::vector<Manifest*> merged{};
+        std::vector<Manifest *> merged{};
         std::set_union(presentManifests.begin(), presentManifests.end(),
                        preservedManifests.begin(), preservedManifests.end(),
                        std::back_inserter(merged));
@@ -202,12 +202,12 @@ public:
       //llvm::dbgs() << std::to_string(v.index) << "\n";
     }
 
-    std::set<Manifest*> cyclicManifests{};
+    std::set<Manifest *> cyclicManifests{};
     for (auto[ei, ei_end] = boost::edges(g); ei != ei_end; ++ei) {
       cyclicManifests.insert(Protections.right.find(g[*ei].index)->second);
     }
 
-    std::vector<Manifest*> merged{};
+    std::vector<Manifest *> merged{};
     for (auto &el : cyclicManifests) {
       merged.push_back(el);
     }
@@ -216,11 +216,11 @@ public:
   }
 
   template<typename graph_t>
-  std::pair<std::set<Manifest*>, std::set<Manifest*>> detectPresentPreservedConflicts(
+  std::pair<std::set<Manifest *>, std::set<Manifest *>> detectPresentPreservedConflicts(
       graph_t &g) {
     auto[isPresent, isPreserved] = constraint_map<PresentConstraint, PreservedConstraint>(g);
 
-    std::set<Manifest*> presentManifests{};
+    std::set<Manifest *> presentManifests{};
     for (auto[vd, p] : isPresent) {
       if (p != PresentConstraint::CONFLICT) {
         continue;
@@ -233,7 +233,7 @@ public:
       }
     }
 
-    std::set<Manifest*> preservedManifests{};
+    std::set<Manifest *> preservedManifests{};
     for (auto[vd, p] : isPreserved) {
       if (p != PreservedConstraint::CONFLICT) {
         continue;

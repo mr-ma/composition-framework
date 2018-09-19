@@ -6,6 +6,7 @@ using namespace llvm;
 
 namespace composition {
 #ifndef NDEBUG
+
 void ManifestValueHandle::deleted() {
   dbgs() << "Value deleted from: " << getPassName() << "\n";
   //llvm_unreachable("Value deleted");
@@ -33,6 +34,7 @@ ManifestValueHandle::operator llvm::Value *() const {
 bool ManifestValueHandle::pointsToAliveValue() const {
   return llvm::ValueHandleBase::isValid(getValPtr());
 }
+
 #else
 #endif
 

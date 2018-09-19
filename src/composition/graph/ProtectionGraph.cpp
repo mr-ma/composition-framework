@@ -54,7 +54,7 @@ void ProtectionGraph::removeManifest(Manifest *m) {
   graph_t &g = Graph;
 
   for (auto[it, it_end] = Protections.left.equal_range(m); it != it_end; ++it) {
-    for (auto [ei, ei_end] = edgeCache.left.equal_range(it->second); ei != ei_end; ++ei) {
+    for (auto[ei, ei_end] = edgeCache.left.equal_range(it->second); ei != ei_end; ++ei) {
       remove_edge(ei->second);
     }
 
@@ -256,7 +256,7 @@ std::vector<Manifest *> ProtectionGraph::topologicalSortManifests(std::unordered
   auto fg = filter_dependency_graph(rg);
   auto sc = filter_selfcycle_graph(fg);
 
-  std::set<Manifest*> all{manifests.begin(), manifests.end()};
+  std::set<Manifest *> all{manifests.begin(), manifests.end()};
   std::set<Manifest *> seen{};
   for (auto[vi, vi_end] = boost::vertices(sc); vi != vi_end; ++vi) {
     for (auto[ei, ei_end] = boost::in_edges(*vi, sc); ei != ei_end; ++ei) {

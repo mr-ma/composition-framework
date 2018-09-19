@@ -10,6 +10,7 @@
 #include <composition/metric/Weights.hpp>
 #include <composition/strategy/Avoidance.hpp>
 #include <composition/strategy/Weight.hpp>
+#include <composition/AnalysisRegistry.hpp>
 
 using namespace llvm;
 
@@ -23,6 +24,11 @@ void GraphPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
   AU.addRequiredTransitive<AnalysisPass>();
   AU.addRequired<LazyBlockFrequencyInfoPass>();
   AU.setPreservesAll();
+
+  auto registered = AnalysisRegistry::GetAll();
+  for (auto passInfo : registered) {
+    AU.addRequiredID(passInfo.ID);
+  }
 }
 
 bool GraphPass::runOnModule(llvm::Module &M) {

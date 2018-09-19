@@ -5,7 +5,5 @@ bool Pass::IsRegistered() const {
   return this->IsRegistered_;
 }
 
-Pass::Pass(bool isRegistered) : IsRegistered_(isRegistered) {}
-
-Pass::Pass() : Pass(false) {}
+Pass::Pass(char &pid, bool isRegistered) : ModulePass(pid), IsRegistered_(isRegistered) {}
 }

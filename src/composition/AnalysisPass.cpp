@@ -43,12 +43,9 @@ bool AnalysisPass::doInitialization(Module &M) {
 
 void AnalysisPass::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.setPreservesAll();
-  dbgs() << "Called analysis usage\n";
-  auto registered = AnalysisRegistry::GetAll();
-  dbgs() << "Got " << std::to_string(registered.size()) << "\n";
 
+  auto registered = AnalysisRegistry::GetAll();
   for (auto passInfo : registered) {
-    dbgs() << "Require " << std::to_string(reinterpret_cast<uintptr_t>(passInfo.ID)) << "\n";
     AU.addRequiredID(passInfo.ID);
   }
 }

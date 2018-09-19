@@ -5,6 +5,8 @@
 #include <composition/GraphPass.hpp>
 #include <composition/ProtectionPass.hpp>
 #include <composition/trace/PreservedValueRegistry.hpp>
+#include <composition/AnalysisRegistry.hpp>
+#include <composition/Analysis.hpp>
 
 using namespace llvm;
 namespace composition {
@@ -16,6 +18,11 @@ char ProtectionPass::ID = 0;
 void ProtectionPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
   AU.setPreservesAll();
   AU.addRequiredTransitive<GraphPass>();
+
+  auto registered = AnalysisRegistry::GetAll();
+  for (auto passInfo : registered) {
+    AU.addRequiredID(passInfo.ID);
+  }
 }
 
 bool ProtectionPass::runOnModule(llvm::Module &M) {
@@ -32,8 +39,7 @@ bool ProtectionPass::runOnModule(llvm::Module &M) {
   std::vector<std::pair<std::string, std::string>> patchInfos{};
   size_t i = 0;
   size_t total = manifests.size();
-  for (auto* m : manifests) {
-    dbgs() << m << "-" << m->name << "-" << m->index << "\n";
+  for (auto *m : manifests) {
     if (!m->Clean()) {
       llvm_unreachable("Manifest not clean...");
     }
@@ -45,6 +51,17 @@ bool ProtectionPass::runOnModule(llvm::Module &M) {
     }
   }
   dbgs() << "#" << std::to_string(i) << "/" << std::to_string(total) << "\n";
+
+  auto registered = AnalysisRegistry::GetAll();
+  for (auto a : registered) {
+    auto *p = getResolver()->findImplPass(a.ID);
+
+    if (p == nullptr) {
+      llvm_unreachable("Pass no longer available...");
+    }
+    auto *c = static_cast<composition::Pass *>(p);
+    c->finalizeComposition();
+  }
 
   writeToFile(patchInfos);
 

@@ -8,8 +8,8 @@ class Strategy {
 public:
   virtual ~Strategy() = default;
 
-  virtual Manifest* decideCycle(std::vector<Manifest*> manifests) = 0;
-  virtual Manifest* decidePresentPreserved(std::vector<Manifest*> manifests) = 0;
+  virtual Manifest *decideCycle(std::vector<Manifest *> manifests) = 0;
+  virtual Manifest *decidePresentPreserved(std::vector<Manifest *> manifests) = 0;
 };
 }
 
