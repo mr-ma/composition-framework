@@ -1,4 +1,5 @@
 #include <composition/strategy/Weight.hpp>
+#include <composition/metric/Performance.hpp>
 
 namespace composition {
 
@@ -30,7 +31,61 @@ Manifest *Weight::decide(std::vector<Manifest *> manifests) {
   return *manifests.begin();
 }
 
+std::unordered_set<llvm::BasicBlock *> getBlocks(llvm::Value *v) {
+  std::unordered_set<llvm::BasicBlock *> blocks{};
+
+  if (auto *F = llvm::dyn_cast<llvm::Function>(v)) {
+    for (auto &BB : *F) {
+      blocks.insert(&BB);
+    }
+  } else if (auto *BB = llvm::dyn_cast<llvm::BasicBlock>(v)) {
+    blocks.insert(BB);
+  } else if (auto *I = llvm::dyn_cast<llvm::Instruction>(v)) {
+    if (I->getParent() != nullptr) {
+      blocks.insert(I->getParent());
+    }
+  }
+  return blocks;
+}
+
+std::unordered_set<llvm::BasicBlock *> getBlocks(std::unordered_set<llvm::Instruction *> vs) {
+  std::unordered_set<llvm::BasicBlock *> allBlocks{};
+  for (auto *v : vs) {
+    auto newBlocks = getBlocks(v);
+    allBlocks.insert(newBlocks.begin(), newBlocks.end());
+  }
+  return allBlocks;
+}
+
+std::unordered_set<llvm::BasicBlock *> getBlocks(std::unordered_set<llvm::Value *> vs) {
+  std::unordered_set<llvm::BasicBlock *> allBlocks{};
+  for (auto *v : vs) {
+    auto newBlocks = getBlocks(v);
+    allBlocks.insert(newBlocks.begin(), newBlocks.end());
+  }
+  return allBlocks;
+}
+
 Weight::Score Weight::calculateScore(const Manifest &m) {
-  return 0;
+  auto cov = m.Coverage();
+  auto undo = m.UndoValues();
+
+  auto covBlocks = getBlocks(cov);
+  auto undoBlocks = getBlocks(undo);
+
+  size_t covBlocksPerformance = 0;
+  size_t undoBlocksPerformance = 0;
+
+  for(auto* BB : covBlocks) {
+    covBlocksPerformance += Performance::getBlockFreq(BB, BFI.at(BB->getParent()), false);
+  }
+  for(auto* BB : undoBlocks) {
+    undoBlocksPerformance += Performance::getBlockFreq(BB, BFI.at(BB->getParent()), false);
+  }
+
+  return W.explicitInstructionCoverage * cov.size()
+        + W.basicBlockProfileCount * covBlocksPerformance
+        - W.basicBlockProfileCount * undoBlocksPerformance
+        - W.protectionCosts[m.name];
 }
 }

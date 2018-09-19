@@ -1,7 +1,7 @@
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/Error.h>
-#include <llvm/Analysis/LazyBlockFrequencyInfo.h>
+#include <llvm/Analysis/BlockFrequencyInfo.h>
 #include <composition/options.hpp>
 #include <composition/GraphPass.hpp>
 #include <composition/AnalysisPass.hpp>
@@ -11,6 +11,7 @@
 #include <composition/strategy/Avoidance.hpp>
 #include <composition/strategy/Weight.hpp>
 #include <composition/AnalysisRegistry.hpp>
+#include <composition/metric/Performance.hpp>
 
 using namespace llvm;
 
@@ -22,7 +23,7 @@ char GraphPass::ID = 0;
 
 void GraphPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
   AU.addRequiredTransitive<AnalysisPass>();
-  AU.addRequired<LazyBlockFrequencyInfoPass>();
+  AU.addRequired<BlockFrequencyInfoWrapperPass>();
   AU.setPreservesAll();
 
   auto registered = AnalysisRegistry::GetAll();
@@ -33,8 +34,6 @@ void GraphPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
 
 bool GraphPass::runOnModule(llvm::Module &M) {
   dbgs() << "GraphPass running\n";
-
-  //cantFail(M.materializeAll(), "Materialize failed\n");
 
   Weights w;
   if (!WeightConfig.empty()) {
@@ -48,10 +47,13 @@ bool GraphPass::runOnModule(llvm::Module &M) {
       continue;
     }
     dbgs() << F.getName() << "\n";
-    auto &bfiPass = getAnalysis<LazyBlockFrequencyInfoPass>(F);
-    auto &lazy = bfiPass.getBFI();
-    lazy.print(dbgs());
-    BFI.insert({&F, &lazy});
+    auto &bfiPass = getAnalysis<BlockFrequencyInfoWrapperPass>(F);
+    auto &bf = bfiPass.getBFI();
+    BFI.insert({&F, &bf});
+    /*for (auto &BB : F) {
+      dbgs() << "BB false Count: " << Performance::getBlockFreq(&BB, &bf, false) << "\n";
+      dbgs() << "F false Count: " << Performance::getMaxFreq(F, &bf, false) << "\n";
+    }*/
   }
 
   std::random_device r{};

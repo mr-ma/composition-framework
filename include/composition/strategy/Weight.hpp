@@ -17,7 +17,7 @@ private:
   std::unordered_map<llvm::Function *, llvm::BlockFrequencyInfo *> BFI;
   Manifest *decide(std::vector<Manifest *> manifests);
 
-  using Score = unsigned int;
+  using Score = float;
   Score calculateScore(const Manifest &m);
 };
 }

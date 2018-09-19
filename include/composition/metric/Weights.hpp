@@ -10,7 +10,6 @@ struct Weights {
   float explicitInstructionCoverage;
   float implicitInstructionCoverage;
 
-  float basicBlockProfileFrequency;
   float basicBlockProfileCount;
   std::map<std::string, float> protectionCosts;
 

@@ -6,7 +6,6 @@ void to_json(nlohmann::json &j, const Weights &w) {
       {"explicitInstructionCoverage", w.explicitInstructionCoverage},
       {"implicitInstructionCoverage", w.implicitInstructionCoverage},
 
-      {"basicBlockProfileFrequency", w.basicBlockProfileFrequency},
       {"basicBlockProfileCount", w.basicBlockProfileCount},
       {"protectionCosts", w.protectionCosts},
 
@@ -21,7 +20,6 @@ void from_json(const nlohmann::json &j, Weights &w) {
   w.explicitInstructionCoverage = j.at("explicitInstructionCoverage").get<float>();
   w.implicitInstructionCoverage = j.at("implicitInstructionCoverage").get<float>();
 
-  w.basicBlockProfileFrequency = j.at("basicBlockProfileFrequency").get<float>();
   w.basicBlockProfileCount = j.at("basicBlockProfileCount").get<float>();
   w.protectionCosts = j.at("protectionCosts").get<std::map<std::string, float>>();
 
@@ -35,7 +33,6 @@ Weights::Weights() {
   explicitInstructionCoverage = 1.0;
   implicitInstructionCoverage = 1.0;
 
-  basicBlockProfileFrequency = 1.0;
   basicBlockProfileCount = 1.0;
   protectionCosts = {};
 
