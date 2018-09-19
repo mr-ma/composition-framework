@@ -142,15 +142,16 @@ public:
       }
       catch (boost::not_a_dag) {
         hasOneCycle = true;
+        cStats.cycles++;
       }
 
       if (!hasOneCycle) {
-        cStats.timeCycleDetection += sccProfiler.stop();
+        cStats.timeConflictDetection += sccProfiler.stop();
         break;
       }
 
       auto components = strong_components(fg);
-      cStats.timeCycleDetection += sccProfiler.stop();
+      cStats.timeConflictDetection += sccProfiler.stop();
       int i = 0;
       for (auto &component : components) {
         auto vertexCount = vertex_count(component);
@@ -175,10 +176,13 @@ public:
     do {
       hadConflicts = false;
 
+      sccProfiler.reset();
       auto[presentManifests, preservedManifests] = detectPresentPreservedConflicts(g);
+      cStats.timeConflictDetection += sccProfiler.stop();
       if (!presentManifests.empty() || !preservedManifests.empty()) {
         hadConflicts = true;
         llvm::dbgs() << "Handling conflict...\n";
+        cStats.conflicts++;
 
         resolvingProfiler.reset();
         std::vector<Manifest *> merged{};

@@ -13,8 +13,10 @@ public:
   Stats stats{};
   size_t proposedManifests{};
   size_t actualManifests{};
+  size_t cycles{};
+  size_t conflicts{};
   double timeGraphConstruction{};
-  double timeCycleDetection{};
+  double timeConflictDetection{};
   double timeConflictResolving{};
 
   CompositionStats() = default;
