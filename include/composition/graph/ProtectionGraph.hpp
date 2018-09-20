@@ -122,10 +122,26 @@ public:
   void computeManifestDependencies();
 
   template<typename T>
+  bool hasCycle(T &g) {
+    Profiler sccProfiler{};
+    try {
+      topological_sort(g);
+      cStats.timeConflictDetection += sccProfiler.stop();
+      return false;
+    }
+    catch (boost::not_a_dag&) {
+      cStats.timeConflictDetection += sccProfiler.stop();
+      return true;
+    }
+    return false;
+  }
+
+  template<typename T>
   void conflictHandling(T &g, const std::unique_ptr<Strategy> &strategy) {
     llvm::dbgs() << "Step 1: Removing cycles...\n";
     auto rg = filter_removed_graph(g);
     auto fg = filter_dependency_graph(rg);
+    auto sc = filter_selfcycle_graph(fg);
 
     //First detect cycles and remove all cycles.
     bool hadConflicts;
@@ -135,37 +151,31 @@ public:
       hadConflicts = false;
       sccProfiler.reset();
 
-      bool hasOneCycle = false;
-      try {
-        auto sc = filter_selfcycle_graph(fg);
-        topological_sort(sc);
-      }
-      catch (boost::not_a_dag) {
-        hasOneCycle = true;
-        cStats.cycles++;
-      }
-
+      bool hasOneCycle = hasCycle(sc);
       if (!hasOneCycle) {
         cStats.timeConflictDetection += sccProfiler.stop();
         break;
       }
 
-      auto components = strong_components(fg);
+      auto components = strong_components(sc);
       cStats.timeConflictDetection += sccProfiler.stop();
       int i = 0;
       for (auto &component : components) {
         auto vertexCount = vertex_count(component);
         if (vertexCount != 1) {
           hadConflicts = true;
+          cStats.cycles++;
           llvm::dbgs() << "Component " << std::to_string(i) << " contains cycle with " << std::to_string(vertexCount)
                        << " elements.\n";
           if (DumpGraphs) {
             save_graph_to_dot(component, "graph_component_" + std::to_string(i) + ".dot");
             save_graph_to_graphml(component, "graph_component_" + std::to_string(i) + ".graphml");
           }
-          resolvingProfiler.reset();
-          handleCycle(component, strategy);
-          cStats.timeConflictResolving += resolvingProfiler.stop();
+          do {
+            resolvingProfiler.reset();
+            handleCycle(component, strategy);
+            cStats.timeConflictResolving += resolvingProfiler.stop();
+          } while(hasCycle(component));
           ++i;
         }
       }
