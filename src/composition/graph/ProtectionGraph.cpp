@@ -98,6 +98,9 @@ void ProtectionGraph::expandToInstructions() {
     case vertex_type::UNKNOWN: break;
     }
   }
+
+  cStats.vertices = boost::num_vertices(g);
+  cStats.edges = boost::num_edges(g);
 }
 
 void ProtectionGraph::expandBasicBlockToInstructions(vd_t it, llvm::BasicBlock *B) {

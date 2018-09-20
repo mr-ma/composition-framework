@@ -15,6 +15,8 @@ public:
   size_t actualManifests{};
   size_t cycles{};
   size_t conflicts{};
+  size_t edges{};
+  size_t vertices{};
   double timeGraphConstruction{};
   double timeConflictDetection{};
   double timeConflictResolving{};

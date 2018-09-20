@@ -164,7 +164,6 @@ public:
         auto vertexCount = vertex_count(component);
         if (vertexCount != 1) {
           hadConflicts = true;
-          cStats.cycles++;
           llvm::dbgs() << "Component " << std::to_string(i) << " contains cycle with " << std::to_string(vertexCount)
                        << " elements.\n";
           if (DumpGraphs) {
@@ -209,6 +208,8 @@ public:
   template<typename graph_t>
   void handleCycle(graph_t &g, const std::unique_ptr<Strategy> &strategy) {
     llvm::dbgs() << "Handling cycle in component\n";
+    cStats.cycles++;
+
     for (auto[vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
       auto v = g[*vi];
 

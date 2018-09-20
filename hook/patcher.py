@@ -4,6 +4,7 @@ import subprocess
 import argparse
 import os
 
+patch_runs = 0
 
 def load_patch_info(patch_filename):
     with open(patch_filename) as fd:
@@ -82,6 +83,8 @@ def main(binary, patch_filename, patcher_configname, args, output):
 
 
 def run_patcher(binary, collected_info, last_patcher, commands, output):
+    global patch_runs
+    patch_runs+=1
     # wite the patch guide information
     with open(output + "/" + last_patcher + "_guide.txt", 'w') as fd:
         fd.write(collected_info)
@@ -112,3 +115,4 @@ if __name__ == '__main__':
         args.args = read_args(args.argspath)
 
     main(args.binary, args.manifest, args.patchers, args.args, args.output)
+    print("Patcher runs: {}".format(patch_runs))
