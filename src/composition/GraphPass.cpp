@@ -2,6 +2,7 @@
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/Error.h>
 #include <llvm/Analysis/BlockFrequencyInfo.h>
+#include <self-checksumming/FunctionFilter.h>
 #include <composition/options.hpp>
 #include <composition/GraphPass.hpp>
 #include <composition/AnalysisPass.hpp>
@@ -24,6 +25,7 @@ char GraphPass::ID = 0;
 void GraphPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
   AU.addRequiredTransitive<AnalysisPass>();
   AU.addRequired<BlockFrequencyInfoWrapperPass>();
+  AU.addRequiredTransitive<FunctionFilterPass>();
   AU.setPreservesAll();
 
   auto registered = AnalysisRegistry::GetAll();
@@ -34,6 +36,9 @@ void GraphPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
 
 bool GraphPass::runOnModule(llvm::Module &M) {
   dbgs() << "GraphPass running\n";
+
+  auto& filterPass = getAnalysis<FunctionFilterPass>();
+  sensitiveFunctions = filterPass.get_functions_info()->get_functions();
 
   Weights w;
   if (!WeightConfig.empty()) {
@@ -50,10 +55,6 @@ bool GraphPass::runOnModule(llvm::Module &M) {
     auto &bfiPass = getAnalysis<BlockFrequencyInfoWrapperPass>(F);
     auto &bf = bfiPass.getBFI();
     BFI.insert({&F, &bf});
-    /*for (auto &BB : F) {
-      dbgs() << "BB false Count: " << Performance::getBlockFreq(&BB, &bf, false) << "\n";
-      dbgs() << "F false Count: " << Performance::getMaxFreq(F, &bf, false) << "\n";
-    }*/
   }
 
   std::random_device r{};
@@ -64,14 +65,14 @@ bool GraphPass::runOnModule(llvm::Module &M) {
   strategies.emplace("avoidance", std::make_unique<Avoidance>(Avoidance(
       {
           {"cm", -1},
-          {"sc", 0},
-          {"cfi", 0},
-          {"oh_hash_", 1},
-          {"oh_hash", 1},
-          {"oh_assert_", 2},
-          {"oh_assert", 2},
-          {"sroh_hash", 1},
-          {"sroh_assert", 2},
+          {"oh_assert_", 1},
+          {"oh_assert", 1},
+          {"sroh_assert", 1},
+          {"sroh_hash", 2},
+          {"oh_hash_", 2},
+          {"oh_hash", 2},
+          {"sc", 3},
+          {"cfi", 4},
       }
   )));
   strategies.emplace("weight", std::make_unique<Weight>(
@@ -123,5 +124,9 @@ bool GraphPass::doFinalization(Module &module) {
   Graph->destroy();
   ManifestRegistry::destroy();
   return Pass::doFinalization(module);
+}
+
+const std::unordered_set<Function *> &GraphPass::getSensitiveFunctions() const {
+  return sensitiveFunctions;
 }
 }

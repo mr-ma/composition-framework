@@ -30,6 +30,7 @@ bool ProtectionPass::runOnModule(llvm::Module &M) {
 
   auto &pass = getAnalysis<GraphPass>();
   auto manifests = pass.SortedManifests();
+  auto sensitiveFunctions = pass.getSensitiveFunctions();
 
   assert(manifests.size() == ManifestRegistry::GetAll().size());
 
@@ -65,7 +66,7 @@ bool ProtectionPass::runOnModule(llvm::Module &M) {
 
   writeToFile(patchInfos);
 
-  cStats.stats.collect(&M, manifests);
+  cStats.stats.collect(sensitiveFunctions, manifests, pass.getManifestDependencyMap());
   cStats.dump(dbgs());
 
   if (!DumpStats.empty()) {

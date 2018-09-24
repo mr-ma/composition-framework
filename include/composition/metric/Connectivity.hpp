@@ -8,6 +8,7 @@ namespace composition {
 struct Connectivity {
   double avg{};
   double std{};
+  double variance{};
 
   Connectivity() = default;
 

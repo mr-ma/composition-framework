@@ -37,8 +37,6 @@ using EdgeIndex = uintptr_t;
 using EdgeCacheMap = boost::bimaps::bimap<boost::bimaps::multiset_of<EdgeIndex>, ed_t>;
 using ProtectionMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest *>, ProtectionIndex>;
 
-//using ManifestCoverageMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest*>, boost::bimaps::multiset_of<llvm::Instruction*>>;
-//using ProtecteeManifestMap = boost::bimaps::bimap<boost::bimaps::multiset_of<llvm::Instruction*>, Manifest*>;
 using ManifestUndoMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest *>,
                                              boost::bimaps::multiset_of<llvm::Value *>>;
 using ManifestDependencyMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest *>,
@@ -94,6 +92,10 @@ public:
   void destroy();
 
   graph_t &getGraph();
+
+  const ManifestDependencyMap getManifestDependencyMap() const {
+    return DependencyUndo;
+  }
 
   ProtectionIndex addConstraint(Manifest *m, std::shared_ptr<Constraint> c);
 
