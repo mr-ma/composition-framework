@@ -68,7 +68,9 @@ void ProtectionGraph::removeManifest(Manifest *m) {
     removeManifest(it->second);
   }
   DependencyUndo.right.erase(m);
-  DependencyUndo.left.erase(m);
+  //DependencyUndo.left.erase(m);
+  ManifestProtection.right.erase(m);
+  ManifestProtection.left.erase(m);
   ManifestRegistry::Remove(m);
 }
 
@@ -321,6 +323,20 @@ void ProtectionGraph::computeManifestDependencies() {
       manifestUsers[m].insert(*it);
     }
   }
+
+  for(auto&[m, u] : undo.left) {
+    std::unordered_set<Manifest*> manifests{};
+
+    for(auto I : m->Coverage()) {
+      for(auto [it, it_end] = undo.right.equal_range(I); it != it_end; ++it) {
+        manifests.insert(it->second);
+      }
+    }
+    for(auto m2 : manifests) {
+      ManifestProtection.insert({m2, m});
+    }
+  }
+
 
   for (auto &[m, users] : manifestUsers) {
     for (auto u : users) {

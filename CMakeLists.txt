@@ -149,6 +149,8 @@ target_compile_options(CompositionFramework PRIVATE -g)
 target_compile_features(CompositionFramework PUBLIC cxx_std_17)
 target_link_libraries(CompositionFramework PRIVATE Boost::graph nlohmann_json::nlohmann_json)
 
+target_compile_features(rtlib PUBLIC cxx_std_17)
+
 ##
 ## INSTALL
 ## install header files, generate and install cmake config files for find_package()

@@ -24,6 +24,10 @@ public:
     return Graph->getManifestDependencyMap();
   }
 
+  const ManifestProtectionMap getManifestProtectionMap() const {
+    return Graph->getManifestProtectionMap();
+  }
+
   void getAnalysisUsage(llvm::AnalysisUsage &usage) const override;
 
   bool runOnModule(llvm::Module &module) override;

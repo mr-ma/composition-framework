@@ -56,17 +56,17 @@ Stats::Stats(std::istream &i) {
   from_json(j, *this);
 }
 
-void Stats::collect(llvm::Value *V, std::vector<Manifest *> manifests, const ManifestDependencyMap &dep) {
+void Stats::collect(llvm::Value *V, std::vector<Manifest *> manifests, const ManifestProtectionMap &dep) {
   collect(Coverage::ValueToInstructions(V), std::move(manifests), dep);
 }
 
-void Stats::collect(llvm::Module *M, std::vector<Manifest *> manifests, const ManifestDependencyMap &dep) {
+void Stats::collect(llvm::Module *M, std::vector<Manifest *> manifests, const ManifestProtectionMap &dep) {
   collect(Coverage::ValueToInstructions(M), std::move(manifests), dep);
 }
 
 void Stats::collect(std::unordered_set<llvm::Function *> sensitiveFunctions,
                     std::vector<Manifest *> manifests,
-                    const ManifestDependencyMap &dep) {
+                    const ManifestProtectionMap &dep) {
   std::unordered_set<llvm::Instruction *> instructions{};
 
   for (auto F : sensitiveFunctions) {
@@ -77,14 +77,15 @@ void Stats::collect(std::unordered_set<llvm::Function *> sensitiveFunctions,
   collect(instructions, std::move(manifests), dep);
 }
 
-std::unordered_set<llvm::Instruction *> implictInstructions(Manifest *m, const ManifestDependencyMap &dep) {
+std::unordered_set<llvm::Instruction *> implictInstructions(Manifest *m, const ManifestProtectionMap &dep) {
   std::unordered_set<llvm::Instruction *> result{};
   std::queue<Manifest *> q{};
 
+  std::unordered_set<Manifest *> seen{};
   for (auto[it, it_end] = dep.left.equal_range(m); it != it_end; ++it) {
     q.push(it->second);
+    seen.insert(it->second);
   }
-  std::unordered_set<Manifest *> seen{};
   while (!q.empty()) {
     auto next = q.front();
     seen.insert(next);
@@ -96,6 +97,7 @@ std::unordered_set<llvm::Instruction *> implictInstructions(Manifest *m, const M
       if (seen.find(it->second) != seen.end()) {
         continue;
       }
+      seen.insert(it->second);
       q.push(it->second);
     }
   }
@@ -105,7 +107,7 @@ std::unordered_set<llvm::Instruction *> implictInstructions(Manifest *m, const M
 
 void Stats::collect(std::unordered_set<llvm::Instruction *> allInstructions,
                     std::vector<Manifest *> manifests,
-                    const ManifestDependencyMap &dep) {
+                    const ManifestProtectionMap &dep) {
   this->numberOfManifests = manifests.size();
   this->numberOfAllInstructions = allInstructions.size();
 

@@ -13,7 +13,7 @@
 
 namespace composition {
 
-using ManifestDependencyMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest *>,
+using ManifestProtectionMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest *>,
                                                    boost::bimaps::multiset_of<Manifest *>>;
 
 class Stats {
@@ -39,15 +39,15 @@ public:
 
   void collect(std::unordered_set<llvm::Function *> sensitiveFunctions,
                std::vector<Manifest *> manifests,
-               const ManifestDependencyMap &dep);
+               const ManifestProtectionMap &dep);
 
-  void collect(llvm::Module *M, std::vector<Manifest *> manifests, const ManifestDependencyMap &dep);
+  void collect(llvm::Module *M, std::vector<Manifest *> manifests, const ManifestProtectionMap &dep);
 
-  void collect(llvm::Value *V, std::vector<Manifest *> manifests, const ManifestDependencyMap &dep);
+  void collect(llvm::Value *V, std::vector<Manifest *> manifests, const ManifestProtectionMap &dep);
 
   void collect(std::unordered_set<llvm::Instruction *> allInstructions,
                std::vector<Manifest *> manifests,
-               const ManifestDependencyMap &dep);
+               const ManifestProtectionMap &dep);
 private:
   std::unordered_set<llvm::Instruction *> protectedInstructionsDistinct{};
   std::map<std::string, std::unordered_set<llvm::Instruction *>> protectedInstructions{};

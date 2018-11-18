@@ -66,7 +66,7 @@ bool ProtectionPass::runOnModule(llvm::Module &M) {
 
   writeToFile(patchInfos);
 
-  cStats.stats.collect(sensitiveFunctions, manifests, pass.getManifestDependencyMap());
+  cStats.stats.collect(sensitiveFunctions, manifests, pass.getManifestProtectionMap());
   cStats.dump(dbgs());
 
   if (!DumpStats.empty()) {

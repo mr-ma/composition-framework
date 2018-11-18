@@ -39,6 +39,8 @@ using ProtectionMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest *
 
 using ManifestUndoMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest *>,
                                              boost::bimaps::multiset_of<llvm::Value *>>;
+using ManifestProtectionMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest *>,
+                                             boost::bimaps::multiset_of<Manifest *>>;
 using ManifestDependencyMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest *>,
                                                    boost::bimaps::multiset_of<Manifest *>>;
 
@@ -50,6 +52,7 @@ private:
   std::unordered_map<VertexIndex, vd_t> vertexCache{};
   EdgeCacheMap edgeCache{};
   ManifestDependencyMap DependencyUndo{};
+  ManifestProtectionMap ManifestProtection{};
 
 private:
 
@@ -95,6 +98,10 @@ public:
 
   const ManifestDependencyMap getManifestDependencyMap() const {
     return DependencyUndo;
+  }
+
+  const ManifestProtectionMap getManifestProtectionMap() const {
+    return ManifestProtection;
   }
 
   ProtectionIndex addConstraint(Manifest *m, std::shared_ptr<Constraint> c);
