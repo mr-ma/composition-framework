@@ -5,7 +5,9 @@
 #include <composition/util/functions.hpp>
 
 using namespace llvm;
-namespace composition {
+namespace composition::trace {
+using util::getPassName;
+
 template<typename ExtraDataT>
 void TraceableValueState::Config::onRAUW(const ExtraDataT &, llvm::Value *oldValue, llvm::Value *newValue) {
   std::vector<std::pair<std::string, PreservedCallback>> callbacks;

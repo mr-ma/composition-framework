@@ -2,25 +2,41 @@
 #define COMPOSITION_FRAMEWORK_TRACE_TRACEABLEVALUE_HPP
 #include <map>
 #include <utility>
+#include <functional>
 #include <llvm/IR/Value.h>
 #include <llvm/IR/GlobalValue.h>
 #include <llvm/IR/ValueMap.h>
 
-namespace composition {
+namespace composition::trace {
 
+/**
+ * Function that is called if a preserved constraint is violated
+ */
 typedef std::function<void(const std::string &, llvm::Value *, llvm::Value *)> PreservedCallback;
+
+/**
+ * Function that is called if a present constraint is violated
+ */
 typedef std::function<void(const std::string &, llvm::Value *)> PresentCallback;
 
+/**
+ * Captures the present and preserved callback for a protected value
+ */
 struct TraceableCallbackInfo {
   std::string pass;
   PresentCallback presentCallback;
   PreservedCallback preservedCallback;
 
-  TraceableCallbackInfo(std::string pass, PresentCallback presentCallback, PreservedCallback preservedCallback)
-      : pass(std::move(pass)), presentCallback(std::move(presentCallback)),
-        preservedCallback(std::move(preservedCallback)) {}
+  TraceableCallbackInfo(std::string pass, PresentCallback presentCallback, PreservedCallback preservedCallback) :
+      pass(std::move(pass)),
+      presentCallback(std::move(presentCallback)),
+      preservedCallback(std::move(preservedCallback)) {
+  }
 };
 
+/**
+ * Registers the callbacks with LLVMs ValueMap. This calls onRAUW and onDelete if a stored value is changed or removed.
+ */
 class TraceableValueState {
   struct Config : llvm::ValueMapConfig<llvm::Value *> {
     enum { FollowRAUW = true };

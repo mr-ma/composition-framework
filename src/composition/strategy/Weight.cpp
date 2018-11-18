@@ -1,10 +1,13 @@
 #include <composition/strategy/Weight.hpp>
 #include <composition/metric/Performance.hpp>
 
-namespace composition {
+namespace composition::strategy {
+using namespace metric;
 
-Weight::Weight(const Weights &W, const std::unordered_map<llvm::Function *, llvm::BlockFrequencyInfo *> &BFI)
-    : W(W), BFI(BFI) {}
+Weight::Weight(const Weights &W, const std::unordered_map<llvm::Function *, llvm::BlockFrequencyInfo *> &BFI) :
+    W(W),
+    BFI(BFI) {
+}
 
 Manifest *Weight::decideCycle(std::vector<Manifest *> manifests) {
   return decide(manifests);
@@ -76,16 +79,16 @@ Weight::Score Weight::calculateScore(const Manifest &m) {
   size_t covBlocksPerformance = 0;
   size_t undoBlocksPerformance = 0;
 
-  for(auto* BB : covBlocks) {
+  for (auto *BB : covBlocks) {
     covBlocksPerformance += Performance::getBlockFreq(BB, BFI.at(BB->getParent()), false);
   }
-  for(auto* BB : undoBlocks) {
+  for (auto *BB : undoBlocks) {
     undoBlocksPerformance += Performance::getBlockFreq(BB, BFI.at(BB->getParent()), false);
   }
 
   return W.explicitInstructionCoverage * cov.size()
-        + W.basicBlockProfileCount * covBlocksPerformance
-        - W.basicBlockProfileCount * undoBlocksPerformance
-        - W.protectionCosts[m.name];
+      + W.basicBlockProfileCount * covBlocksPerformance
+      - W.basicBlockProfileCount * undoBlocksPerformance
+      - W.protectionCosts[m.name];
 }
 }

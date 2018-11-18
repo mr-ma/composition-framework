@@ -1,5 +1,5 @@
-#ifndef COMPOSITION_FRAMEWORK_GRAPH_STRONGCOMPONENTS_HPP
-#define COMPOSITION_FRAMEWORK_GRAPH_STRONGCOMPONENTS_HPP
+#ifndef COMPOSITION_FRAMEWORK_GRAPH_ALGORITHM_STRONGCOMPONENTS_HPP
+#define COMPOSITION_FRAMEWORK_GRAPH_ALGORITHM_STRONGCOMPONENTS_HPP
 
 #include <vector>
 #include <boost/graph/strong_components.hpp>
@@ -7,7 +7,14 @@
 #include <boost/graph/filtered_graph.hpp>
 #include <composition/graph/util/index_map.hpp>
 
-namespace composition {
+namespace composition::graph::algorithm {
+
+/**
+ * Algorithm to compute the strong components in a graph.
+ * @tparam graph_t the type of `g` to support any type of graph
+ * @param g the graph to calculate the strong components
+ * @return a vector of filtered graphs where each element is a strong component
+ */
 template<typename graph_t>
 std::vector<boost::filtered_graph<graph_t,
                                   std::function<bool(typename graph_t::edge_descriptor)>,
@@ -23,7 +30,7 @@ std::vector<boost::filtered_graph<graph_t,
                                         boost::iterator_property_map(mapping->begin(), assocIndexMap),
                                         vertex_index_map(assocIndexMap));
 
-  // src# https://stackoverflow.com/a/26778230
+  // idea src# https://stackoverflow.com/a/26778230
   std::vector<boost::filtered_graph<graph_t,
                                     std::function<bool(ed_t)>,
                                     std::function<bool(vd_t)>>> component_graphs;
@@ -42,4 +49,4 @@ std::vector<boost::filtered_graph<graph_t,
   return component_graphs;
 }
 }
-#endif //COMPOSITION_FRAMEWORK_GRAPH_STRONGCOMPONENTS_HPP
+#endif //COMPOSITION_FRAMEWORK_GRAPH_ALGORITHM_STRONGCOMPONENTS_HPP

@@ -4,7 +4,10 @@
 #include <unordered_map>
 #include <composition/strategy/Strategy.hpp>
 
-namespace composition {
+namespace composition::strategy {
+/**
+ * Avoidance strategy uses a configuration file to decide which manifest must be removed.
+ */
 class Avoidance : public Strategy {
 public:
   explicit Avoidance(const std::unordered_map<std::string, int> &order);

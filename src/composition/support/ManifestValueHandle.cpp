@@ -1,30 +1,21 @@
-#include <composition/ManifestValueHandle.hpp>
+#include <composition/support/ManifestValueHandle.hpp>
 #include <composition/util/functions.hpp>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
 using namespace llvm;
 
-namespace composition {
+namespace composition::support {
 #ifndef NDEBUG
+using util::getPassName;
 
 void ManifestValueHandle::deleted() {
   dbgs() << "Value deleted from: " << getPassName() << "\n";
-  //llvm_unreachable("Value deleted");
   this->RemoveFromUseList();
   this->clearValPtr();
 }
 
 void ManifestValueHandle::allUsesReplacedWith(Value *value) {
   dbgs() << "Value RAUWED from: " << getPassName() << "\n";
-  //llvm_unreachable("Value RAUWED");
-}
-
-llvm::Value *ManifestValueHandle::operator=(llvm::Value *RHS) {
-  return ValueHandleBase::operator=(RHS);
-}
-
-llvm::Value *ManifestValueHandle::operator=(const ValueHandleBase &RHS) {
-  return ValueHandleBase::operator=(RHS);
 }
 
 ManifestValueHandle::operator llvm::Value *() const {

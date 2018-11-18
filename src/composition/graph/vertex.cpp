@@ -6,7 +6,15 @@
 #include <composition/graph/vertex.hpp>
 #include <composition/graph/util/graphviz.hpp>
 #include <composition/util/strings.hpp>
-namespace composition {
+
+namespace composition::graph {
+using util::graphviz_encode;
+using composition::util::ltrim;
+
+std::ostream &operator<<(std::ostream &os, const vertex_type &obj) {
+  os << static_cast<std::underlying_type<vertex_type>::type>(obj);
+  return os;
+}
 
 std::ostream &vertex_t::operator<<(std::ostream &os) noexcept {
   os << this->index
@@ -33,26 +41,10 @@ vertex_t::vertex_t(vertex_idx_t index,
                    std::string name,
                    vertex_type type,
                    std::unordered_map<ConstraintIndex, std::shared_ptr<Constraint>> constraints) noexcept :
-    index{index},
-    name{std::move(name)},
-    type{type},
-    constraints{std::move(constraints)} {
-}
-
-void assertType(llvm::Value *value, vertex_type type) {
-  assert(value != nullptr && "Value for assertType is nullptr");
-
-  if (llvm::isa<llvm::Instruction>(value)) {
-    assert(type == vertex_type::INSTRUCTION);
-  } else if (llvm::isa<llvm::BasicBlock>(value)) {
-    assert(type == vertex_type::BASICBLOCK);
-  } else if (llvm::isa<llvm::Function>(value)) {
-    assert(type == vertex_type::FUNCTION);
-  } else if (llvm::isa<llvm::Value>(value)) {
-    assert(type == vertex_type::VALUE);
-  } else {
-    assert(false);
-  }
+    index(index),
+    name(std::move(name)),
+    type(type),
+    constraints(std::move(constraints)) {
 }
 
 vertex_type llvmToVertexType(const llvm::Value *v) {

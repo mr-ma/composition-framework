@@ -8,9 +8,9 @@
 
 namespace composition {
 
-class CompositionStats {
+class Stats {
 public:
-  Stats stats{};
+  metric::Stats stats{};
   size_t proposedManifests{};
   size_t actualManifests{};
   size_t cycles{};
@@ -21,15 +21,25 @@ public:
   double timeConflictDetection{};
   double timeConflictResolving{};
 
-  CompositionStats() = default;
+  Stats() = default;
 
-  explicit CompositionStats(std::istream &i);
+  explicit Stats(std::istream &i);
 
   void dump(llvm::raw_ostream &o);
 };
 
-void to_json(nlohmann::json &j, const CompositionStats &s);
+/**
+ * Converts `Stats` into JSON representation.
+ * @param j IN/OUT the resulting JSON
+ * @param w IN the stats
+ */
+void to_json(nlohmann::json &j, const Stats &s);
 
-void from_json(const nlohmann::json &j, CompositionStats &s);
+/**
+ * Converts JSON into `Stats` representation
+ * @param j IN the JSON source
+ * @param w IN/OUT the resulting stats
+ */
+void from_json(const nlohmann::json &j, Stats &s);
 }
 #endif //COMPOSITION_FRAMEWORK_STATS_HPP

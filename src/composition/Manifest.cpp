@@ -9,10 +9,18 @@
 #include <llvm/Support/raw_ostream.h>
 #include <composition/Manifest.hpp>
 #include <composition/graph/vertex.hpp>
+#include <composition/graph/dependency.hpp>
+#include <composition/graph/present.hpp>
+#include <composition/graph/preserved.hpp>
 
 using namespace llvm;
 
 namespace composition {
+using metric::Coverage;
+using graph::Dependency;
+using graph::Present;
+using graph::Preserved;
+
 void Manifest::Undo() const {
   dbgs() << "Undoing " << undoValues.size() << " values\n";
   for (const auto &V : undoValues) {
@@ -67,16 +75,6 @@ std::unordered_set<llvm::Instruction *> Manifest::Coverage() const {
   return {};
 }
 
-std::unordered_set<llvm::Instruction *> Manifest::GuardInstructions() const {
-  std::unordered_set<llvm::Instruction *> guards{};
-  for (const auto &g : guardInstructions) {
-    if (auto *I = llvm::dyn_cast<llvm::Instruction>(&*g)) {
-      guards.insert(I);
-    }
-  }
-  return guards;
-}
-
 std::unordered_set<llvm::Value *> Manifest::UndoValues() const {
   std::unordered_set<llvm::Value *> undos{};
   for (const auto &g : undoValues) {
@@ -98,20 +96,19 @@ bool Manifest::operator==(const Manifest &other) const {
 Manifest::Manifest(std::string name,
                    llvm::Value *protectee,
                    PatchFunction patchFunction,
-                   std::vector<std::shared_ptr<Constraint>> constraints,
+                   std::vector<std::shared_ptr<graph::Constraint>> constraints,
                    bool postPatching,
                    std::set<llvm::Value *> undoValues,
-                   std::set<llvm::Instruction *> guardInstructions,
-                   std::string patchInfo)
-    : name(std::move(name)), patchFunction(std::move(patchFunction)), constraints(std::move(constraints)),
-      postPatching(postPatching), patchInfo(std::move(patchInfo)) {
+                   std::string patchInfo) :
+    name(std::move(name)),
+    patchFunction(std::move(patchFunction)),
+    constraints(std::move(constraints)),
+    postPatching(postPatching),
+    patchInfo(std::move(patchInfo)) {
 
-  this->protectee = ManifestValueHandle(protectee);
+  this->protectee = support::ManifestValueHandle(protectee);
   for (auto u : undoValues) {
     this->undoValues.emplace_back(u);
-  }
-  for (auto g : guardInstructions) {
-    this->guardInstructions.emplace_back(g);
   }
 }
 
@@ -157,11 +154,6 @@ bool Manifest::Clean() {
   for (auto it = undoValues.begin(), it_end = undoValues.end(); it != it_end; ++it) {
     if (!it->pointsToAliveValue()) {
       it = undoValues.erase(it);
-    }
-  }
-  for (auto it = guardInstructions.begin(), it_end = guardInstructions.end(); it != it_end; ++it) {
-    if (!it->pointsToAliveValue()) {
-      it = guardInstructions.erase(it);
     }
   }
   for (auto &constraint : constraints) {

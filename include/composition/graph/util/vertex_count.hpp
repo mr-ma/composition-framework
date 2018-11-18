@@ -4,6 +4,13 @@
 #include <cstddef>
 #include <boost/graph/adjacency_list.hpp>
 
+namespace composition::graph::util {
+/**
+ * Counts the vertices in the graph
+ * @tparam graph_t the type of the graph `g`
+ * @param g the graph
+ * @return the number of vertices in the graph
+ */
 template<typename graph_t>
 size_t vertex_count(graph_t &g) {
   size_t vertexCount = 0;
@@ -12,5 +19,5 @@ size_t vertex_count(graph_t &g) {
   }
   return vertexCount;
 }
-
+}
 #endif //COMPOSITION_FRAMEWORK_GRAPH_UTIL_VERTEXCOUNT_HPP

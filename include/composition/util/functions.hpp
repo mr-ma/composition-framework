@@ -3,11 +3,11 @@
 
 #include <string>
 
-namespace composition {
-std::string demangle(const std::string &mangled_name);
-
-void extract_function_name(std::string &full_name);
-
+namespace composition::util {
+/**
+ * Retrieves the pass name of the currently executing LLVM pass
+ * @return the name of the pass
+ */
 std::string getPassName();
 }
 

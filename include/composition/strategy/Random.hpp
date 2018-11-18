@@ -4,7 +4,10 @@
 #include <random>
 #include <composition/strategy/Strategy.hpp>
 
-namespace composition {
+namespace composition::strategy {
+/**
+ * Random strategy decides randomly which Manifest is removed
+ */
 class Random : public Strategy {
 public:
   explicit Random(const std::default_random_engine &RNG);

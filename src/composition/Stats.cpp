@@ -1,7 +1,21 @@
 #include <composition/Stats.hpp>
 
 namespace composition {
-void to_json(nlohmann::json &j, const CompositionStats &s) {
+Stats::Stats(std::istream &i) {
+  nlohmann::json j;
+  i >> j;
+  from_json(j, *this);
+
+}
+
+void Stats::dump(llvm::raw_ostream &o) {
+  nlohmann::json j;
+  to_json(j, *this);
+
+  o << j.dump(4) << "\n";
+}
+
+void to_json(nlohmann::json &j, const Stats &s) {
   j = nlohmann::json{
       {"stats", s.stats},
       {"proposedManifests", s.proposedManifests},
@@ -16,8 +30,8 @@ void to_json(nlohmann::json &j, const CompositionStats &s) {
   };
 }
 
-void from_json(const nlohmann::json &j, CompositionStats &s) {
-  s.stats = j.at("stats").get<Stats>();
+void from_json(const nlohmann::json &j, Stats &s) {
+  s.stats = j.at("stats").get<metric::Stats>();
   s.proposedManifests = j.at("proposedManifests").get<size_t>();
   s.actualManifests = j.at("actualManifests").get<size_t>();
   s.cycles = j.at("cycles").get<size_t>();
@@ -27,19 +41,5 @@ void from_json(const nlohmann::json &j, CompositionStats &s) {
   s.timeGraphConstruction = j.at("timeGraphConstruction").get<double>();
   s.timeConflictDetection = j.at("timeConflictDetection").get<double>();
   s.timeConflictResolving = j.at("timeConflictResolving").get<double>();
-}
-
-CompositionStats::CompositionStats(std::istream &i) {
-  nlohmann::json j;
-  i >> j;
-  from_json(j, *this);
-
-}
-
-void CompositionStats::dump(llvm::raw_ostream &o) {
-  nlohmann::json j;
-  to_json(j, *this);
-
-  o << j.dump(4) << "\n";
 }
 }

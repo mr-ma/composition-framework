@@ -1,7 +1,12 @@
 #include <composition/metric/Connectivity.hpp>
 
-namespace composition {
+namespace composition::metric {
+
 Connectivity::Connectivity(std::vector<size_t> v) {
+  updateConnectivity(v);
+}
+
+void Connectivity::updateConnectivity(std::vector<size_t> v) {
   double sum = std::accumulate(v.begin(), v.end(), 0.0);
   this->avg = sum / v.size();
 
@@ -11,10 +16,6 @@ Connectivity::Connectivity(std::vector<size_t> v) {
   this->variance = sq_sum / (double) v.size();
   this->std = std::sqrt(this->variance);
 }
-
-Connectivity::Connectivity(double avg, double std) : avg(avg), std(std) {}
-
-Connectivity::Connectivity(std::pair<double, double> c) : Connectivity(c.first, c.second) {}
 
 void to_json(nlohmann::json &j, const Connectivity &c) {
   j = nlohmann::json{

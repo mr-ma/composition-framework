@@ -1,5 +1,5 @@
 #include <composition/metric/Coverage.hpp>
-namespace composition {
+namespace composition::metric {
 
 std::unordered_set<llvm::Instruction *> Coverage::ValueToInstructions(llvm::Value *v) {
   std::unordered_set<llvm::Instruction *> instructions = {};
@@ -16,27 +16,27 @@ std::unordered_set<llvm::Instruction *> Coverage::ValueToInstructions(llvm::Valu
   return instructions;
 }
 
-std::unordered_set<llvm::Instruction *> Coverage::ValueToInstructions(llvm::BasicBlock *v) {
+std::unordered_set<llvm::Instruction *> Coverage::ValueToInstructions(llvm::BasicBlock *BB) {
   std::unordered_set<llvm::Instruction *> instructions = {};
-  for (auto &I : *v) {
+  for (auto &I : *BB) {
     instructions.insert(&I);
   }
   return instructions;
 
 }
 
-std::unordered_set<llvm::Instruction *> Coverage::ValueToInstructions(llvm::Function *v) {
+std::unordered_set<llvm::Instruction *> Coverage::ValueToInstructions(llvm::Function *F) {
   std::unordered_set<llvm::Instruction *> instructions = {};
-  for (auto &B : *v) {
+  for (auto &B : *F) {
     auto r = ValueToInstructions(&B);
     instructions.insert(r.begin(), r.end());
   }
   return instructions;
 }
 
-std::unordered_set<llvm::Instruction *> Coverage::ValueToInstructions(llvm::Module *v) {
+std::unordered_set<llvm::Instruction *> Coverage::ValueToInstructions(llvm::Module *M) {
   std::unordered_set<llvm::Instruction *> instructions = {};
-  for (auto &F : *v) {
+  for (auto &F : *M) {
     auto r = ValueToInstructions(&F);
     instructions.insert(r.begin(), r.end());
   }

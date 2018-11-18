@@ -1,105 +1,57 @@
 #ifndef COMPOSITION_FRAMEWORK_GRAPH_CONSTRAINT_HPP
 #define COMPOSITION_FRAMEWORK_GRAPH_CONSTRAINT_HPP
-#include <llvm/IR/Value.h>
-#include <llvm/Support/Casting.h>
-#include <composition/util/enums.hpp>
-#include <llvm/IR/ValueHandle.h>
+#include <string>
 
-namespace composition {
-
-enum class PresentConstraint : unsigned long {
-  NONE = 0x00,
-  PRESENT = 0x01,
-  NOT_PRESENT = 0x02,
-  CONFLICT = static_cast<unsigned long>(PRESENT | NOT_PRESENT),
-};
-
-enum class PreservedConstraint : unsigned long {
-  NONE = 0x00,
-  PRESERVED = 0x01,
-  NOT_PRESERVED = 0x02,
-  CONFLICT = static_cast<unsigned long>(PRESERVED | NOT_PRESERVED),
-};
-ENABLE_BITMASK_OPERATORS(PresentConstraint);
-ENABLE_BITMASK_OPERATORS(PreservedConstraint);
+namespace composition::graph {
+/**
+ * Abstract class Constraint
+ */
 class Constraint {
 public:
-  enum class ConstraintKind {
+  /**
+   * Existing types of constraints
+   */
+  enum class ConstraintType {
     CK_DEPENDENCY,
     CK_PRESENT,
     CK_PRESERVED
   };
 
-  enum class ConstraintType {
+  /**
+   * Type in graph representation
+   */
+  enum class GraphType {
     VERTEX,
     EDGE
   };
 private:
-  const ConstraintKind Kind;
-  const ConstraintType Type;
-  const std::string Info;
+  /**
+   * The type of the constraint to support LLVM's dyn_cast
+   */
+  const ConstraintType constraintType;
+  /**
+   * The type of the constraint in a graph. TODO: Currently unused.
+   */
+  const GraphType graphType;
+  /**
+   * Additional info about this constraint, e.g., the pass that added it.
+   */
+  const std::string info;
 public:
-  Constraint(ConstraintKind Kind, ConstraintType Type, std::string Info);
+  Constraint(ConstraintType constraintType, GraphType graphType, std::string info);
 
   Constraint(const Constraint &) = delete;
 
-  ConstraintKind getKind() const;
+  ConstraintType getConstraintType() const;
 
-  ConstraintType getType() const;
+  GraphType getGraphType() const;
 
   std::string getInfo() const;
 
+  /**
+   * Health-Check of constraint
+   */
   virtual bool isValid() = 0;
 };
-
-class Dependency : public Constraint {
-private:
-  llvm::WeakTrackingVH from;
-  llvm::WeakTrackingVH to;
-  bool weak;
-public:
-  Dependency(std::string info, llvm::Value *from, llvm::Value *to, bool weak = false);
-
-  llvm::Value *getFrom() const;
-
-  llvm::Value *getTo() const;
-
-  static bool classof(const Constraint *S);
-
-  bool isValid() override;
-};
-
-class Present : public Constraint {
-private:
-  llvm::WeakTrackingVH target;
-  bool inverse;
-public:
-  Present(std::string info, llvm::Value *target, bool inverse = false);
-
-  llvm::Value *getTarget() const;
-
-  bool isInverse() const;
-
-  static bool classof(const Constraint *S);
-
-  bool isValid() override;
-};
-
-class Preserved : public Constraint {
-private:
-  llvm::WeakTrackingVH target;
-  bool inverse;
-public:
-  Preserved(std::string info, llvm::Value *target, bool inverse = false);
-
-  llvm::Value *getTarget() const;
-
-  bool isInverse() const;
-
-  static bool classof(const Constraint *S);
-
-  bool isValid() override;
-};
-
 }
 #endif //COMPOSITION_FRAMEWORK_GRAPH_CONSTRAINT_HPP

@@ -2,10 +2,9 @@
 
 namespace composition {
 
-bool AnalysisRegistry::Register(char *ID) {
-  // add the pair to the map
-  llvm::dbgs() << "Registering analysis pass: " << std::to_string(reinterpret_cast<uintptr_t>(ID)) << "\n";
-  RegisteredAnalysis().push_back({ID});
+bool AnalysisRegistry::Register(PassRegistrationInfo info) {
+  llvm::dbgs() << "Registering analysis pass: " << std::to_string(reinterpret_cast<uintptr_t>(info.ID)) << "\n";
+  RegisteredAnalysis().push_back(info);
   return true;
 }
 

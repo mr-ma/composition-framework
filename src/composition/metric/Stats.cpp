@@ -6,41 +6,11 @@
 #include <llvm/Support/raw_ostream.h>
 #include <composition/metric/Stats.hpp>
 
-namespace composition {
-void to_json(nlohmann::json &j, const Stats &s) {
-  j = nlohmann::json{
-      {"numberOfManifests", s.numberOfManifests},
-      {"numberOfAllInstructions", s.numberOfAllInstructions},
-      {"numberOfProtectedFunctions", s.numberOfProtectedFunctions},
-      {"numberOfProtectedInstructions", s.numberOfProtectedInstructions},
-      {"numberOfProtectedDistinctInstructions", s.numberOfProtectedDistinctInstructions},
-      {"numberOfImplicitlyProtectedInstructions", s.numberOfImplicitlyProtectedInstructions},
-      {"numberOfDistinctImplicitlyProtectedInstructions", s.numberOfDistinctImplicitlyProtectedInstructions},
-      {"numberOfProtectedInstructionsByType", s.numberOfProtectedInstructionsByType},
-      {"numberOfProtectedFunctionsByType", s.numberOfProtectedFunctionsByType},
-      {"instructionConnectivity", s.instructionConnectivity},
-      {"functionConnectivity", s.functionConnectivity},
-      {"protectionConnectivity", s.protectionConnectivity},
-  };
-}
-
-void from_json(const nlohmann::json &j, Stats &s) {
-  s.numberOfManifests = j.at("numberOfManifests").get<size_t>();
-  s.numberOfAllInstructions = j.at("numberOfAllInstructions").get<size_t>();
-  s.numberOfProtectedFunctions = j.at("numberOfProtectedFunctions").get<size_t>();
-  s.numberOfProtectedInstructions = j.at("numberOfProtectedInstructions").get<size_t>();
-  s.numberOfProtectedDistinctInstructions = j.at("numberOfProtectedDistinctInstructions").get<size_t>();
-  s.numberOfImplicitlyProtectedInstructions = j.at("numberOfImplicitlyProtectedInstructions").get<size_t>();
-  s.numberOfDistinctImplicitlyProtectedInstructions =
-      j.at("numberOfDistinctImplicitlyProtectedInstructions").get<size_t>();
-  s.numberOfProtectedInstructionsByType =
-      j.at("numberOfProtectedInstructionsByType").get<std::unordered_map<std::string, size_t>>();
-  s.numberOfProtectedFunctionsByType =
-      j.at("numberOfProtectedFunctionsByType").get<std::unordered_map<std::string, size_t>>();
-  s.instructionConnectivity = j.at("instructionConnectivity").get<Connectivity>();
-  s.functionConnectivity = j.at("functionConnectivity").get<Connectivity>();
-  s.protectionConnectivity =
-      j.at("protectionConnectivity").get<std::unordered_map<std::string, std::pair<Connectivity, Connectivity>>>();
+namespace composition::metric {
+Stats::Stats(std::istream &i) {
+  nlohmann::json j;
+  i >> j;
+  from_json(j, *this);
 }
 
 void Stats::dump(llvm::raw_ostream &o) {
@@ -48,12 +18,6 @@ void Stats::dump(llvm::raw_ostream &o) {
   to_json(j, *this);
 
   o << j.dump(4) << "\n";
-}
-
-Stats::Stats(std::istream &i) {
-  nlohmann::json j;
-  i >> j;
-  from_json(j, *this);
 }
 
 void Stats::collect(llvm::Value *V, std::vector<Manifest *> manifests, const ManifestProtectionMap &dep) {
@@ -193,5 +157,41 @@ Stats::instructionFunctionConnectivity(
   auto funcConnectivity = Connectivity{connectivity};
 
   return {instConnectivity, funcConnectivity};
+}
+
+void to_json(nlohmann::json &j, const Stats &s) {
+  j = nlohmann::json{
+      {"numberOfManifests", s.numberOfManifests},
+      {"numberOfAllInstructions", s.numberOfAllInstructions},
+      {"numberOfProtectedFunctions", s.numberOfProtectedFunctions},
+      {"numberOfProtectedInstructions", s.numberOfProtectedInstructions},
+      {"numberOfProtectedDistinctInstructions", s.numberOfProtectedDistinctInstructions},
+      {"numberOfImplicitlyProtectedInstructions", s.numberOfImplicitlyProtectedInstructions},
+      {"numberOfDistinctImplicitlyProtectedInstructions", s.numberOfDistinctImplicitlyProtectedInstructions},
+      {"numberOfProtectedInstructionsByType", s.numberOfProtectedInstructionsByType},
+      {"numberOfProtectedFunctionsByType", s.numberOfProtectedFunctionsByType},
+      {"instructionConnectivity", s.instructionConnectivity},
+      {"functionConnectivity", s.functionConnectivity},
+      {"protectionConnectivity", s.protectionConnectivity},
+  };
+}
+
+void from_json(const nlohmann::json &j, Stats &s) {
+  s.numberOfManifests = j.at("numberOfManifests").get<size_t>();
+  s.numberOfAllInstructions = j.at("numberOfAllInstructions").get<size_t>();
+  s.numberOfProtectedFunctions = j.at("numberOfProtectedFunctions").get<size_t>();
+  s.numberOfProtectedInstructions = j.at("numberOfProtectedInstructions").get<size_t>();
+  s.numberOfProtectedDistinctInstructions = j.at("numberOfProtectedDistinctInstructions").get<size_t>();
+  s.numberOfImplicitlyProtectedInstructions = j.at("numberOfImplicitlyProtectedInstructions").get<size_t>();
+  s.numberOfDistinctImplicitlyProtectedInstructions =
+      j.at("numberOfDistinctImplicitlyProtectedInstructions").get<size_t>();
+  s.numberOfProtectedInstructionsByType =
+      j.at("numberOfProtectedInstructionsByType").get<std::unordered_map<std::string, size_t>>();
+  s.numberOfProtectedFunctionsByType =
+      j.at("numberOfProtectedFunctionsByType").get<std::unordered_map<std::string, size_t>>();
+  s.instructionConnectivity = j.at("instructionConnectivity").get<Connectivity>();
+  s.functionConnectivity = j.at("functionConnectivity").get<Connectivity>();
+  s.protectionConnectivity =
+      j.at("protectionConnectivity").get<std::unordered_map<std::string, std::pair<Connectivity, Connectivity>>>();
 }
 }

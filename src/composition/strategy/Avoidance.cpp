@@ -1,6 +1,6 @@
 #include <composition/strategy/Avoidance.hpp>
 
-namespace composition {
+namespace composition::strategy {
 
 Avoidance::Avoidance(const std::unordered_map<std::string, int> &order) : order(order) {}
 

@@ -6,7 +6,7 @@
 #include <composition/trace/PreservedValueRegistry.hpp>
 
 using namespace llvm;
-namespace composition {
+namespace composition::trace {
 TraceableCallbackInfo PreservedValueRegistry::Register(const std::string &name,
                                                        llvm::Value *v,
                                                        const PreservedCallback &callback) {

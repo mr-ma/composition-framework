@@ -2,9 +2,17 @@
 #include <unordered_set>
 #include <llvm/Support/raw_ostream.h>
 #include <composition/graph/ProtectionGraph.hpp>
+#include <composition/graph/dependency.hpp>
 
 using namespace llvm;
-namespace composition {
+namespace composition::graph {
+
+using support::cStats;
+using graph::filter::filter_dependency_graph;
+using graph::filter::filter_removed_graph;
+using graph::filter::filter_selfcycle_graph;
+using graph::algorithm::reverse_topological_sort;
+
 graph_t &ProtectionGraph::getGraph() {
   return Graph;
 }
@@ -139,53 +147,12 @@ void ProtectionGraph::reduceToInstructions() {
   }
 }
 
-void ProtectionGraph::expandToFunctions() {
-  graph_t &g = Graph;
-
-  for (auto[vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
-    auto v = g[*vi];
-    switch (v.type) {
-    case vertex_type::FUNCTION: break;
-    case vertex_type::BASICBLOCK: {
-      const auto &B = reinterpret_cast<llvm::BasicBlock *>(v.index);
-      this->expandBasicBlockToFunction(*vi, B);
-    }
-      break;
-    case vertex_type::INSTRUCTION: {
-      const auto &I = reinterpret_cast<llvm::Instruction *>(v.index);
-      this->expandInstructionToFunction(*vi, I);
-    }
-      break;
-    case vertex_type::VALUE: break;
-    case vertex_type::UNKNOWN: break;
-    }
-  }
-}
-
-void ProtectionGraph::expandBasicBlockToFunction(vd_t it, llvm::BasicBlock *B) {
-  auto func = B->getParent();
-  if (func == nullptr) {
-    return;
-  }
-
-  auto funcNode = this->add_vertex(func);
-  replaceTarget(it, funcNode);
-}
-
-void ProtectionGraph::expandInstructionToFunction(vd_t it, llvm::Instruction *I) {
-  if (I->getParent() == nullptr || I->getParent()->getParent() == nullptr) {
-    return;
-  }
-  auto funcNode = this->add_vertex(I->getParent()->getParent());
-  replaceTarget(it, funcNode);
-}
-
 void ProtectionGraph::replaceTarget(vd_t src, vd_t dst) {
-  replaceTargetIncomingEdges(src, dst);
-  replaceTargetOutgoingEdges(src, dst);
+  replaceTargetInEdges(src, dst);
+  replaceTargetOutEdges(src, dst);
 }
 
-void ProtectionGraph::replaceTargetIncomingEdges(vd_t src, vd_t dst) {
+void ProtectionGraph::replaceTargetInEdges(vd_t src, vd_t dst) {
   graph_t &g = Graph;
 
   for (auto[vi, vi_end] = boost::in_edges(src, g); vi != vi_end; ++vi) {
@@ -198,7 +165,7 @@ void ProtectionGraph::replaceTargetIncomingEdges(vd_t src, vd_t dst) {
   }
 }
 
-void ProtectionGraph::replaceTargetOutgoingEdges(vd_t src, vd_t dst) {
+void ProtectionGraph::replaceTargetOutEdges(vd_t src, vd_t dst) {
   graph_t &g = Graph;
 
   for (auto[vi, vi_end] = boost::out_edges(src, g); vi != vi_end; ++vi) {
@@ -208,32 +175,6 @@ void ProtectionGraph::replaceTargetOutgoingEdges(vd_t src, vd_t dst) {
 
     auto to = boost::target(*vi, g);
     this->add_edge(dst, to, edge_t{e.index, e.name, e.type});
-  }
-}
-
-void ProtectionGraph::reduceToFunctions() {
-  graph_t &g = Graph;
-
-  for (auto[vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
-    auto &v = g[*vi];
-    switch (v.type) {
-    case vertex_type::FUNCTION:
-      if (boost::out_degree(*vi, g) == 0 && boost::in_degree(*vi, g) == 0) {
-        remove_vertex(*vi);
-      }
-      break;
-    case vertex_type::BASICBLOCK: {
-      remove_vertex(*vi);
-    }
-      break;
-    case vertex_type::INSTRUCTION: {
-      remove_vertex(*vi);
-    }
-      break;
-    case vertex_type::VALUE: break;
-    case vertex_type::UNKNOWN: break;
-
-    }
   }
 }
 
@@ -324,19 +265,18 @@ void ProtectionGraph::computeManifestDependencies() {
     }
   }
 
-  for(auto&[m, u] : undo.left) {
-    std::unordered_set<Manifest*> manifests{};
+  for (auto&[m, u] : undo.left) {
+    std::unordered_set<Manifest *> manifests{};
 
-    for(auto I : m->Coverage()) {
-      for(auto [it, it_end] = undo.right.equal_range(I); it != it_end; ++it) {
+    for (auto I : m->Coverage()) {
+      for (auto[it, it_end] = undo.right.equal_range(I); it != it_end; ++it) {
         manifests.insert(it->second);
       }
     }
-    for(auto m2 : manifests) {
+    for (auto m2 : manifests) {
       ManifestProtection.insert({m2, m});
     }
   }
-
 
   for (auto &[m, users] : manifestUsers) {
     for (auto u : users) {

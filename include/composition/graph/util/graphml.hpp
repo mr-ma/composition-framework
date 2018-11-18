@@ -11,17 +11,29 @@
 #include <composition/graph/edge.hpp>
 #include <composition/graph/util/constraint_map.hpp>
 
-namespace composition {
+namespace composition::graph::util {
+/**
+ * Writes the graph `g` to the file `filename` in graphml format
+ * @tparam graph_t the type of the graph `g`
+ * @param g the graph
+ * @param filename the file to write to
+ */
 template<typename graph_t>
-void save_graph_to_graphml(graph_t &g, const std::string &filename) noexcept {
+void graph_to_graphml(graph_t &g, const std::string &filename) noexcept {
   std::ofstream f;
   f.exceptions(std::ios::failbit | std::ios::badbit);
   f.open(filename);
-  save_graph_to_graphml(g, f);
+  graph_to_graphml(g, f);
 }
 
+/**
+ * Writes the graph `g` to the ostream `out` in graphml format
+ * @tparam graph_t the type of the graph `g`
+ * @param g the graph
+ * @param out the ostream to write to
+ */
 template<typename graph_t>
-void save_graph_to_graphml(graph_t &g, std::ostream &out) noexcept {
+void graph_to_graphml(graph_t &g, std::ostream &out) {
   auto index = index_map(g);
   auto[isPresent, isPreserved] = constraint_map(g);
 
@@ -33,7 +45,6 @@ void save_graph_to_graphml(graph_t &g, std::ostream &out) noexcept {
 
   dp.property("edge_name", boost::get(&edge_t::name, g));
   dp.property("edge_removed", boost::get(&edge_t::removed, g));
-
   boost::write_graphml(out, g, boost::make_assoc_property_map(index), dp);
 }
 }

@@ -30,11 +30,13 @@ set(Boost_USE_STATIC_RUNTIME OFF)
 add_library(CompositionFramework SHARED
         include/composition/graph/graph.hpp
         include/composition/graph/ProtectionGraph.hpp
+        include/composition/graph/bitmask.hpp
         include/composition/graph/constraint.hpp
+        include/composition/graph/dependency.hpp
+        include/composition/graph/present.hpp
+        include/composition/graph/preserved.hpp
         include/composition/graph/edge.hpp
-        include/composition/graph/edge_type.hpp
         include/composition/graph/vertex.hpp
-        include/composition/graph/vertex_type.hpp
 
         include/composition/graph/algorithm/strong_components.hpp
         include/composition/graph/algorithm/topological_sort.hpp
@@ -65,30 +67,27 @@ add_library(CompositionFramework SHARED
         include/composition/trace/TraceableValue.hpp
         include/composition/trace/PreservedValueRegistry.hpp
 
-        include/composition/Analysis.hpp
-        include/composition/AnalysisPass.hpp
+        include/composition/support/Analysis.hpp
         include/composition/AnalysisRegistry.hpp
         include/composition/AnalysisRegistry.hpp
-        include/composition/GraphPass.hpp
+        include/composition/CompositionFrameworkPass.hpp
         include/composition/Manifest.hpp
-        include/composition/ManifestValueHandle.hpp
+        include/composition/support/ManifestValueHandle.hpp
         include/composition/ManifestRegistry.hpp
-        include/composition/Pass.hpp
-        include/composition/ProtectionPass.hpp
-        include/composition/options.hpp
+        include/composition/support/Pass.hpp
+        include/composition/support/options.hpp
         include/composition/Stats.hpp
 
         include/composition/util/functions.hpp
         include/composition/util/strings.hpp
-        include/composition/util/enums.hpp
-        include/composition/util/print_map.hpp
 
         src/composition/graph/vertex.cpp
-        src/composition/graph/vertex_type.cpp
         src/composition/graph/edge.cpp
-        src/composition/graph/edge_type.cpp
         src/composition/graph/ProtectionGraph.cpp
         src/composition/graph/constraint.cpp
+        src/composition/graph/dependency.cpp
+        src/composition/graph/present.cpp
+        src/composition/graph/preserved.cpp
 
         src/composition/graph/util/graphviz.cpp
 
@@ -109,16 +108,14 @@ add_library(CompositionFramework SHARED
         src/composition/util/strings.cpp
 
         src/composition/profiler.hpp
-        src/composition/AnalysisPass.cpp
-        src/composition/GraphPass.cpp
-        src/composition/ProtectionPass.cpp
+        src/composition/CompositionFrameworkPass.cpp
         src/composition/ManifestRegistry.cpp
-        src/composition/options.cpp
+        src/composition/support/options.cpp
         src/composition/Manifest.cpp
-        src/composition/Pass.cpp
+        src/composition/support/Pass.cpp
         src/composition/AnalysisRegistry.cpp
-        src/composition/CompositionStats.cpp
-        src/composition/ManifestValueHandle.cpp)
+        src/composition/Stats.cpp
+        src/composition/support/ManifestValueHandle.cpp)
 
 add_library(composition-framework::CompositionFramework ALIAS CompositionFramework)
 

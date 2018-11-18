@@ -11,11 +11,14 @@
 #include <composition/Manifest.hpp>
 #include <composition/metric/Connectivity.hpp>
 
-namespace composition {
+namespace composition::metric {
 
 using ManifestProtectionMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest *>,
                                                    boost::bimaps::multiset_of<Manifest *>>;
 
+/**
+ * A collection of Protection Graph related metrics
+ */
 class Stats {
 public:
   size_t numberOfManifests{};
@@ -57,8 +60,19 @@ private:
             Connectivity> instructionFunctionConnectivity(const std::unordered_map<llvm::Instruction *,
                                                                                    size_t> &instructionConnectivityMap);
 };
+
+/**
+ * Converts `Stats` into JSON representation.
+ * @param j IN/OUT the resulting JSON
+ * @param w IN the stats
+ */
 void to_json(nlohmann::json &j, const Stats &s);
 
+/**
+ * Converts JSON into `Stats` representation
+ * @param j IN the JSON source
+ * @param w IN/OUT the resulting stats
+ */
 void from_json(const nlohmann::json &j, Stats &s);
 
 }

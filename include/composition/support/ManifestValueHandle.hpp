@@ -1,9 +1,13 @@
-#ifndef COMPOSITION_FRAMEWORK_MANIFESTVALUEHANDLE_HPP
-#define COMPOSITION_FRAMEWORK_MANIFESTVALUEHANDLE_HPP
+#ifndef COMPOSITION_FRAMEWORK_SUPPORT_MANIFESTVALUEHANDLE_HPP
+#define COMPOSITION_FRAMEWORK_SUPPORT_MANIFESTVALUEHANDLE_HPP
 
 #include <llvm/IR/ValueMap.h>
 
-namespace composition {
+namespace composition::support {
+/**
+ * A wrapper around CallbackVH (debug) or WeakTrackingVH (release)
+ * In a debug build this class provides additional tracking information and triggers LLVM errors if constraints are violated.
+ */
 #ifndef NDEBUG
 class ManifestValueHandle : public llvm::CallbackVH {
 public:
@@ -15,10 +19,6 @@ public:
   bool pointsToAliveValue() const;
 
   explicit operator llvm::Value *() const;
-
-  llvm::Value *operator=(llvm::Value *RHS);
-
-  llvm::Value *operator=(const ValueHandleBase &RHS);
 };
 #else
 class ManifestValueHandle : public llvm::WeakTrackingVH {
@@ -28,4 +28,4 @@ public:
 #endif
 }
 
-#endif //COMPOSITION_FRAMEWORK_MANIFESTVALUEHANDLE_HPP
+#endif //COMPOSITION_FRAMEWORK_SUPPORT_MANIFESTVALUEHANDLE_HPP

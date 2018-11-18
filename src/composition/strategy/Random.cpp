@@ -1,6 +1,6 @@
 #include <composition/strategy/Random.hpp>
 
-namespace composition {
+namespace composition::strategy {
 Random::Random(const std::default_random_engine &RNG) : RNG(RNG) {}
 
 Manifest *Random::decideCycle(std::vector<Manifest *> manifests) {

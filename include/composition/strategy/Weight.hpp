@@ -6,14 +6,17 @@
 #include <composition/metric/Weights.hpp>
 #include <composition/strategy/Strategy.hpp>
 
-namespace composition {
+namespace composition::strategy {
+/**
+ * Weight strategy uses weighted protection graph metrics to calculate a score. Then it removes the manifest with the lowest score.
+ */
 class Weight : public Strategy {
 public:
-  Weight(const Weights &W, const std::unordered_map<llvm::Function *, llvm::BlockFrequencyInfo *> &BFI);
+  Weight(const metric::Weights &W, const std::unordered_map<llvm::Function *, llvm::BlockFrequencyInfo *> &BFI);
   Manifest *decideCycle(std::vector<Manifest *> manifests) override;
   Manifest *decidePresentPreserved(std::vector<Manifest *> manifests) override;
 private:
-  Weights W;
+  metric::Weights W;
   std::unordered_map<llvm::Function *, llvm::BlockFrequencyInfo *> BFI;
   Manifest *decide(std::vector<Manifest *> manifests);
 
