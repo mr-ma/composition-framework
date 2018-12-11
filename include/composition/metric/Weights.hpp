@@ -23,9 +23,9 @@ struct Weights {
 
   Weights();
 
-  explicit Weights(std::istream &i);
+  explicit Weights(std::istream& i);
 
-  void dump(llvm::raw_ostream &o);
+  void dump(llvm::raw_ostream& o);
 };
 
 /**
@@ -33,14 +33,14 @@ struct Weights {
  * @param j IN/OUT the resulting JSON
  * @param w IN the weights
  */
-void to_json(nlohmann::json &j, const Weights &w);
+void to_json(nlohmann::json& j, const Weights& w);
 
 /**
  * Converts JSON into `Weights` representation
  * @param j IN the JSON source
  * @param w IN/OUT the resulting weights
  */
-void from_json(const nlohmann::json &j, Weights &w);
-}
+void from_json(const nlohmann::json& j, Weights& w);
+} // namespace composition::metric
 
-#endif //COMPOSITION_FRAMEWORK_METRIC_WEIGHTS_HPP
+#endif // COMPOSITION_FRAMEWORK_METRIC_WEIGHTS_HPP

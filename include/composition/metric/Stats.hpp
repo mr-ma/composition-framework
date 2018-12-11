@@ -1,20 +1,20 @@
 #ifndef COMPOSITION_FRAMEWORK_METRIC_STATS_HPP
 #define COMPOSITION_FRAMEWORK_METRIC_STATS_HPP
 
-#include <cstddef>
-#include <istream>
 #include <boost/bimap/bimap.hpp>
 #include <boost/bimap/multiset_of.hpp>
-#include <llvm/Support/raw_ostream.h>
-#include <llvm/IR/Module.h>
-#include <nlohmann/json.hpp>
 #include <composition/Manifest.hpp>
 #include <composition/metric/Connectivity.hpp>
+#include <cstddef>
+#include <istream>
+#include <llvm/IR/Module.h>
+#include <llvm/Support/raw_ostream.h>
+#include <nlohmann/json.hpp>
 
 namespace composition::metric {
 
-using ManifestProtectionMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest *>,
-                                                   boost::bimaps::multiset_of<Manifest *>>;
+using ManifestProtectionMap =
+    boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest*>, boost::bimaps::multiset_of<Manifest*>>;
 
 /**
  * A collection of Protection Graph related metrics
@@ -36,29 +36,27 @@ public:
 
   Stats() = default;
 
-  explicit Stats(std::istream &i);
+  explicit Stats(std::istream& i);
 
-  void dump(llvm::raw_ostream &o);
+  void dump(llvm::raw_ostream& o);
 
-  void collect(std::unordered_set<llvm::Function *> sensitiveFunctions,
-               std::vector<Manifest *> manifests,
-               const ManifestProtectionMap &dep);
+  void collect(std::unordered_set<llvm::Function*> sensitiveFunctions, std::vector<Manifest*> manifests,
+               const ManifestProtectionMap& dep);
 
-  void collect(llvm::Module *M, std::vector<Manifest *> manifests, const ManifestProtectionMap &dep);
+  void collect(llvm::Module* M, std::vector<Manifest*> manifests, const ManifestProtectionMap& dep);
 
-  void collect(llvm::Value *V, std::vector<Manifest *> manifests, const ManifestProtectionMap &dep);
+  void collect(llvm::Value* V, std::vector<Manifest*> manifests, const ManifestProtectionMap& dep);
 
-  void collect(std::unordered_set<llvm::Instruction *> allInstructions,
-               std::vector<Manifest *> manifests,
-               const ManifestProtectionMap &dep);
+  void collect(std::unordered_set<llvm::Instruction*> allInstructions, std::vector<Manifest*> manifests,
+               const ManifestProtectionMap& dep);
+
 private:
-  std::unordered_set<llvm::Instruction *> protectedInstructionsDistinct{};
-  std::map<std::string, std::unordered_set<llvm::Instruction *>> protectedInstructions{};
-  std::map<std::string, std::unordered_set<llvm::Function *>> protectedFunctions{};
+  std::unordered_set<llvm::Instruction*> protectedInstructionsDistinct{};
+  std::map<std::string, std::unordered_set<llvm::Instruction*>> protectedInstructions{};
+  std::map<std::string, std::unordered_set<llvm::Function*>> protectedFunctions{};
 
-  std::pair<Connectivity,
-            Connectivity> instructionFunctionConnectivity(const std::unordered_map<llvm::Instruction *,
-                                                                                   size_t> &instructionConnectivityMap);
+  std::pair<Connectivity, Connectivity>
+  instructionFunctionConnectivity(const std::unordered_map<llvm::Instruction*, size_t>& instructionConnectivityMap);
 };
 
 /**
@@ -66,15 +64,15 @@ private:
  * @param j IN/OUT the resulting JSON
  * @param w IN the stats
  */
-void to_json(nlohmann::json &j, const Stats &s);
+void to_json(nlohmann::json& j, const Stats& s);
 
 /**
  * Converts JSON into `Stats` representation
  * @param j IN the JSON source
  * @param w IN/OUT the resulting stats
  */
-void from_json(const nlohmann::json &j, Stats &s);
+void from_json(const nlohmann::json& j, Stats& s);
 
-}
+} // namespace composition::metric
 
-#endif //COMPOSITION_FRAMEWORK_METRIC_STATS_HPP
+#endif // COMPOSITION_FRAMEWORK_METRIC_STATS_HPP

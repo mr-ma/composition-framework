@@ -1,18 +1,18 @@
 #ifndef COMPOSITION_FRAMEWORK_ANALYSISREGISTRY_HPP
 #define COMPOSITION_FRAMEWORK_ANALYSISREGISTRY_HPP
 
-#include <string>
-#include <map>
-#include <vector>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
+#include <map>
+#include <string>
+#include <vector>
 
 namespace composition {
 /**
  * `PassRegistrationInfo` stores the unique `ID` of a pass.
  */
 struct PassRegistrationInfo {
-  char *ID;
+  char* ID;
 };
 
 /**
@@ -31,11 +31,11 @@ public:
    * Retrieves all registered passes and returns them.
    * @return a vector of
    */
-  static std::vector<PassRegistrationInfo> &GetAll();
-protected:
+  static std::vector<PassRegistrationInfo>& GetAll();
 
-  //TODO: This currently initializes a static vector in the function. Possibly there's a better way to do this.
-  static std::vector<PassRegistrationInfo> &RegisteredAnalysis();
+protected:
+  // TODO: This currently initializes a static vector in the function. Possibly there's a better way to do this.
+  static std::vector<PassRegistrationInfo>& RegisteredAnalysis();
 };
-}
-#endif //COMPOSITION_FRAMEWORK_ANALYSISREGISTRY_HPP
+} // namespace composition
+#endif // COMPOSITION_FRAMEWORK_ANALYSISREGISTRY_HPP

@@ -1,13 +1,13 @@
 #ifndef COMPOSITION_FRAMEWORK_COMPOSITIONFRAMEWORKPASS_HPP
 #define COMPOSITION_FRAMEWORK_COMPOSITIONFRAMEWORKPASS_HPP
 
+#include <composition/Manifest.hpp>
+#include <composition/graph/ProtectionGraph.hpp>
+#include <llvm/Pass.h>
 #include <set>
+#include <string>
 #include <unordered_set>
 #include <vector>
-#include <string>
-#include <llvm/Pass.h>
-#include <composition/graph/ProtectionGraph.hpp>
-#include <composition/Manifest.hpp>
 
 namespace composition {
 /**
@@ -16,6 +16,7 @@ namespace composition {
 class CompositionFrameworkPass : public llvm::ModulePass {
 public:
   static char ID;
+
 private:
   /**
    * A pointer to the protection graph
@@ -25,7 +26,8 @@ private:
   /**
    * A list of sensitive functions
    */
-  std::unordered_set<llvm::Function *> sensitiveFunctions{};
+  std::unordered_set<llvm::Function*> sensitiveFunctions{};
+
 public:
   CompositionFrameworkPass() : ModulePass(ID) {}
 
@@ -33,20 +35,19 @@ public:
    * Sorts and retrieves manifest in reverse topological order
    * @return
    */
-  std::vector<Manifest *> SortedManifests();
+  std::vector<Manifest*> SortedManifests();
 
   /*
    * LLVM standard functions
    */
-  void getAnalysisUsage(llvm::AnalysisUsage &usage) const override;
-  bool doInitialization(llvm::Module &module) override;
-  bool runOnModule(llvm::Module &module) override;
-  bool doFinalization(llvm::Module &module) override;
+  void getAnalysisUsage(llvm::AnalysisUsage& AU) const override;
+  bool doInitialization(llvm::Module& M) override;
+  bool runOnModule(llvm::Module& M) override;
+  bool doFinalization(llvm::Module& M) override;
 
-
-  bool analysisPass(llvm::Module &M);
-  bool graphPass(llvm::Module &M);
-  bool protectionPass(llvm::Module &M);
+  bool analysisPass(llvm::Module& M);
+  bool graphPass(llvm::Module& M);
+  bool protectionPass(llvm::Module& M);
 
   /**
    * Writes the patch information to a file
@@ -54,5 +55,5 @@ public:
    */
   void writePatchInfo(std::vector<std::pair<std::string, std::string>> patchInfos);
 };
-}
-#endif //COMPOSITION_FRAMEWORK_COMPOSITIONFRAMEWORKPASS_HPP
+} // namespace composition
+#endif // COMPOSITION_FRAMEWORK_COMPOSITIONFRAMEWORKPASS_HPP

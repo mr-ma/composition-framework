@@ -1,0 +1,1 @@
+Checks: 'boost*,modernize*,google*,cppcoreguidelines*,clang-analyzer-*,llvm-*,misc-*,performance-*,-llvm-include-order,-google-readability-todo,-clang-analyzer-deadcode.DeadStores,-google-readability-namespace-comments,-llvm-namespace-comment,-clang-diagnostic-unused-command-line-argument'

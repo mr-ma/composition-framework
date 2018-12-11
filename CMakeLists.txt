@@ -7,6 +7,7 @@ list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_SOURCE_DIR}/cmake)
 ## Config
 ##
 set(CompositionFramework_BuildTests "OFF" CACHE BOOLEAN "")
+set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
 
 ##
 ## Dependencies
@@ -30,16 +31,18 @@ set(Boost_USE_STATIC_RUNTIME OFF)
 add_library(CompositionFramework SHARED
         include/composition/graph/graph.hpp
         include/composition/graph/ProtectionGraph.hpp
-        include/composition/graph/bitmask.hpp
-        include/composition/graph/constraint.hpp
-        include/composition/graph/dependency.hpp
-        include/composition/graph/present.hpp
-        include/composition/graph/preserved.hpp
         include/composition/graph/edge.hpp
         include/composition/graph/vertex.hpp
 
         include/composition/graph/algorithm/strong_components.hpp
         include/composition/graph/algorithm/topological_sort.hpp
+
+        include/composition/graph/constraint/bitmask.hpp
+        include/composition/graph/constraint/constraint.hpp
+        include/composition/graph/constraint/dependency.hpp
+        include/composition/graph/constraint/present.hpp
+        include/composition/graph/constraint/preserved.hpp
+        include/composition/graph/constraint/true.hpp
 
         include/composition/graph/filter/filter.hpp
         include/composition/graph/filter/removed.hpp
@@ -77,6 +80,7 @@ add_library(CompositionFramework SHARED
         include/composition/support/Pass.hpp
         include/composition/support/options.hpp
         include/composition/Stats.hpp
+        include/composition/profiler.hpp
 
         include/composition/util/functions.hpp
         include/composition/util/strings.hpp
@@ -84,10 +88,12 @@ add_library(CompositionFramework SHARED
         src/composition/graph/vertex.cpp
         src/composition/graph/edge.cpp
         src/composition/graph/ProtectionGraph.cpp
-        src/composition/graph/constraint.cpp
-        src/composition/graph/dependency.cpp
-        src/composition/graph/present.cpp
-        src/composition/graph/preserved.cpp
+
+        src/composition/graph/constraint/constraint.cpp
+        src/composition/graph/constraint/dependency.cpp
+        src/composition/graph/constraint/present.cpp
+        src/composition/graph/constraint/preserved.cpp
+        src/composition/graph/constraint/true.cpp
 
         src/composition/graph/util/graphviz.cpp
 
@@ -107,7 +113,6 @@ add_library(CompositionFramework SHARED
         src/composition/util/functions.cpp
         src/composition/util/strings.cpp
 
-        src/composition/profiler.hpp
         src/composition/CompositionFrameworkPass.cpp
         src/composition/ManifestRegistry.cpp
         src/composition/support/options.cpp

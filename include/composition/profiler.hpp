@@ -1,9 +1,9 @@
 #ifndef COMPOSITION_FRAMEWORK_PROFILER_HPP
 #define COMPOSITION_FRAMEWORK_PROFILER_HPP
 
-#include <utility>
-#include <string>
 #include <chrono>
+#include <string>
+#include <utility>
 
 /**
  * Simple profiler with high resolution which measures the result in seconds.
@@ -12,16 +12,12 @@ class Profiler {
   std::chrono::high_resolution_clock::time_point t1;
 
 public:
-  explicit Profiler() {
-    reset();
-  }
+  explicit Profiler() { reset(); }
 
   /**
    * Restart the profiler
    */
-  void reset() {
-    t1 = std::chrono::high_resolution_clock::now();
-  }
+  void reset() { t1 = std::chrono::high_resolution_clock::now(); }
 
   /**
    * Stop the profiler and measure elapsed time in seconds
@@ -33,4 +29,4 @@ public:
   }
 };
 
-#endif //COMPOSITION_FRAMEWORK_PROFILER_HPP
+#endif // COMPOSITION_FRAMEWORK_PROFILER_HPP

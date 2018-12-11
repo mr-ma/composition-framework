@@ -1,11 +1,11 @@
-#ifndef COMPOSITION_FRAMEWORK_GRAPH_PRESENT_HPP
-#define COMPOSITION_FRAMEWORK_GRAPH_PRESENT_HPP
+#ifndef COMPOSITION_FRAMEWORK_GRAPH_CONSTRAINT_PRESENT_HPP
+#define COMPOSITION_FRAMEWORK_GRAPH_CONSTRAINT_PRESENT_HPP
+#include <composition/graph/constraint/bitmask.hpp>
+#include <composition/graph/constraint/constraint.hpp>
 #include <llvm/IR/Value.h>
 #include <llvm/IR/ValueHandle.h>
-#include <composition/graph/bitmask.hpp>
-#include <composition/graph/constraint.hpp>
 
-namespace composition::graph {
+namespace composition::graph::constraint {
 /**
  * PresentConstraint enum which represents all possible states
  */
@@ -24,16 +24,17 @@ class Present : public Constraint {
 private:
   llvm::WeakTrackingVH target;
   bool inverse;
-public:
-  Present(std::string info, llvm::Value *target, bool inverse = false);
 
-  llvm::Value *getTarget() const;
+public:
+  Present(std::string info, llvm::Value* target, bool inverse = false);
+
+  llvm::Value* getTarget() const;
 
   bool isInverse() const;
 
-  static bool classof(const Constraint *S);
+  static bool classof(const Constraint* S);
 
   bool isValid() override;
 };
-}
-#endif //COMPOSITION_FRAMEWORK_GRAPH_PRESENT_HPP
+} // namespace composition::graph::constraint
+#endif // COMPOSITION_FRAMEWORK_GRAPH_CONSTRAINT_PRESENT_HPP

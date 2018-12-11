@@ -10,7 +10,7 @@ namespace composition::util {
  * @param chars the characters to remove
  * @return the trimmed string
  */
-std::string &ltrim(std::string &str, const std::string &chars = "\t\n\v\f\r ");
+std::string& ltrim(std::string& str, const std::string& chars = "\t\n\v\f\r ");
 
 /**
  * Removes trailing whitespace from the string
@@ -18,7 +18,7 @@ std::string &ltrim(std::string &str, const std::string &chars = "\t\n\v\f\r ");
  * @param chars the characters to remove
  * @return the trimmed string
  */
-std::string &rtrim(std::string &str, const std::string &chars = "\t\n\v\f\r ");
+std::string& rtrim(std::string& str, const std::string& chars = "\t\n\v\f\r ");
 
 /**
  * Removes leading and trailing whitespace from the string
@@ -26,6 +26,6 @@ std::string &rtrim(std::string &str, const std::string &chars = "\t\n\v\f\r ");
  * @param chars the characters to remove
  * @return the trimmed string
  */
-std::string &trim(std::string &str, const std::string &chars = "\t\n\v\f\r ");
-}
-#endif //COMPOSITION_FRAMEWORK_UTIL_STRINGS_HPP
+std::string& trim(std::string& str, const std::string& chars = "\t\n\v\f\r ");
+} // namespace composition::util
+#endif // COMPOSITION_FRAMEWORK_UTIL_STRINGS_HPP

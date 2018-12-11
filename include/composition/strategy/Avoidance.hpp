@@ -1,8 +1,8 @@
 #ifndef COMPOSITION_FRAMEWORK_STRATEGY_AVOIDANCE_HPP
 #define COMPOSITION_FRAMEWORK_STRATEGY_AVOIDANCE_HPP
 
-#include <unordered_map>
 #include <composition/strategy/Strategy.hpp>
+#include <unordered_map>
 
 namespace composition::strategy {
 /**
@@ -10,12 +10,13 @@ namespace composition::strategy {
  */
 class Avoidance : public Strategy {
 public:
-  explicit Avoidance(const std::unordered_map<std::string, int> &order);
-  Manifest *decideCycle(std::vector<Manifest *> manifests) override;
-  Manifest *decidePresentPreserved(std::vector<Manifest *> manifests) override;
+  explicit Avoidance(std::unordered_map<std::string, int> order);
+  Manifest* decideCycle(std::vector<Manifest*> manifests) override;
+  Manifest* decidePresentPreserved(std::vector<Manifest*> manifests) override;
+
 private:
   std::unordered_map<std::string, int> order;
-  Manifest *decide(std::vector<Manifest *> manifests);
+  Manifest* decide(std::vector<Manifest*> manifests);
 };
-}
-#endif //COMPOSITION_FRAMEWORK_STRATEGY_AVOIDANCE_HPP
+} // namespace composition::strategy
+#endif // COMPOSITION_FRAMEWORK_STRATEGY_AVOIDANCE_HPP

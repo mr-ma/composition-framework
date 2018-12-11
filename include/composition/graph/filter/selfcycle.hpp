@@ -8,8 +8,7 @@ namespace composition::graph::filter {
  * Predicate to filter reflexive edges in a graph
  * @tparam T the type of the graph
  */
-template<typename T>
-struct SelfCyclePredicate {
+template <typename T> struct SelfCyclePredicate {
   bool operator()(typename T::edge_descriptor ed) const {
     assert(g != nullptr);
     auto source = boost::source(ed, *g);
@@ -22,11 +21,11 @@ struct SelfCyclePredicate {
     return true;
   }
 
-  T *g;
+  T* g;
 
   SelfCyclePredicate() : g(nullptr) {}
 
-  explicit SelfCyclePredicate(T &g) : g(&g) {}
+  explicit SelfCyclePredicate(T& g) : g(&g) {}
 };
 
 /**
@@ -35,9 +34,8 @@ struct SelfCyclePredicate {
  * @param g the graph to filter
  * @return a filtered representation of `g` which hides all reflexive edges
  */
-template<typename graph_t>
-auto filter_selfcycle_graph(graph_t &g) -> decltype(filter_graph<SelfCyclePredicate>(g)) {
+template <typename graph_t> auto filter_selfcycle_graph(graph_t& g) -> decltype(filter_graph<SelfCyclePredicate>(g)) {
   return filter_graph<SelfCyclePredicate>(g);
 }
-}
-#endif //COMPOSITION_FRAMEWORK_GRAPH_FILTER_SELFCYCLE_HPP
+} // namespace composition::graph::filter
+#endif // COMPOSITION_FRAMEWORK_GRAPH_FILTER_SELFCYCLE_HPP

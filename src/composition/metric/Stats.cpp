@@ -1,37 +1,36 @@
-#include <utility>
-#include <unordered_set>
-#include <unordered_map>
-#include <queue>
+#include <composition/metric/Stats.hpp>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
-#include <composition/metric/Stats.hpp>
+#include <queue>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
 
 namespace composition::metric {
-Stats::Stats(std::istream &i) {
+Stats::Stats(std::istream& i) {
   nlohmann::json j;
   i >> j;
   from_json(j, *this);
 }
 
-void Stats::dump(llvm::raw_ostream &o) {
+void Stats::dump(llvm::raw_ostream& o) {
   nlohmann::json j;
   to_json(j, *this);
 
   o << j.dump(4) << "\n";
 }
 
-void Stats::collect(llvm::Value *V, std::vector<Manifest *> manifests, const ManifestProtectionMap &dep) {
+void Stats::collect(llvm::Value* V, std::vector<Manifest*> manifests, const ManifestProtectionMap& dep) {
   collect(Coverage::ValueToInstructions(V), std::move(manifests), dep);
 }
 
-void Stats::collect(llvm::Module *M, std::vector<Manifest *> manifests, const ManifestProtectionMap &dep) {
+void Stats::collect(llvm::Module* M, std::vector<Manifest*> manifests, const ManifestProtectionMap& dep) {
   collect(Coverage::ValueToInstructions(M), std::move(manifests), dep);
 }
 
-void Stats::collect(std::unordered_set<llvm::Function *> sensitiveFunctions,
-                    std::vector<Manifest *> manifests,
-                    const ManifestProtectionMap &dep) {
-  std::unordered_set<llvm::Instruction *> instructions{};
+void Stats::collect(std::unordered_set<llvm::Function*> sensitiveFunctions, std::vector<Manifest*> manifests,
+                    const ManifestProtectionMap& dep) {
+  std::unordered_set<llvm::Instruction*> instructions{};
 
   for (auto F : sensitiveFunctions) {
     auto result = Coverage::ValueToInstructions(F);
@@ -41,12 +40,12 @@ void Stats::collect(std::unordered_set<llvm::Function *> sensitiveFunctions,
   collect(instructions, std::move(manifests), dep);
 }
 
-std::unordered_set<llvm::Instruction *> implictInstructions(Manifest *m, const ManifestProtectionMap &dep) {
-  std::unordered_set<llvm::Instruction *> result{};
-  std::queue<Manifest *> q{};
+std::unordered_set<llvm::Instruction*> implictInstructions(Manifest* m, const ManifestProtectionMap& dep) {
+  std::unordered_set<llvm::Instruction*> result{};
+  std::queue<Manifest*> q{};
 
-  std::unordered_set<Manifest *> seen{};
-  for (auto[it, it_end] = dep.left.equal_range(m); it != it_end; ++it) {
+  std::unordered_set<Manifest*> seen{};
+  for (auto [it, it_end] = dep.left.equal_range(m); it != it_end; ++it) {
     q.push(it->second);
     seen.insert(it->second);
   }
@@ -57,7 +56,7 @@ std::unordered_set<llvm::Instruction *> implictInstructions(Manifest *m, const M
 
     result.merge(next->Coverage());
 
-    for (auto[it, it_end] = dep.left.equal_range(next); it != it_end; ++it) {
+    for (auto [it, it_end] = dep.left.equal_range(next); it != it_end; ++it) {
       if (seen.find(it->second) != seen.end()) {
         continue;
       }
@@ -69,16 +68,15 @@ std::unordered_set<llvm::Instruction *> implictInstructions(Manifest *m, const M
   return result;
 }
 
-void Stats::collect(std::unordered_set<llvm::Instruction *> allInstructions,
-                    std::vector<Manifest *> manifests,
-                    const ManifestProtectionMap &dep) {
+void Stats::collect(std::unordered_set<llvm::Instruction*> allInstructions, std::vector<Manifest*> manifests,
+                    const ManifestProtectionMap& dep) {
   this->numberOfManifests = manifests.size();
   this->numberOfAllInstructions = allInstructions.size();
 
-  std::unordered_map<std::string, std::unordered_set<llvm::Instruction *>> instructionProtections{};
-  std::unordered_map<std::string, std::unordered_map<llvm::Instruction *, size_t>> protectionConnectivityMap;
+  std::unordered_map<std::string, std::unordered_set<llvm::Instruction*>> instructionProtections{};
+  std::unordered_map<std::string, std::unordered_map<llvm::Instruction*, size_t>> protectionConnectivityMap;
 
-  for (auto &m : manifests) {
+  for (auto& m : manifests) {
     auto manifestCoverage = m->Coverage();
     this->protectedInstructionsDistinct.insert(manifestCoverage.begin(), manifestCoverage.end());
     this->protectedInstructions[m->name].insert(manifestCoverage.begin(), manifestCoverage.end());
@@ -86,64 +84,63 @@ void Stats::collect(std::unordered_set<llvm::Instruction *> allInstructions,
     auto manifestFunctions = Coverage::BasicBlocksToFunctions(Coverage::InstructionsToBasicBlocks(manifestCoverage));
     this->protectedFunctions[m->name].insert(manifestFunctions.begin(), manifestFunctions.end());
 
-    for (auto &I : manifestCoverage) {
+    for (auto& I : manifestCoverage) {
       instructionProtections[m->name].insert(I);
       protectionConnectivityMap[m->name][I]++;
     }
   }
 
-  std::unordered_map<llvm::Instruction *, size_t> instructionConnectivityMap;
-  for (auto &I : allInstructions) {
+  std::unordered_map<llvm::Instruction*, size_t> instructionConnectivityMap;
+  for (auto& I : allInstructions) {
     instructionConnectivityMap[I] = 0;
   }
-  for (auto&[p, instr] : instructionProtections) {
+  for (auto& [p, instr] : instructionProtections) {
     for (auto I : instr) {
       instructionConnectivityMap[I]++;
     }
   }
 
-  std::unordered_set<llvm::Instruction *> implicitlyCoveredInstructions{};
-  std::unordered_map<Manifest *, std::unordered_set<llvm::Instruction *>> manifestImplicitlyCoveredInstructions{};
-  for (auto &m : manifests) {
+  std::unordered_set<llvm::Instruction*> implicitlyCoveredInstructions{};
+  std::unordered_map<Manifest*, std::unordered_set<llvm::Instruction*>> manifestImplicitlyCoveredInstructions{};
+  for (auto& m : manifests) {
     manifestImplicitlyCoveredInstructions[m] = implictInstructions(m, dep);
   }
-  for (auto &[m, instr] : manifestImplicitlyCoveredInstructions) {
+  for (auto& [m, instr] : manifestImplicitlyCoveredInstructions) {
     implicitlyCoveredInstructions.insert(instr.begin(), instr.end());
     this->numberOfImplicitlyProtectedInstructions += instr.size();
   }
   this->numberOfDistinctImplicitlyProtectedInstructions = implicitlyCoveredInstructions.size();
 
-  for (const auto&[protection, instructions] : this->protectedInstructions) {
+  for (const auto& [protection, instructions] : this->protectedInstructions) {
     this->numberOfProtectedInstructionsByType[protection] = instructions.size();
     this->numberOfProtectedInstructions += instructions.size();
   }
   this->numberOfProtectedDistinctInstructions = this->protectedInstructionsDistinct.size();
 
-  for (const auto&[protection, functions] : this->protectedFunctions) {
+  for (const auto& [protection, functions] : this->protectedFunctions) {
     this->numberOfProtectedFunctionsByType[protection] = functions.size();
     this->numberOfProtectedFunctions += functions.size();
   }
 
   std::tie(instructionConnectivity, functionConnectivity) = instructionFunctionConnectivity(instructionConnectivityMap);
 
-  for (const auto&[key, value] : protectionConnectivityMap) {
+  for (const auto& [key, value] : protectionConnectivityMap) {
     protectionConnectivity.insert({key, instructionFunctionConnectivity(value)});
   }
 }
 
-std::pair<Connectivity, Connectivity>
-Stats::instructionFunctionConnectivity(
-    const std::unordered_map<llvm::Instruction *, size_t> &instructionConnectivityMap) {
-  std::unordered_map<llvm::Function *, size_t> functionConnectivityMap;
+std::pair<Connectivity, Connectivity> Stats::instructionFunctionConnectivity(
+    const std::unordered_map<llvm::Instruction*, size_t>& instructionConnectivityMap) {
+  std::unordered_map<llvm::Function*, size_t> functionConnectivityMap;
   std::vector<size_t> connectivity{};
   connectivity.reserve(instructionConnectivityMap.size());
-  for (auto &[I, c] : instructionConnectivityMap) {
+  for (auto& [I, c] : instructionConnectivityMap) {
     connectivity.push_back(c);
 
     if (I->getParent() == nullptr || I->getParent()->getParent() == nullptr) {
       continue;
     }
-    auto *F = I->getFunction();
+    auto* F = I->getFunction();
     auto num = functionConnectivityMap[F];
     functionConnectivityMap[F] = std::max(c, num);
   }
@@ -151,7 +148,7 @@ Stats::instructionFunctionConnectivity(
 
   connectivity.clear();
   connectivity.reserve(functionConnectivityMap.size());
-  for (auto &[_, c] : functionConnectivityMap) {
+  for (auto& [_, c] : functionConnectivityMap) {
     connectivity.push_back(c);
   }
   auto funcConnectivity = Connectivity{connectivity};
@@ -159,7 +156,7 @@ Stats::instructionFunctionConnectivity(
   return {instConnectivity, funcConnectivity};
 }
 
-void to_json(nlohmann::json &j, const Stats &s) {
+void to_json(nlohmann::json& j, const Stats& s) {
   j = nlohmann::json{
       {"numberOfManifests", s.numberOfManifests},
       {"numberOfAllInstructions", s.numberOfAllInstructions},
@@ -176,7 +173,7 @@ void to_json(nlohmann::json &j, const Stats &s) {
   };
 }
 
-void from_json(const nlohmann::json &j, Stats &s) {
+void from_json(const nlohmann::json& j, Stats& s) {
   s.numberOfManifests = j.at("numberOfManifests").get<size_t>();
   s.numberOfAllInstructions = j.at("numberOfAllInstructions").get<size_t>();
   s.numberOfProtectedFunctions = j.at("numberOfProtectedFunctions").get<size_t>();
@@ -194,4 +191,4 @@ void from_json(const nlohmann::json &j, Stats &s) {
   s.protectionConnectivity =
       j.at("protectionConnectivity").get<std::unordered_map<std::string, std::pair<Connectivity, Connectivity>>>();
 }
-}
+} // namespace composition::metric

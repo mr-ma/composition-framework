@@ -1,11 +1,11 @@
-#ifndef COMPOSITION_FRAMEWORK_GRAPH_PRESERVED_HPP
-#define COMPOSITION_FRAMEWORK_GRAPH_PRESERVED_HPP
+#ifndef COMPOSITION_FRAMEWORK_GRAPH_CONSTRAINT_PRESERVED_HPP
+#define COMPOSITION_FRAMEWORK_GRAPH_CONSTRAINT_PRESERVED_HPP
+#include <composition/graph/constraint/bitmask.hpp>
+#include <composition/graph/constraint/constraint.hpp>
 #include <llvm/IR/Value.h>
 #include <llvm/IR/ValueHandle.h>
-#include <composition/graph/bitmask.hpp>
-#include <composition/graph/constraint.hpp>
 
-namespace composition::graph {
+namespace composition::graph::constraint {
 /**
  * PreservedConstraint enum which represents all possible states
  */
@@ -24,16 +24,17 @@ class Preserved : public Constraint {
 private:
   llvm::WeakTrackingVH target;
   bool inverse;
-public:
-  Preserved(std::string info, llvm::Value *target, bool inverse = false);
 
-  llvm::Value *getTarget() const;
+public:
+  Preserved(std::string info, llvm::Value* target, bool inverse = false);
+
+  llvm::Value* getTarget() const;
 
   bool isInverse() const;
 
-  static bool classof(const Constraint *S);
+  static bool classof(const Constraint* S);
 
   bool isValid() override;
 };
-}
-#endif //COMPOSITION_FRAMEWORK_GRAPH_PRESERVED_HPP
+} // namespace composition::graph::constraint
+#endif // COMPOSITION_FRAMEWORK_GRAPH_CONSTRAINT_PRESERVED_HPP

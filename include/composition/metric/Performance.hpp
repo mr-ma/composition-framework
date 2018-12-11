@@ -1,10 +1,10 @@
 #ifndef COMPOSITION_FRAMEWORK_METRIC_PERFORMANCE_HPP
 #define COMPOSITION_FRAMEWORK_METRIC_PERFORMANCE_HPP
 
-#include <llvm/IR/Module.h>
-#include <llvm/IR/Function.h>
-#include <llvm/IR/BasicBlock.h>
 #include <llvm/Analysis/BlockFrequencyInfo.h>
+#include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Module.h>
 
 namespace composition::metric {
 // @src: https://github.com/rcorcs/llvm-heat-printer
@@ -19,9 +19,7 @@ public:
    * @param M the Module
    * @return true if profiling information exist, false otherwise.
    */
-  static bool hasProfiling(
-      llvm::Module &M
-  );
+  static bool hasProfiling(llvm::Module& M);
 
   /**
    * Returns the block frequency
@@ -30,11 +28,7 @@ public:
    * @param useHeuristic if false, then the exact values from the profile are used.
    * @return the block frequency
    */
-  static uint64_t getBlockFreq(
-      const llvm::BasicBlock *BB,
-      llvm::BlockFrequencyInfo *BFI,
-      bool useHeuristic = true
-  );
+  static uint64_t getBlockFreq(const llvm::BasicBlock* BB, llvm::BlockFrequencyInfo* BFI, bool useHeuristic = true);
 
   /**
    * Returns the maximum block frequency for the function `F`.
@@ -43,11 +37,7 @@ public:
    * @param useHeuristic if false, then the exact values from the profile are used.
    * @return the maximum block frequency for the function `F`.
    */
-  static uint64_t getMaxFreq(
-      llvm::Function &F,
-      llvm::BlockFrequencyInfo *BFI,
-      bool useHeuristic = true
-  );
+  static uint64_t getMaxFreq(llvm::Function& F, llvm::BlockFrequencyInfo* BFI, bool useHeuristic = true);
 
   /**
    * Returns the maximum block frequency for the module `M`.
@@ -56,11 +46,8 @@ public:
    * @param useHeuristic if false, then the exact values from the profile are used.
    * @return the maximum block frequency for the module `M`.
    */
-  static uint64_t getMaxFreq(
-      llvm::Module &M,
-      llvm::function_ref<llvm::BlockFrequencyInfo *(llvm::Function &)> LookupBFI,
-      bool useHeuristic = true
-  );
+  static uint64_t getMaxFreq(llvm::Module& M, llvm::function_ref<llvm::BlockFrequencyInfo*(llvm::Function&)> LookupBFI,
+                             bool useHeuristic = true);
 };
-}
-#endif //COMPOSITION_FRAMEWORK_METRIC_PERFORMANCE_HPP
+} // namespace composition::metric
+#endif // COMPOSITION_FRAMEWORK_METRIC_PERFORMANCE_HPP

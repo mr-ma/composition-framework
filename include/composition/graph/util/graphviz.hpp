@@ -2,7 +2,7 @@
 #define COMPOSITION_FRAMEWORK_GRAPH_UTIL_GRAPHVIZ_HPP
 
 #include <string>
-namespace composition::graph::util {
+namespace composition::graph::util { 
 /**
  * Encodes the given string into a graphviz compatible representation
  * @param s the string to encode

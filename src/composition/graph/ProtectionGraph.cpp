@@ -1,51 +1,50 @@
-#include <cstdint>
-#include <unordered_set>
-#include <llvm/Support/raw_ostream.h>
 #include <composition/graph/ProtectionGraph.hpp>
-#include <composition/graph/dependency.hpp>
+#include <composition/graph/constraint/dependency.hpp>
+#include <cstdint>
+#include <llvm/Support/raw_ostream.h>
+#include <unordered_set>
 
 using namespace llvm;
 namespace composition::graph {
 
-using support::cStats;
+using graph::algorithm::reverse_topological_sort;
 using graph::filter::filter_dependency_graph;
 using graph::filter::filter_removed_graph;
 using graph::filter::filter_selfcycle_graph;
-using graph::algorithm::reverse_topological_sort;
+using support::cStats;
+using graph::constraint::Dependency; 
 
-graph_t &ProtectionGraph::getGraph() {
-  return Graph;
-}
+graph_t& ProtectionGraph::getGraph() { return Graph; }
 
-vd_t ProtectionGraph::add_vertex(llvm::Value *v) {
-  graph_t &g = Graph;
+vd_t ProtectionGraph::add_vertex(llvm::Value* v) {
+  graph_t& g = Graph;
 
-  auto idx = reinterpret_cast<vertex_idx_t>(v);
-  if (vertexCache.find(idx) != vertexCache.end()) {
-    auto vd = vertexCache.at(idx);
+  if (vertexCache.find(v) != vertexCache.end()) {
+    auto vd = vertexCache.at(v);
     g[vd].removed = false;
     return vd;
   }
 
   auto vd = boost::add_vertex(g);
-  g[vd] = vertex_t(idx, llvmToVertexName(v), llvmToVertexType(v), {});
-  vertexCache.insert({idx, vd});
+  auto idx = VertexIdx++;
+  g[vd] = vertex_t(idx, v, llvmToVertexName(v), llvmToVertexType(v), {});
+  vertexCache.insert({v, vd});
   return vd;
 }
 
 void ProtectionGraph::remove_vertex(vd_t vd) noexcept {
-  graph_t &g = Graph;
+  graph_t& g = Graph;
   g[vd].removed = true;
-  for (auto[ei, ei_end] = boost::in_edges(vd, g); ei != ei_end; ++ei) {
+  for (auto [ei, ei_end] = boost::in_edges(vd, g); ei != ei_end; ++ei) {
     remove_edge(*ei);
   }
-  for (auto[ei, ei_end] = boost::out_edges(vd, g); ei != ei_end; ++ei) {
+  for (auto [ei, ei_end] = boost::out_edges(vd, g); ei != ei_end; ++ei) {
     remove_edge(*ei);
   }
 }
 
 ed_t ProtectionGraph::add_edge(vd_t s, vd_t d, edge_t e) {
-  graph_t &g = Graph;
+  graph_t& g = Graph;
   auto edge = boost::add_edge(s, d, g);
   assert(edge.second);
   edgeCache.insert({e.index, edge.first});
@@ -54,29 +53,29 @@ ed_t ProtectionGraph::add_edge(vd_t s, vd_t d, edge_t e) {
 }
 
 void ProtectionGraph::remove_edge(ed_t ed) noexcept {
-  graph_t &g = Graph;
+  graph_t& g = Graph;
   g[ed].removed = true;
 }
 
-void ProtectionGraph::removeManifest(Manifest *m) {
-  graph_t &g = Graph;
+void ProtectionGraph::removeManifest(Manifest* m) {
+  graph_t& g = Graph;
 
-  for (auto[it, it_end] = Protections.left.equal_range(m); it != it_end; ++it) {
-    for (auto[ei, ei_end] = edgeCache.left.equal_range(it->second); ei != ei_end; ++ei) {
+  for (auto [it, it_end] = Protections.left.equal_range(m); it != it_end; ++it) {
+    for (auto [ei, ei_end] = edgeCache.left.equal_range(it->second); ei != ei_end; ++ei) {
       remove_edge(ei->second);
     }
 
-    for (auto[vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
+    for (auto [vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
       g[*vi].constraints.erase(it->second);
     }
   }
   Protections.left.erase(m);
 
-  for (auto[it, it_end] = DependencyUndo.right.equal_range(m); it != it_end; ++it) {
+  for (auto [it, it_end] = DependencyUndo.right.equal_range(m); it != it_end; ++it) {
     removeManifest(it->second);
   }
   DependencyUndo.right.erase(m);
-  //DependencyUndo.left.erase(m);
+  // DependencyUndo.left.erase(m);
   ManifestProtection.right.erase(m);
   ManifestProtection.left.erase(m);
   ManifestRegistry::Remove(m);
@@ -86,27 +85,28 @@ void ProtectionGraph::expandToInstructions() {
   // 1) Loop over all nodes
   // 2) If node is not an instruction -> Resolve instructions and add to graph
   // 3) Add edge for all edges to instructions
-  graph_t &g = Graph;
+  graph_t& g = Graph;
 
-  for (auto[vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
+  for (auto [vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
     auto v = g[*vi];
 
     switch (v.type) {
     case vertex_type::FUNCTION: {
-      auto func = reinterpret_cast<llvm::Function *>(v.index);
-      for (auto &B : *func) {
+      auto func = static_cast<llvm::Function*>(v.value);
+      for (auto& B : *func) {
         this->expandBasicBlockToInstructions(*vi, &B);
       }
-    }
-      break;
+    } break;
     case vertex_type::BASICBLOCK: {
-      auto B = reinterpret_cast<llvm::BasicBlock *>(v.index);
+      auto B = static_cast<llvm::BasicBlock*>(v.value);
       this->expandBasicBlockToInstructions(*vi, B);
-    }
+    } break;
+    case vertex_type::INSTRUCTION:
       break;
-    case vertex_type::INSTRUCTION: break;
-    case vertex_type::VALUE: break;
-    case vertex_type::UNKNOWN: break;
+    case vertex_type::VALUE:
+      break;
+    case vertex_type::UNKNOWN:
+      break;
     }
   }
 
@@ -114,10 +114,10 @@ void ProtectionGraph::expandToInstructions() {
   cStats.edges = boost::num_edges(g);
 }
 
-void ProtectionGraph::expandBasicBlockToInstructions(vd_t it, llvm::BasicBlock *B) {
-  graph_t &g = Graph;
+void ProtectionGraph::expandBasicBlockToInstructions(vd_t it, llvm::BasicBlock* B) {
+  graph_t& g = Graph;
 
-  for (auto &I : *B) {
+  for (auto& I : *B) {
     auto node = this->add_vertex(&I);
     auto constraints = g[it].constraints;
     g[node].constraints.insert(constraints.begin(), constraints.end());
@@ -126,14 +126,16 @@ void ProtectionGraph::expandBasicBlockToInstructions(vd_t it, llvm::BasicBlock *
 }
 
 void ProtectionGraph::reduceToInstructions() {
-  graph_t &g = Graph;
+  graph_t& g = Graph;
 
-  for (auto[vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
-    auto &v = g[*vi];
+  for (auto [vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
+    auto& v = g[*vi];
     switch (v.type) {
-    case vertex_type::FUNCTION:remove_vertex(*vi);
+    case vertex_type::FUNCTION:
+      remove_vertex(*vi);
       break;
-    case vertex_type::BASICBLOCK:remove_vertex(*vi);
+    case vertex_type::BASICBLOCK:
+      remove_vertex(*vi);
       break;
     case vertex_type::INSTRUCTION: {
       if (boost::out_degree(*vi, g) == 0 && boost::in_degree(*vi, g) == 0) {
@@ -141,8 +143,10 @@ void ProtectionGraph::reduceToInstructions() {
       }
       break;
     }
-    case vertex_type::VALUE: break;
-    case vertex_type::UNKNOWN: break;
+    case vertex_type::VALUE:
+      break;
+    case vertex_type::UNKNOWN:
+      break;
     }
   }
 }
@@ -153,12 +157,13 @@ void ProtectionGraph::replaceTarget(vd_t src, vd_t dst) {
 }
 
 void ProtectionGraph::replaceTargetInEdges(vd_t src, vd_t dst) {
-  graph_t &g = Graph;
+  graph_t& g = Graph;
 
-  for (auto[vi, vi_end] = boost::in_edges(src, g); vi != vi_end; ++vi) {
+  for (auto [vi, vi_end] = boost::in_edges(src, g); vi != vi_end; ++vi) {
     auto e = g[*vi];
-    if (e.type != edge_type::DEPENDENCY)
+    if (e.type != edge_type::DEPENDENCY) {
       continue;
+    }
 
     auto from = boost::source(*vi, g);
     this->add_edge(from, dst, edge_t{e.index, e.name, e.type});
@@ -166,20 +171,21 @@ void ProtectionGraph::replaceTargetInEdges(vd_t src, vd_t dst) {
 }
 
 void ProtectionGraph::replaceTargetOutEdges(vd_t src, vd_t dst) {
-  graph_t &g = Graph;
+  graph_t& g = Graph;
 
-  for (auto[vi, vi_end] = boost::out_edges(src, g); vi != vi_end; ++vi) {
+  for (auto [vi, vi_end] = boost::out_edges(src, g); vi != vi_end; ++vi) {
     auto e = g[*vi];
-    if (e.type != edge_type::DEPENDENCY)
+    if (e.type != edge_type::DEPENDENCY) {
       continue;
+    }
 
     auto to = boost::target(*vi, g);
     this->add_edge(dst, to, edge_t{e.index, e.name, e.type});
   }
 }
 
-ProtectionIndex ProtectionGraph::addConstraint(Manifest *m, std::shared_ptr<Constraint> c) {
-  graph_t &g = Graph;
+ProtectionIndex ProtectionGraph::addConstraint(Manifest* m, std::shared_ptr<Constraint> c) {
+  graph_t& g = Graph;
 
   if (auto d = dyn_cast<Dependency>(c.get())) {
     auto dstNode = this->add_vertex(d->getFrom());
@@ -198,15 +204,15 @@ ProtectionIndex ProtectionGraph::addConstraint(Manifest *m, std::shared_ptr<Cons
   return ProtectionIdx++;
 }
 
-std::vector<Manifest *> ProtectionGraph::topologicalSortManifests(std::unordered_set<Manifest *> manifests) {
+std::vector<Manifest*> ProtectionGraph::topologicalSortManifests(std::unordered_set<Manifest*> manifests) {
   auto rg = filter_removed_graph(Graph);
   auto fg = filter_dependency_graph(rg);
   auto sc = filter_selfcycle_graph(fg);
 
-  std::set<Manifest *> all{manifests.begin(), manifests.end()};
-  std::set<Manifest *> seen{};
-  for (auto[vi, vi_end] = boost::vertices(sc); vi != vi_end; ++vi) {
-    for (auto[ei, ei_end] = boost::in_edges(*vi, sc); ei != ei_end; ++ei) {
+  std::set<Manifest*> all{manifests.begin(), manifests.end()};
+  std::set<Manifest*> seen{};
+  for (auto [vi, vi_end] = boost::vertices(sc); vi != vi_end; ++vi) {
+    for (auto [ei, ei_end] = boost::in_edges(*vi, sc); ei != ei_end; ++ei) {
       auto i = sc[*ei].index;
       auto it = Protections.right.find(i);
       if (it == Protections.right.end()) {
@@ -218,15 +224,13 @@ std::vector<Manifest *> ProtectionGraph::topologicalSortManifests(std::unordered
     }
   }
 
-  std::vector<Manifest *> result{};
-  std::set_difference(all.begin(), all.end(),
-                      seen.begin(), seen.end(),
-                      std::back_inserter(result));
+  std::vector<Manifest*> result{};
+  std::set_difference(all.begin(), all.end(), seen.begin(), seen.end(), std::back_inserter(result));
 
   seen.clear();
   auto sorted = reverse_topological_sort(sc);
   for (auto v : sorted) {
-    for (auto[ei, ei_end] = boost::in_edges(v, sc); ei != ei_end; ++ei) {
+    for (auto [ei, ei_end] = boost::in_edges(v, sc); ei != ei_end; ++ei) {
       auto i = sc[*ei].index;
       auto manifest = Protections.right.find(i)->second;
 
@@ -251,25 +255,25 @@ void ProtectionGraph::destroy() {
 
 void ProtectionGraph::computeManifestDependencies() {
   ManifestUndoMap undo{};
-  for (auto &[m, i] : Protections.left) {
+  for (auto& [m, i] : Protections.left) {
     for (auto it : m->UndoValues()) {
       auto worked = undo.insert({m, it});
       assert(worked.second && "undo");
     }
   }
-  std::unordered_map<Manifest *, std::unordered_set<llvm::Value *>> manifestUsers{};
+  std::unordered_map<Manifest*, std::unordered_set<llvm::Value*>> manifestUsers{};
 
-  for (auto&[m, u] : undo.left) {
+  for (auto& [m, u] : undo.left) {
     for (auto it = u->user_begin(), it_end = u->user_end(); it != it_end; ++it) {
       manifestUsers[m].insert(*it);
     }
   }
 
-  for (auto&[m, u] : undo.left) {
-    std::unordered_set<Manifest *> manifests{};
+  for (auto& [m, u] : undo.left) {
+    std::unordered_set<Manifest*> manifests{};
 
     for (auto I : m->Coverage()) {
-      for (auto[it, it_end] = undo.right.equal_range(I); it != it_end; ++it) {
+      for (auto [it, it_end] = undo.right.equal_range(I); it != it_end; ++it) {
         manifests.insert(it->second);
       }
     }
@@ -278,9 +282,9 @@ void ProtectionGraph::computeManifestDependencies() {
     }
   }
 
-  for (auto &[m, users] : manifestUsers) {
+  for (auto& [m, users] : manifestUsers) {
     for (auto u : users) {
-      for (auto[it, it_end] = undo.right.equal_range(u); it != it_end; ++it) {
+      for (auto [it, it_end] = undo.right.equal_range(u); it != it_end; ++it) {
         if (m != it->second) {
           DependencyUndo.insert({it->second, m});
         }
@@ -289,4 +293,4 @@ void ProtectionGraph::computeManifestDependencies() {
   }
 }
 
-}
+} // namespace composition::graph

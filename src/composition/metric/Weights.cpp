@@ -14,36 +14,34 @@ Weights::Weights() {
   connectivityProtections = 1.0;
 }
 
-void Weights::dump(llvm::raw_ostream &o) {
+void Weights::dump(llvm::raw_ostream& o) {
   nlohmann::json j;
   to_json(j, *this);
 
   o << j.dump(4) << "\n";
 }
 
-Weights::Weights(std::istream &i) {
+Weights::Weights(std::istream& i) : Weights() {
   nlohmann::json j;
   i >> j;
 
   from_json(j, *this);
 }
 
-void to_json(nlohmann::json &j, const Weights &w) {
-  j = nlohmann::json{
-      {"explicitInstructionCoverage", w.explicitInstructionCoverage},
-      {"implicitInstructionCoverage", w.implicitInstructionCoverage},
+void to_json(nlohmann::json& j, const Weights& w) {
+  j = nlohmann::json{{"explicitInstructionCoverage", w.explicitInstructionCoverage},
+                     {"implicitInstructionCoverage", w.implicitInstructionCoverage},
 
-      {"basicBlockProfileCount", w.basicBlockProfileCount},
-      {"protectionCosts", w.protectionCosts},
+                     {"basicBlockProfileCount", w.basicBlockProfileCount},
+                     {"protectionCosts", w.protectionCosts},
 
-      {"connectivityManifest", w.connectivityManifest},
-      {"connectivityInstructions", w.connectivityInstructions},
-      {"connectivityFunctions", w.connectivityFunctions},
-      {"connectivityProtections", w.connectivityProtections}
-  };
+                     {"connectivityManifest", w.connectivityManifest},
+                     {"connectivityInstructions", w.connectivityInstructions},
+                     {"connectivityFunctions", w.connectivityFunctions},
+                     {"connectivityProtections", w.connectivityProtections}};
 }
 
-void from_json(const nlohmann::json &j, Weights &w) {
+void from_json(const nlohmann::json& j, Weights& w) {
   w.explicitInstructionCoverage = j.at("explicitInstructionCoverage").get<float>();
   w.implicitInstructionCoverage = j.at("implicitInstructionCoverage").get<float>();
 
@@ -55,4 +53,4 @@ void from_json(const nlohmann::json &j, Weights &w) {
   w.connectivityFunctions = j.at("connectivityFunctions").get<float>();
   w.connectivityProtections = j.at("connectivityProtections").get<float>();
 }
-}
+} // namespace composition::metric

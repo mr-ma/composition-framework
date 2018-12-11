@@ -1,47 +1,48 @@
-#include <utility>
-
-#include <llvm/IR/Instruction.h>
+#include <composition/Manifest.hpp>
+#include <composition/graph/constraint/dependency.hpp>
+#include <composition/graph/constraint/present.hpp>
+#include <composition/graph/constraint/preserved.hpp>
+#include <composition/graph/vertex.hpp>
 #include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Constants.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/GlobalVariable.h>
-#include <llvm/IR/Constants.h>
+#include <llvm/IR/Instruction.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
-#include <composition/Manifest.hpp>
-#include <composition/graph/vertex.hpp>
-#include <composition/graph/dependency.hpp>
-#include <composition/graph/present.hpp>
-#include <composition/graph/preserved.hpp>
+#include <memory>
+#include <sstream>
+#include <utility>
 
 using namespace llvm;
 
 namespace composition {
+using graph::constraint::Dependency;
+using graph::constraint::Present;
+using graph::constraint::Preserved;
 using metric::Coverage;
-using graph::Dependency;
-using graph::Present;
-using graph::Preserved;
 
 void Manifest::Undo() const {
   dbgs() << "Undoing " << undoValues.size() << " values\n";
-  for (const auto &V : undoValues) {
+  for (const auto& V : undoValues) {
     if (llvm::isa<llvm::Constant>(&*V)) {
-      //Constants may not be deleted!
+      // Constants may not be deleted!
       continue;
     }
     dbgs() << *V << "\n";
-    llvm::Value *v_copy = (&*V);
+    llvm::Value* v_copy = (&*V);
     if (!V->use_empty()) {
       V->replaceAllUsesWith(UndefValue::get(V->getType()));
     }
 
     if (llvm::isa<llvm::UndefValue>(v_copy)) {
-      //UndefValues are constants and may not be deleted!
+      // UndefValues are constants and may not be deleted!
       continue;
     }
 
-    if (auto *F = llvm::dyn_cast<llvm::Function>(v_copy)) {
-      for (auto &B : *F) {
-        for (auto &I : B) {
+    if (auto* F = llvm::dyn_cast<llvm::Function>(v_copy)) {
+      for (auto& B : *F) {
+        for (auto& I : B) {
           I.replaceAllUsesWith(UndefValue::get(I.getType()));
           I.eraseFromParent();
         }
@@ -49,13 +50,13 @@ void Manifest::Undo() const {
         B.eraseFromParent();
       }
       F->eraseFromParent();
-    } else if (auto *B = llvm::dyn_cast<llvm::BasicBlock>(v_copy)) {
-      for (auto &I : *B) {
+    } else if (auto* B = llvm::dyn_cast<llvm::BasicBlock>(v_copy)) {
+      for (auto& I : *B) {
         I.eraseFromParent();
       }
-    } else if (auto *I = llvm::dyn_cast<llvm::Instruction>(v_copy)) {
+    } else if (auto* I = llvm::dyn_cast<llvm::Instruction>(v_copy)) {
       I->eraseFromParent();
-    } else if (auto *G = llvm::dyn_cast<llvm::GlobalVariable>(v_copy)) {
+    } else if (auto* G = llvm::dyn_cast<llvm::GlobalVariable>(v_copy)) {
       G->eraseFromParent();
     } else {
       dbgs() << "Failed to undo\n";
@@ -64,47 +65,34 @@ void Manifest::Undo() const {
   }
 }
 
-void Manifest::Redo() const {
-  patchFunction(*this);
-}
+void Manifest::Redo() const { patchFunction(*this); }
 
-std::unordered_set<llvm::Instruction *> Manifest::Coverage() const {
+std::unordered_set<llvm::Instruction*> Manifest::Coverage() const {
   if (protectee.pointsToAliveValue()) {
     return Coverage::ValueToInstructions(&*protectee);
   }
   return {};
 }
 
-std::unordered_set<llvm::Value *> Manifest::UndoValues() const {
-  std::unordered_set<llvm::Value *> undos{};
-  for (const auto &g : undoValues) {
-    if (auto *I = llvm::dyn_cast<llvm::Instruction>(&*g)) {
+std::unordered_set<llvm::Value*> Manifest::UndoValues() const {
+  std::unordered_set<llvm::Value*> undos{};
+  for (const auto& g : undoValues) {
+    if (auto* I = llvm::dyn_cast<llvm::Instruction>(&*g)) {
       undos.insert(I);
     }
   }
   return undos;
 }
 
-bool Manifest::operator<(const Manifest &other) const {
-  return (index < other.index);
-}
+bool Manifest::operator<(const Manifest& other) const { return (index < other.index); }
 
-bool Manifest::operator==(const Manifest &other) const {
-  return (index == other.index);
-}
+bool Manifest::operator==(const Manifest& other) const { return (index == other.index); }
 
-Manifest::Manifest(std::string name,
-                   llvm::Value *protectee,
-                   PatchFunction patchFunction,
-                   std::vector<std::shared_ptr<graph::Constraint>> constraints,
-                   bool postPatching,
-                   std::set<llvm::Value *> undoValues,
-                   std::string patchInfo) :
-    name(std::move(name)),
-    patchFunction(std::move(patchFunction)),
-    constraints(std::move(constraints)),
-    postPatching(postPatching),
-    patchInfo(std::move(patchInfo)) {
+Manifest::Manifest(std::string name, llvm::Value* protectee, PatchFunction patchFunction,
+                   std::vector<std::shared_ptr<graph::constraint::Constraint>> constraints, bool postPatching,
+                   std::set<llvm::Value*> undoValues, std::string patchInfo)
+    : name(std::move(name)), patchFunction(std::move(patchFunction)), constraints(std::move(constraints)),
+      postPatching(postPatching), patchInfo(std::move(patchInfo)) {
 
   this->protectee = support::ManifestValueHandle(protectee);
   for (auto u : undoValues) {
@@ -112,14 +100,18 @@ Manifest::Manifest(std::string name,
   }
 }
 
-std::string valueToName(llvm::Value *v) {
+std::string valueToName(llvm::Value* v) {
   if (isa<Function>(v)) {
     return v->getName();
   }
-  return std::to_string(reinterpret_cast<uintptr_t>(v));
+  std::stringstream s{};
+  s << std::addressof(v);
+  return s.str();
 }
 
 void Manifest::dump() {
+  Clean();
+
   if (protectee.pointsToAliveValue()) {
     dbgs() << "Manifest " << index << " (" << name << ") protecting " << valueToName(&*protectee) << ":\n";
   } else {
@@ -131,10 +123,6 @@ void Manifest::dump() {
   dbgs() << "\tConstraints: \n";
 
   for (auto it = constraints.begin(), it_end = constraints.end(); it != it_end; ++it) {
-    if (!(*it) || !(*it)->isValid()) {
-      it = constraints.erase(it);
-      continue;
-    }
     dbgs() << "\t\t" << (*it)->getInfo() << " ";
     if (auto d = dyn_cast<Dependency>((*it).get())) {
       dbgs() << "Dependency between " << valueToName(d->getFrom()) << " and " << valueToName(d->getTo());
@@ -156,11 +144,11 @@ bool Manifest::Clean() {
       it = undoValues.erase(it);
     }
   }
-  for (auto &constraint : constraints) {
-    if (!constraint->isValid()) {
-      return false;
+  for (auto it = constraints.begin(), it_end = constraints.end(); it != it_end; ++it) {
+    if (!(*it)->isValid()) {
+      it = constraints.erase(it);
     }
   }
   return true;
 }
-}
+} // namespace composition

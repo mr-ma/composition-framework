@@ -9,6 +9,6 @@ namespace composition::util {
  * @return the name of the pass
  */
 std::string getPassName();
-}
+} // namespace composition::util
 
-#endif //COMPOSITION_FRAMEWORK_UTIL_FUNCTIONS_HPP
+#endif // COMPOSITION_FRAMEWORK_UTIL_FUNCTIONS_HPP

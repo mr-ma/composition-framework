@@ -1,8 +1,8 @@
 #ifndef COMPOSITION_FRAMEWORK_SUPPORT_OPTIONS_HPP
 #define COMPOSITION_FRAMEWORK_SUPPORT_OPTIONS_HPP
 
-#include <llvm/Support/CommandLine.h>
 #include <composition/Stats.hpp>
+#include <llvm/Support/CommandLine.h>
 
 namespace composition::support {
 /*
@@ -15,5 +15,11 @@ extern llvm::cl::opt<std::string> WeightConfig;
 extern llvm::cl::opt<std::string> DumpStats;
 extern llvm::cl::opt<std::string> UseStrategy;
 extern llvm::cl::opt<std::string> PatchInfo;
-}
-#endif //COMPOSITION_FRAMEWORK_SUPPORT_OPTIONS_HPP
+extern llvm::cl::opt<int> NumberOfOptimizations;
+extern llvm::cl::opt<double> PercentageOfManifests;
+extern llvm::cl::opt<double> PerformanceThreshold;
+extern llvm::cl::opt<double> MinConnectivity;
+extern llvm::cl::opt<double> MinCoverage;
+extern llvm::cl::opt<double> MinImplicitCoverage;
+} // namespace composition::support
+#endif // COMPOSITION_FRAMEWORK_SUPPORT_OPTIONS_HPP

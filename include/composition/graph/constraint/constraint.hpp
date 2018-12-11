@@ -1,8 +1,11 @@
-#ifndef COMPOSITION_FRAMEWORK_GRAPH_CONSTRAINT_HPP
-#define COMPOSITION_FRAMEWORK_GRAPH_CONSTRAINT_HPP
+#ifndef COMPOSITION_FRAMEWORK_GRAPH_CONSTRAINT_CONSTRAINT_HPP
+#define COMPOSITION_FRAMEWORK_GRAPH_CONSTRAINT_CONSTRAINT_HPP
 #include <string>
 
-namespace composition::graph {
+namespace composition::graph::constraint {
+// ConstraintIndex type. TODO C++ does not enforce type safety. Potentially there are ways how type safety can be
+// improved.
+typedef unsigned long ConstraintIndex;
 /**
  * Abstract class Constraint
  */
@@ -11,19 +14,13 @@ public:
   /**
    * Existing types of constraints
    */
-  enum class ConstraintType {
-    CK_DEPENDENCY,
-    CK_PRESENT,
-    CK_PRESERVED
-  };
+  enum class ConstraintType { CK_DEPENDENCY, CK_PRESENT, CK_PRESERVED, CK_TRUE };
 
   /**
    * Type in graph representation
    */
-  enum class GraphType {
-    VERTEX,
-    EDGE
-  };
+  enum class GraphType { VERTEX, EDGE };
+
 private:
   /**
    * The type of the constraint to support LLVM's dyn_cast
@@ -37,10 +34,11 @@ private:
    * Additional info about this constraint, e.g., the pass that added it.
    */
   const std::string info;
+
 public:
   Constraint(ConstraintType constraintType, GraphType graphType, std::string info);
 
-  Constraint(const Constraint &) = delete;
+  Constraint(const Constraint&) = delete;
 
   ConstraintType getConstraintType() const;
 
@@ -53,5 +51,5 @@ public:
    */
   virtual bool isValid() = 0;
 };
-}
-#endif //COMPOSITION_FRAMEWORK_GRAPH_CONSTRAINT_HPP
+} // namespace composition::graph::constraint
+#endif // COMPOSITION_FRAMEWORK_GRAPH_CONSTRAINT_CONSTRAINT_HPP

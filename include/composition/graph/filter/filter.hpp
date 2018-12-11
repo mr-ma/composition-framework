@@ -2,7 +2,7 @@
 #define COMPOSITION_FRAMEWORK_GRAPH_FILTER_FILTER_HPP
 #include <boost/graph/filtered_graph.hpp>
 
-namespace composition::graph::filter {
+namespace composition::graph::filter { 
 
 /*
  * Filters provide a zerocopy representation of a graph. Vertices and edges are filtered on the fly while iterating.

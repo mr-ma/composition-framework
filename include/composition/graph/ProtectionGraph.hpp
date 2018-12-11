@@ -1,68 +1,77 @@
 #ifndef COMPOSITION_FRAMEWORK_GRAPH_PROTECTIONGRAPH_HPP
 #define COMPOSITION_FRAMEWORK_GRAPH_PROTECTIONGRAPH_HPP
-#include <utility>
-#include <random>
 #include <algorithm>
-#include <llvm/IR/Value.h>
-#include <llvm/IR/Instruction.h>
-#include <llvm/IR/BasicBlock.h>
-#include <llvm/IR/Function.h>
-#include <llvm/Support/Debug.h>
-#include <llvm/Support/raw_ostream.h>
-#include <boost/graph/filtered_graph.hpp>
-#include <boost/graph/copy.hpp>
 #include <boost/bimap/bimap.hpp>
 #include <boost/bimap/multiset_of.hpp>
+#include <boost/graph/copy.hpp>
+#include <boost/graph/filtered_graph.hpp>
 #include <composition/ManifestRegistry.hpp>
-#include <composition/graph/graph.hpp>
-#include <composition/graph/constraint.hpp>
 #include <composition/graph/algorithm/strong_components.hpp>
 #include <composition/graph/algorithm/topological_sort.hpp>
-#include <composition/graph/util/index_map.hpp>
-#include <composition/graph/util/vertex_count.hpp>
-#include <composition/graph/util/graphml.hpp>
-#include <composition/graph/util/dot.hpp>
+#include <composition/graph/constraint/constraint.hpp>
 #include <composition/graph/filter/dependency.hpp>
 #include <composition/graph/filter/removed.hpp>
 #include <composition/graph/filter/selfcycle.hpp>
-#include <composition/support/options.hpp>
-#include <composition/strategy/Strategy.hpp>
-#include <composition/strategy/Random.hpp>
+#include <composition/graph/graph.hpp>
+#include <composition/graph/util/dot.hpp>
+#include <composition/graph/util/graphml.hpp>
+#include <composition/graph/util/index_map.hpp>
+#include <composition/graph/util/vertex_count.hpp>
+#include <composition/metric/Performance.hpp>
 #include <composition/profiler.hpp>
+#include <composition/strategy/Random.hpp>
+#include <composition/strategy/Strategy.hpp>
+#include <composition/support/options.hpp>
+#include <llvm/Analysis/BlockFrequencyInfo.h>
+#include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Instruction.h>
+#include <llvm/IR/Value.h>
+#include <llvm/Support/Debug.h>
+#include <llvm/Support/raw_ostream.h>
+#include <random>
+#include <utility>
 
 namespace composition::graph {
-using util::index_map;
-using util::constraint_map;
-using util::vertex_count;
-using support::cStats;
 using graph::algorithm::strong_components;
 using graph::algorithm::topological_sort;
+using graph::constraint::Constraint;
+using graph::constraint::Present;
+using graph::constraint::PresentConstraint;
+using graph::constraint::Preserved;
+using graph::constraint::PreservedConstraint;
 using graph::util::graph_to_dot;
 using graph::util::graph_to_graphml;
+using metric::Performance;
+using support::cStats;
+using util::constraint_map;
+using util::index_map;
+using util::vertex_count;
 
-//ProtectionIndex type. TODO C++ does not enforce type safety. Potentially there are ways how type safety can be improved.
+// ProtectionIndex type. TODO C++ does not enforce type safety. Potentially there are ways how type safety can be
+// improved.
 using ProtectionIndex = unsigned long;
-//VertexIndex type. TODO C++ does not enforce type safety. Potentially there are ways how type safety can be improved.
+// VertexIndex type. TODO C++ does not enforce type safety. Potentially there are ways how type safety can be improved.
 using VertexIndex = uintptr_t;
-//EdgeIndex type. TODO C++ does not enforce type safety. Potentially there are ways how type safety can be improved.
+// EdgeIndex type. TODO C++ does not enforce type safety. Potentially there are ways how type safety can be improved.
 using EdgeIndex = uintptr_t;
 
 /*
  * TODO: The framework makes use of bidirectional maps. However, the performance impact is higher than wanted.
  * A different structure, or a custom bidirectional map might result in better performance.
  */
-//Edge cache for faster lookups
+// Edge cache for faster lookups
 using EdgeCacheMap = boost::bimaps::bimap<boost::bimaps::multiset_of<EdgeIndex>, ed_t>;
 
-//ProtectionMap for faster lookups
-using ProtectionMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest *>, ProtectionIndex>;
+// ProtectionMap for faster lookups
+using ProtectionMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest*>, ProtectionIndex>;
 
-using ManifestUndoMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest *>,
-                                             boost::bimaps::multiset_of<llvm::Value *>>;
-using ManifestProtectionMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest *>,
-                                             boost::bimaps::multiset_of<Manifest *>>;
-using ManifestDependencyMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest *>,
-                                                   boost::bimaps::multiset_of<Manifest *>>;
+using ManifestUndoMap =
+    boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest*>, boost::bimaps::multiset_of<llvm::Value*>>;
+using ManifestProtectionMap =
+    boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest*>, boost::bimaps::multiset_of<Manifest*>>;
+using ManifestDependencyMap =
+    boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest*>, boost::bimaps::multiset_of<Manifest*>>;
 
 /**
  * The core of the composition framework, the protection graph and its algorithms
@@ -82,9 +91,13 @@ private:
    */
   ProtectionMap Protections{};
   /**
+   * The current strictly increasing vertex index
+   */
+  VertexIndex VertexIdx{};
+  /**
    * Cache of vertices for faster lookup
    */
-  std::unordered_map<VertexIndex, vd_t> vertexCache{};
+  std::unordered_map<llvm::Value*, vd_t> vertexCache{};
   /**
    * Cache of edges for faster lookup
    */
@@ -104,7 +117,7 @@ private:
    * @param v the llvm value
    * @return a vertex descriptor for the added/existing vertex
    */
-  vd_t add_vertex(llvm::Value *v);
+  vd_t add_vertex(llvm::Value* v);
 
   /**
    * Removes a vertex from the graph
@@ -132,7 +145,7 @@ private:
    * @param it the vertex of the basicblock
    * @param B the llvm basicblock
    */
-  void expandBasicBlockToInstructions(vd_t it, llvm::BasicBlock *B);
+  void expandBasicBlockToInstructions(vd_t it, llvm::BasicBlock* B);
 
   /**
    * Replaces the source with the destination vertex
@@ -156,37 +169,18 @@ private:
   void replaceTargetOutEdges(vd_t src, vd_t dst);
 
 public:
-  //TODO verify if the following constructors/destructors/operators are correct and if they are still needed.
   ProtectionGraph() = default;
-
-  ProtectionGraph(ProtectionGraph &that) = delete;
-
-  ProtectionGraph(ProtectionGraph &&that) noexcept : ProtectionIdx(that.ProtectionIdx),
-                                                     Protections(that.Protections),
-                                                     vertexCache(that.vertexCache) {
-    auto index = index_map(that.Graph);
-    //TODO verify if copying actually works
-    boost::copy_graph(that.Graph, this->Graph, vertex_index_map(boost::make_assoc_property_map(index)));
-  }
-
-  ProtectionGraph &operator=(ProtectionGraph &that) = delete;
-
-  ProtectionGraph &operator=(ProtectionGraph &&that) = default;
 
   /**
    * Destroys the graph and frees memory
    */
   void destroy();
 
-  graph_t &getGraph();
+  graph_t& getGraph();
 
-  const ManifestDependencyMap getManifestDependencyMap() const {
-    return DependencyUndo;
-  }
+  const ManifestDependencyMap getManifestDependencyMap() const { return DependencyUndo; }
 
-  const ManifestProtectionMap getManifestProtectionMap() const {
-    return ManifestProtection;
-  }
+  const ManifestProtectionMap getManifestProtectionMap() const { return ManifestProtection; }
 
   /**
    * Adds a constraint to the protection graph
@@ -194,7 +188,7 @@ public:
    * @param c the constraint
    * @return a unique protection index
    */
-  ProtectionIndex addConstraint(Manifest *m, std::shared_ptr<Constraint> c);
+  ProtectionIndex addConstraint(Manifest* m, std::shared_ptr<Constraint> c);
 
   /**
    * Adds CFG edges to the graph
@@ -216,13 +210,13 @@ public:
    * @param manifests to sort
    * @return the sorted manifests
    */
-  std::vector<Manifest *> topologicalSortManifests(std::unordered_set<Manifest *> manifests);
+  std::vector<Manifest*> topologicalSortManifests(std::unordered_set<Manifest*> manifests);
 
   /**
    * Removes a manifest from the graph
    * @param m the manifest to remove
    */
-  void removeManifest(Manifest *m);
+  void removeManifest(Manifest* m);
 
   /**
    * Expands all larger llvm values (module, function, basicblock) to an equivalent instruction representation
@@ -245,15 +239,13 @@ public:
    * @param g the graph
    * @return true if the graph contains at least one cycle, false otherwise
    */
-  template<typename graph_t>
-  bool hasCycle(graph_t &g) {
+  template <typename graph_t> bool hasCycle(graph_t& g) {
     Profiler sccProfiler{};
     try {
       topological_sort(g);
       cStats.timeConflictDetection += sccProfiler.stop();
       return false;
-    }
-    catch (boost::not_a_dag&) {
+    } catch (boost::not_a_dag&) {
       cStats.timeConflictDetection += sccProfiler.stop();
       return true;
     }
@@ -266,14 +258,13 @@ public:
    * @param g the graph
    * @param strategy the strategy to use for handling conflicts
    */
-  template<typename graph_t>
-  void conflictHandling(graph_t &g, const std::unique_ptr<strategy::Strategy> &strategy) {
+  template <typename graph_t> void conflictHandling(graph_t& g, const std::unique_ptr<strategy::Strategy>& strategy) {
     llvm::dbgs() << "Step 1: Removing cycles...\n";
     auto rg = graph::filter::filter_removed_graph(g);
     auto fg = graph::filter::filter_dependency_graph(rg);
     auto sc = graph::filter::filter_selfcycle_graph(fg);
 
-    //First detect cycles and remove all cycles.
+    // First detect cycles and remove all cycles.
     bool hadConflicts;
     Profiler sccProfiler{};
     Profiler resolvingProfiler{};
@@ -290,7 +281,7 @@ public:
       auto components = strong_components(sc);
       cStats.timeConflictDetection += sccProfiler.stop();
       int i = 0;
-      for (auto &component : components) {
+      for (auto& component : components) {
         auto vertexCount = vertex_count(component);
         if (vertexCount != 1) {
           hadConflicts = true;
@@ -304,19 +295,19 @@ public:
             resolvingProfiler.reset();
             handleCycle(component, strategy);
             cStats.timeConflictResolving += resolvingProfiler.stop();
-          } while(hasCycle(component));
+          } while (hasCycle(component));
           ++i;
         }
       }
     } while (hadConflicts);
 
     llvm::dbgs() << "Step 2: Removing remaining present/preserved conflicts...\n";
-    //Then remove remaining present/preserved conflicts.
+    // Then remove remaining present/preserved conflicts.
     do {
       hadConflicts = false;
 
       sccProfiler.reset();
-      auto[presentManifests, preservedManifests] = detectPresentPreservedConflicts(g);
+      auto [presentManifests, preservedManifests] = detectPresentPreservedConflicts(g);
       cStats.timeConflictDetection += sccProfiler.stop();
       if (!presentManifests.empty() || !preservedManifests.empty()) {
         hadConflicts = true;
@@ -324,10 +315,9 @@ public:
         cStats.conflicts++;
 
         resolvingProfiler.reset();
-        std::vector<Manifest *> merged{};
-        std::set_union(presentManifests.begin(), presentManifests.end(),
-                       preservedManifests.begin(), preservedManifests.end(),
-                       std::back_inserter(merged));
+        std::vector<Manifest*> merged{};
+        std::set_union(presentManifests.begin(), presentManifests.end(), preservedManifests.begin(),
+                       preservedManifests.end(), std::back_inserter(merged));
 
         removeManifest(strategy->decidePresentPreserved(merged));
         cStats.timeConflictResolving += resolvingProfiler.stop();
@@ -341,18 +331,17 @@ public:
    * @param g the graph
    * @param strategy the strategy to handle the cycle
    */
-  template<typename graph_t>
-  void handleCycle(graph_t &g, const std::unique_ptr<strategy::Strategy> &strategy) {
+  template <typename graph_t> void handleCycle(graph_t& g, const std::unique_ptr<strategy::Strategy>& strategy) {
     llvm::dbgs() << "Handling cycle in component\n";
     cStats.cycles++;
 
-    std::set<Manifest *> cyclicManifests{};
-    for (auto[ei, ei_end] = boost::edges(g); ei != ei_end; ++ei) {
+    std::unordered_set<Manifest*> cyclicManifests{};
+    for (auto [ei, ei_end] = boost::edges(g); ei != ei_end; ++ei) {
       cyclicManifests.insert(Protections.right.find(g[*ei].index)->second);
     }
 
-    std::vector<Manifest *> merged{};
-    for (auto &el : cyclicManifests) {
+    std::vector<Manifest*> merged{};
+    for (auto& el : cyclicManifests) {
       merged.push_back(el);
     }
 
@@ -365,30 +354,29 @@ public:
    * @param g the graph
    * @return the detected present/preserved conflicting manifests
    */
-  template<typename graph_t>
-  std::pair<std::set<Manifest *>, std::set<Manifest *>> detectPresentPreservedConflicts(
-      graph_t &g) {
-    auto[isPresent, isPreserved] = constraint_map<PresentConstraint, PreservedConstraint>(g);
+  template <typename graph_t>
+  std::pair<std::unordered_set<Manifest*>, std::unordered_set<Manifest*>> detectPresentPreservedConflicts(graph_t& g) {
+    auto [isPresent, isPreserved] = constraint_map<PresentConstraint, PreservedConstraint>(g);
 
-    std::set<Manifest *> presentManifests{};
-    for (auto[vd, p] : isPresent) {
+    std::unordered_set<Manifest*> presentManifests{};
+    for (auto [vd, p] : isPresent) {
       if (p != PresentConstraint::CONFLICT) {
         continue;
       }
 
-      for (auto[index, c] : g[vd].constraints) {
+      for (auto [index, c] : g[vd].constraints) {
         if (llvm::isa<Present>(c.get())) {
           presentManifests.insert(Protections.right.find(index)->second);
         }
       }
     }
 
-    std::set<Manifest *> preservedManifests{};
-    for (auto[vd, p] : isPreserved) {
+    std::unordered_set<Manifest*> preservedManifests{};
+    for (auto [vd, p] : isPreserved) {
       if (p != PreservedConstraint::CONFLICT) {
         continue;
       }
-      for (auto[index, c] : g[vd].constraints) {
+      for (auto [index, c] : g[vd].constraints) {
         if (llvm::isa<Preserved>(c.get())) {
           preservedManifests.insert(Protections.right.find(index)->second);
         }
@@ -397,6 +385,43 @@ public:
 
     return {presentManifests, preservedManifests};
   }
+
+  template <typename graph_t>
+  void optimizeProtections(graph_t& g, const std::unordered_map<llvm::Function*, llvm::BlockFrequencyInfo*>& BFI) {
+    llvm::dbgs() << "Optimizing protections in the graph\n";
+
+    llvm::dbgs() << "Calculating hotness\n";
+    auto rg = graph::filter::filter_removed_graph(g);
+
+    uint64_t maxHotness = 0;
+    for (auto [vi, vi_end] = boost::vertices(rg); vi != vi_end; ++vi) {
+      if (g[*vi].type != vertex_type::INSTRUCTION) {
+        continue;
+      }
+      auto* value = static_cast<llvm::Instruction*>(g[*vi].value);
+      if (value == nullptr || value->getParent() == nullptr || value->getParent()->getParent() == nullptr) {
+        continue;
+      }
+
+      if (BFI.find(value->getParent()->getParent()) == BFI.end()) {
+        continue;
+      }
+
+      auto hotness = Performance::getBlockFreq(value->getParent(), BFI.at(value->getParent()->getParent()), false);
+      g[*vi].absoluteHotness = hotness;
+
+      if (hotness > maxHotness) {
+        maxHotness = hotness;
+      }
+    }
+
+    for (auto [vi, vi_end] = boost::vertices(rg); vi != vi_end; ++vi) {
+      if (g[*vi].type != vertex_type::INSTRUCTION) {
+        continue;
+      }
+      g[*vi].hotness = g[*vi].absoluteHotness / static_cast<float>(maxHotness);
+    }
+  }
 };
-}
-#endif //COMPOSITION_FRAMEWORK_GRAPH_PROTECTIONGRAPH_HPP
+} // namespace composition::graph
+#endif // COMPOSITION_FRAMEWORK_GRAPH_PROTECTIONGRAPH_HPP

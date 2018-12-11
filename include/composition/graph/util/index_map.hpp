@@ -1,9 +1,9 @@
 #ifndef COMPOSITION_FRAMEWORK_GRAPH_UTIL_INDEXMAP_HPP
 #define COMPOSITION_FRAMEWORK_GRAPH_UTIL_INDEXMAP_HPP
 
+#include <boost/graph/adjacency_list.hpp>
 #include <cstddef>
 #include <unordered_map>
-#include <boost/graph/adjacency_list.hpp>
 
 namespace composition::graph::util {
 /**
@@ -13,15 +13,15 @@ namespace composition::graph::util {
  * @param g the graph
  * @return a mapping from vertex descriptors to indices.
  */
-template<typename s_t = size_t, typename graph_t>
-std::unordered_map<typename graph_t::vertex_descriptor, s_t> index_map(graph_t &g) {
+template <typename s_t = size_t, typename graph_t>
+std::unordered_map<typename graph_t::vertex_descriptor, s_t> index_map(graph_t& g) {
   std::unordered_map<typename graph_t::vertex_descriptor, s_t> map;
   s_t idx = 0;
-  for (auto[vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
+  for (auto [vi, vi_end] = boost::vertices(g); vi != vi_end; ++vi) {
     map.insert({*vi, idx++});
   }
   return map;
 }
-}
+} // namespace composition::graph::util
 
-#endif //COMPOSITION_FRAMEWORK_GRAPH_UTIL_INDEXMAP_HPP
+#endif // COMPOSITION_FRAMEWORK_GRAPH_UTIL_INDEXMAP_HPP

@@ -1,11 +1,11 @@
 #ifndef COMPOSITION_FRAMEWORK_GRAPH_ALGORITHM_TOPOLOGICALSORT_HPP
 #define COMPOSITION_FRAMEWORK_GRAPH_ALGORITHM_TOPOLOGICALSORT_HPP
 
-#include <vector>
-#include <map>
 #include <boost/graph/topological_sort.hpp>
 #include <boost/range/iterator_range_core.hpp>
 #include <composition/graph/util/index_map.hpp>
+#include <map>
+#include <vector>
 
 namespace composition::graph::algorithm {
 
@@ -15,8 +15,7 @@ namespace composition::graph::algorithm {
  * @param g the graph to calculate the topological sort
  * @return a vector of vertices in topological order
  */
-template<typename graph_t>
-std::vector<typename graph_t::vertex_descriptor> topological_sort(graph_t &g) {
+template <typename graph_t> std::vector<typename graph_t::vertex_descriptor> topological_sort(graph_t& g) {
   auto index = index_map(g);
   auto assocIndexMap = boost::make_assoc_property_map(index);
 
@@ -32,13 +31,13 @@ std::vector<typename graph_t::vertex_descriptor> topological_sort(graph_t &g) {
  * @param g the graph to calculate the topological sort
  * @return a vector of vertices in reversed topological order
  */
-template<typename graph_t>
-std::vector<typename graph_t::vertex_descriptor> reverse_topological_sort(graph_t &g) {
-  //TODO this can probably be replaced by a copy of topological_sort and replacing std::back_inserter with front inserter, thus saving on O(vertices) time and space.
+template <typename graph_t> std::vector<typename graph_t::vertex_descriptor> reverse_topological_sort(graph_t& g) {
+  // TODO this can probably be replaced by a copy of topological_sort and replacing std::back_inserter with front
+  // inserter, thus saving on O(vertices) time and space.
   auto result = topological_sort(g);
   std::reverse(result.begin(), result.end());
   return result;
 }
-}
+} // namespace composition::graph::algorithm
 
-#endif //COMPOSITION_FRAMEWORK_GRAPH_ALGORITHM_TOPOLOGICALSORT_HPP
+#endif // COMPOSITION_FRAMEWORK_GRAPH_ALGORITHM_TOPOLOGICALSORT_HPP

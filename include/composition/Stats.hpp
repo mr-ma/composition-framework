@@ -1,10 +1,10 @@
 #ifndef COMPOSITION_FRAMEWORK_STATS_HPP
 #define COMPOSITION_FRAMEWORK_STATS_HPP
 
+#include <composition/metric/Stats.hpp>
 #include <istream>
 #include <llvm/Support/raw_ostream.h>
 #include <nlohmann/json.hpp>
-#include <composition/metric/Stats.hpp>
 
 namespace composition {
 
@@ -23,9 +23,9 @@ public:
 
   Stats() = default;
 
-  explicit Stats(std::istream &i);
+  explicit Stats(std::istream& i);
 
-  void dump(llvm::raw_ostream &o);
+  void dump(llvm::raw_ostream& o);
 };
 
 /**
@@ -33,13 +33,13 @@ public:
  * @param j IN/OUT the resulting JSON
  * @param w IN the stats
  */
-void to_json(nlohmann::json &j, const Stats &s);
+void to_json(nlohmann::json& j, const Stats& s);
 
 /**
  * Converts JSON into `Stats` representation
  * @param j IN the JSON source
  * @param w IN/OUT the resulting stats
  */
-void from_json(const nlohmann::json &j, Stats &s);
-}
-#endif //COMPOSITION_FRAMEWORK_STATS_HPP
+void from_json(const nlohmann::json& j, Stats& s);
+} // namespace composition
+#endif // COMPOSITION_FRAMEWORK_STATS_HPP

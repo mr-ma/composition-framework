@@ -3,7 +3,7 @@
 #include <composition/graph/edge.hpp>
 #include <composition/graph/filter/filter.hpp>
 
-namespace composition::graph::filter {
+namespace composition::graph::filter { 
 /**
  * Predicate to filter all edges which are not a dependency edge.
  * @tparam T the type of the graph

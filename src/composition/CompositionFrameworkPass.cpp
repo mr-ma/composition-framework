@@ -1,22 +1,23 @@
-#include <llvm/Support/Debug.h>
-#include <llvm/Support/raw_ostream.h>
-#include <llvm/Support/raw_os_ostream.h>
-#include <llvm/Support/Error.h>
-#include <llvm/IR/CallSite.h>
-#include <llvm/IR/Constants.h>
-#include <llvm/Analysis/BlockFrequencyInfo.h>
-#include <self-checksumming/FunctionFilter.h>
-#include <composition/support/options.hpp>
+#include <composition/AnalysisRegistry.hpp>
 #include <composition/CompositionFrameworkPass.hpp>
+#include <composition/graph/constraint/true.hpp>
 #include <composition/graph/util/dot.hpp>
 #include <composition/graph/util/graphml.hpp>
+#include <composition/metric/Performance.hpp>
 #include <composition/metric/Weights.hpp>
 #include <composition/strategy/Avoidance.hpp>
 #include <composition/strategy/Weight.hpp>
-#include <composition/AnalysisRegistry.hpp>
-#include <composition/metric/Performance.hpp>
 #include <composition/support/Pass.hpp>
+#include <composition/support/options.hpp>
 #include <composition/trace/PreservedValueRegistry.hpp>
+#include <llvm/Analysis/BlockFrequencyInfo.h>
+#include <llvm/IR/CallSite.h>
+#include <llvm/IR/Constants.h>
+#include <llvm/Support/Debug.h>
+#include <llvm/Support/Error.h>
+#include <llvm/Support/raw_os_ostream.h>
+#include <llvm/Support/raw_ostream.h>
+#include <self-checksumming/FunctionFilter.h>
 
 using namespace llvm;
 
@@ -24,26 +25,22 @@ namespace composition {
 using graph::ManifestDependencyMap;
 using graph::ManifestProtectionMap;
 using graph::filter::filter_removed_graph;
-using graph::util::graph_to_graphml;
 using graph::util::graph_to_dot;
-using support::WeightConfig;
-using support::UseStrategy;
-using support::DumpGraphs;
-using support::PatchInfo;
-using support::cStats;
+using graph::util::graph_to_graphml;
 using support::AddCFG;
+using support::cStats;
+using support::DumpGraphs;
 using support::DumpStats;
+using support::PatchInfo;
+using support::UseStrategy;
+using support::WeightConfig;
 
-static llvm::RegisterPass<CompositionFrameworkPass> X(
-    "composition-framework",
-    "Composition Framework Pass",
-    false,
-    false
-);
+static llvm::RegisterPass<CompositionFrameworkPass> X("composition-framework", "Composition Framework Pass", false,
+                                                      false);
 
 char CompositionFrameworkPass::ID = 0;
 
-void CompositionFrameworkPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
+void CompositionFrameworkPass::getAnalysisUsage(llvm::AnalysisUsage& AU) const {
   AU.addRequired<BlockFrequencyInfoWrapperPass>();
   AU.addRequiredTransitive<FunctionFilterPass>();
   AU.setPreservesAll();
@@ -54,155 +51,161 @@ void CompositionFrameworkPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
   }
 }
 
-bool CompositionFrameworkPass::doInitialization(Module &M) {
+bool CompositionFrameworkPass::doInitialization(Module& M) {
   dbgs() << "AnalysisPass loaded...\n";
-  Graph = std::make_unique<graph::ProtectionGraph>();
-
-  //The following code loads all the tags from the source code.
-  //The tags are then applied to the function for which a tag was used.
-  //The tags may be used by any pass to decide if it is e.g., a sensitive function
-  //Start annotations from @src: http://bholt.org/posts/llvm-quick-tricks.html
+  // The following code loads all the tags from the source code.
+  // The tags are then applied to the function for which a tag was used.
+  // The tags may be used by any pass to decide if it is e.g., a sensitive
+  // function Start annotations from @src:
+  // http://bholt.org/posts/llvm-quick-tricks.html
   auto global_annos = M.getNamedGlobal("llvm.global.annotations");
-  if (global_annos) {
+  if (global_annos != nullptr) {
     auto a = cast<ConstantArray>(global_annos->getOperand(0));
     for (unsigned int i = 0; i < a->getNumOperands(); i++) {
       auto e = cast<ConstantStruct>(a->getOperand(i));
 
       if (auto fn = dyn_cast<Function>(e->getOperand(0)->getOperand(0))) {
         auto anno = cast<ConstantDataArray>(cast<GlobalVariable>(e->getOperand(1)->getOperand(0))->getOperand(0))
-            ->getAsCString();
+                        ->getAsCString();
         fn->addFnAttr(anno); // <-- add function annotation here
         dbgs() << "Sensitive function: " << fn->getName().str() << "\n";
       }
     }
   }
-  //End annotations from @src: http://bholt.org/posts/llvm-quick-tricks.html
+  // End annotations from @src: http://bholt.org/posts/llvm-quick-tricks.html
   return true;
 }
 
-bool CompositionFrameworkPass::runOnModule(llvm::Module &M) {
-  analysisPass(M);
-  graphPass(M);
+std::unique_ptr<graph::ProtectionGraph> buildGraphFromManifests(std::vector<Manifest*> manifests) {
+  auto g = std::make_unique<graph::ProtectionGraph>();
 
-  return protectionPass(M);
-}
-
-std::vector<Manifest *> CompositionFrameworkPass::SortedManifests() {
-  auto manifestSet = ManifestRegistry::GetAll();
-
-  for (auto *m : manifestSet) {
-    if (m->postPatching) {
-      return Graph->topologicalSortManifests(manifestSet);
-    }
-  }
-  std::vector<Manifest *> result{manifestSet.begin(), manifestSet.end()};
-
-  return result;
-}
-
-bool CompositionFrameworkPass::doFinalization(Module &module) {
-  Graph->destroy();
-  ManifestRegistry::destroy();
-  return Pass::doFinalization(module);
-}
-
-bool CompositionFrameworkPass::analysisPass(llvm::Module &M) {
-  dbgs() << "AnalysisPass running\n";
-
-  auto manifests = ManifestRegistry::GetAll();
   size_t total = manifests.size();
   dbgs() << "Adding " << std::to_string(total) << " manifests to protection graph\n";
   cStats.proposedManifests = total;
   size_t i = 0;
   Profiler constructionProfiler{};
-  for (auto &m : manifests) {
-    if (!m->Clean()) {
-      ManifestRegistry::Remove(m);
-      continue;
-    }
+  for (auto& m : manifests) {
+    m->Clean();
     dbgs() << "#" << std::to_string(i++) << "/" << std::to_string(total) << "\r";
-    for (auto it = m->constraints.begin(), it_end = m->constraints.end(); it != it_end; ++it) {
-      Graph->addConstraint(m, (*it));
+    for (auto& c : m->constraints) {
+      g->addConstraint(m, c);
     }
   }
   cStats.timeGraphConstruction += constructionProfiler.stop();
   dbgs() << "#" << std::to_string(i) << "/" << std::to_string(total) << "\n";
+  return g;
+}
 
+void addCallGraph(std::unique_ptr<graph::ProtectionGraph>& g, llvm::Module& M) {
   if (AddCFG) {
     dbgs() << "Building CallGraph\n";
-    constructionProfiler.reset();
-    //TODO #1 It's probably better to use a callgraph here. However, using a callgraph leads to a SIGSEGV for no reason
-    //Printing and dumping of the callgraph works, but as soon as accessing it is tried the program behaves unexpectedly.
-    //Therefore, for now, only add direct call edges as CFG part to the graph.
-    for (auto &F : M) {
+    Profiler constructionProfiler{};
+    // TODO #1 It's probably better to use a callgraph here. However, using a
+    // callgraph leads to a SIGSEGV for no reason Printing and dumping of the
+    // callgraph works, but as soon as accessing it is tried the program behaves
+    // unexpectedly. Therefore, for now, only add direct call edges as CFG part
+    // to the graph.
+    for (auto& F : M) {
       // Look for calls by this function.
-      for (auto &BB : F) {
-        for (auto &I : BB) {
-          Value *v = &cast<Value>(I);
+      for (auto& BB : F) {
+        for (auto& I : BB) {
+          Value* v = &cast<Value>(I);
           CallSite CS(v);
           if (!CS) {
             continue;
           }
 
-          Function *Callee = CS.getCalledFunction();
+          Function* Callee = CS.getCalledFunction();
           if (!Callee) {
             continue;
           }
 
-          //Only direct calls are possible to track
-          Graph->addCFG(&F, Callee);
+          // Only direct calls are possible to track
+          g->addCFG(&F, Callee);
         }
       }
     }
     cStats.timeGraphConstruction += constructionProfiler.stop();
     dbgs() << "Done building CallGraph\n";
   }
+}
 
+void printGraphs(std::unique_ptr<graph::ProtectionGraph>& g, std::string name) {
   if (DumpGraphs) {
     dbgs() << "Writing graphs\n";
-    auto fg = filter_removed_graph(Graph->getGraph());
-    graph_to_dot(Graph->getGraph(), "graph_raw.dot");
-    graph_to_graphml(Graph->getGraph(), "graph_raw.graphml");
-    graph_to_dot(fg, "graph_raw_removed.dot");
-    graph_to_graphml(fg, "graph_raw_removed.graphml");
+    auto fg = filter_removed_graph(g->getGraph());
+    graph_to_dot(g->getGraph(), name + ".dot");
+    graph_to_graphml(g->getGraph(), name + ".graphml");
+    graph_to_dot(fg, name + "_removed.dot");
+    graph_to_graphml(fg, name + "_removed.graphml");
   }
+}
 
+void expandGraph(std::unique_ptr<graph::ProtectionGraph>& g) {
   dbgs() << "Expand graph to instructions\n";
-  constructionProfiler.reset();
-  Graph->expandToInstructions();
+  Profiler constructionProfiler{};
+  g->expandToInstructions();
   cStats.timeGraphConstruction += constructionProfiler.stop();
   dbgs() << "Done\n";
+}
 
-  if (DumpGraphs) {
-    dbgs() << "Writing graphs\n";
-    auto fg = filter_removed_graph(Graph->getGraph());
-    graph_to_dot(Graph->getGraph(), "graph_expanded.dot");
-    graph_to_graphml(Graph->getGraph(), "graph_expanded.graphml");
-    graph_to_dot(fg, "graph_expanded_removed.dot");
-    graph_to_graphml(fg, "graph_expanded_removed.graphml");
-  }
-
+void reduceGraph(std::unique_ptr<graph::ProtectionGraph>& g) {
   dbgs() << "Remove non instruction vertices from graph\n";
-  constructionProfiler.reset();
-  Graph->reduceToInstructions();
+  Profiler constructionProfiler{};
+  g->reduceToInstructions();
   cStats.timeGraphConstruction += constructionProfiler.stop();
   dbgs() << "Done\n";
+}
 
-  if (DumpGraphs) {
-    dbgs() << "Writing graphs\n";
-    auto fg = filter_removed_graph(Graph->getGraph());
-    graph_to_dot(Graph->getGraph(), "graph_reduced.dot");
-    graph_to_graphml(Graph->getGraph(), "graph_reduced.graphml");
-    graph_to_dot(fg, "graph_reduced_removed.dot");
-    graph_to_graphml(fg, "graph_reduced_removed.graphml");
+bool CompositionFrameworkPass::runOnModule(llvm::Module& M) {
+  analysisPass(M);
+  graphPass(M);
+  return protectionPass(M);
+}
+
+std::vector<Manifest*> CompositionFrameworkPass::SortedManifests() {
+  auto manifestSet = ManifestRegistry::GetAll();
+
+  for (auto* m : manifestSet) {
+    if (m->postPatching) {
+      return Graph->topologicalSortManifests(manifestSet);
+    }
   }
+  std::vector<Manifest*> result{manifestSet.begin(), manifestSet.end()};
+
+  return result;
+}
+
+bool CompositionFrameworkPass::doFinalization(llvm::Module& M) {
+  Graph->destroy();
+  ManifestRegistry::destroy();
+  return Pass::doFinalization(M);
+}
+
+bool CompositionFrameworkPass::analysisPass(llvm::Module& M) {
+  dbgs() << "AnalysisPass running\n";
+
+  auto mSet = ManifestRegistry::GetAll();
+  std::vector<Manifest*> manifests{};
+  manifests.insert(manifests.end(), mSet.begin(), mSet.end());
+
+  Graph = buildGraphFromManifests(manifests);
+  addCallGraph(Graph, M);
+  printGraphs(Graph, "graph_raw");
+
+  expandGraph(Graph);
+  printGraphs(Graph, "graph_expanded");
+
+  reduceGraph(Graph);
+  printGraphs(Graph, "graph_reduced");
+
   return false;
 }
 
-bool CompositionFrameworkPass::graphPass(llvm::Module &M) {
+bool CompositionFrameworkPass::graphPass(llvm::Module& M) {
   dbgs() << "GraphPass running\n";
 
-  auto &filterPass = getAnalysis<FunctionFilterPass>();
+  auto& filterPass = getAnalysis<FunctionFilterPass>();
   sensitiveFunctions = filterPass.get_functions_info()->get_functions();
 
   metric::Weights w;
@@ -211,14 +214,14 @@ bool CompositionFrameworkPass::graphPass(llvm::Module &M) {
     w = metric::Weights(ifs);
   }
 
-  std::unordered_map<llvm::Function *, llvm::BlockFrequencyInfo *> BFI{};
-  for (auto &F : M) {
+  std::unordered_map<llvm::Function*, llvm::BlockFrequencyInfo*> BFI{};
+  for (auto& F : M) {
     if (F.isDeclaration()) {
       continue;
     }
     dbgs() << F.getName() << "\n";
-    auto &bfiPass = getAnalysis<BlockFrequencyInfoWrapperPass>(F);
-    auto &bf = bfiPass.getBFI();
+    auto& bfiPass = getAnalysis<BlockFrequencyInfoWrapperPass>(F);
+    auto& bf = bfiPass.getBFI();
     BFI.insert({&F, &bf});
   }
 
@@ -227,23 +230,18 @@ bool CompositionFrameworkPass::graphPass(llvm::Module &M) {
 
   std::unordered_map<std::string, std::unique_ptr<strategy::Strategy>> strategies;
   strategies.emplace("random", std::make_unique<strategy::Random>(rng));
-  strategies.emplace("avoidance", std::make_unique<strategy::Avoidance>(strategy::Avoidance(
-      {
-          {"cm", -1},
-          {"oh_assert_", 1},
-          {"oh_assert", 1},
-          {"sroh_assert", 1},
-          {"sroh_hash", 2},
-          {"oh_hash_", 2},
-          {"oh_hash", 2},
-          {"sc", 3},
-          {"cfi", 4},
-      }
-  )));
-  strategies.emplace("weight", std::make_unique<strategy::Weight>(
-      w,
-      BFI
-  ));
+  strategies.emplace("avoidance", std::make_unique<strategy::Avoidance>(strategy::Avoidance({
+                                      {"cm", -1},
+                                      {"oh_assert_", 1},
+                                      {"oh_assert", 1},
+                                      {"sroh_assert", 1},
+                                      {"sroh_hash", 2},
+                                      {"oh_hash_", 2},
+                                      {"oh_hash", 2},
+                                      {"sc", 3},
+                                      {"cfi", 4},
+                                  })));
+  strategies.emplace("weight", std::make_unique<strategy::Weight>(w, BFI));
 
   if (strategies.find(UseStrategy.getValue()) == strategies.end()) {
     report_fatal_error("The given composition-framework strategy does not exist.", false);
@@ -254,20 +252,31 @@ bool CompositionFrameworkPass::graphPass(llvm::Module &M) {
   dbgs() << "GraphPass strong_components\n";
   Graph->conflictHandling(Graph->getGraph(), strategies.at(UseStrategy.getValue()));
 
-  if (DumpGraphs) {
-    dbgs() << "Writing graphs\n";
-    auto fg = filter_removed_graph(Graph->getGraph());
-    graph_to_dot(Graph->getGraph(), "graph_scc.dot");
-    graph_to_graphml(Graph->getGraph(), "graph_scc.graphml");
-    graph_to_dot(fg, "graph_scc_removed.dot");
-    graph_to_graphml(fg, "graph_scc_removed.graphml");
-  }
+  printGraphs(Graph, "graph_scc");
   dbgs() << "GraphPass done\n";
+
+  dbgs() << "Optimizing\n";
+  auto manifests = SortedManifests();
+  Graph->destroy();
+
+  // Rebuild the graph so we work with a clean version
+  for (auto& m : manifests) {
+    for (auto& u : m->UndoValues()) {
+      m->constraints.push_back(std::make_shared<graph::constraint::True>("true", u));
+    }
+  }
+  Graph = buildGraphFromManifests(manifests);
+  expandGraph(Graph);
+  reduceGraph(Graph);
+  Graph->computeManifestDependencies();
+
+  Graph->optimizeProtections(Graph->getGraph(), BFI);
+  dbgs() << "Optimizing done\n";
 
   return false;
 }
 
-bool CompositionFrameworkPass::protectionPass(llvm::Module &M) {
+bool CompositionFrameworkPass::protectionPass(llvm::Module& M) {
   dbgs() << "ProtectionPass running\n";
 
   auto manifests = SortedManifests();
@@ -279,10 +288,8 @@ bool CompositionFrameworkPass::protectionPass(llvm::Module &M) {
   std::vector<std::pair<std::string, std::string>> patchInfos{};
   size_t i = 0;
   size_t total = manifests.size();
-  for (auto *m : manifests) {
-    if (!m->Clean()) {
-      llvm_unreachable("Manifest not clean...");
-    }
+  for (auto* m : manifests) {
+    m->Clean();
     dbgs() << "#" << std::to_string(i++) << "/" << std::to_string(total) << "\r";
 
     m->Redo();
@@ -293,18 +300,20 @@ bool CompositionFrameworkPass::protectionPass(llvm::Module &M) {
   dbgs() << "#" << std::to_string(i) << "/" << std::to_string(total) << "\n";
 
   /*
-   * TODO: I discovered this possibility very late in the thesis. It can be extended to have more control over pass scheduling.
-   * For example, we could add a function which allows protecting arbitrary small llvm values.
-   * Additionally, layering of protections can be achieved, e.g. applying SC -> OH and protect both with another layer of SC explicitly.
+   * TODO: I discovered this possibility very late in the thesis. It can be
+   * extended to have more control over pass scheduling. For example, we could
+   * add a function which allows protecting arbitrary small llvm values.
+   * Additionally, layering of protections can be achieved, e.g. applying SC ->
+   * OH and protect both with another layer of SC explicitly.
    */
   auto registered = AnalysisRegistry::GetAll();
   for (auto a : registered) {
-    auto *p = getResolver()->findImplPass(a.ID);
+    auto* p = getResolver()->findImplPass(a.ID);
 
     if (p == nullptr) {
       llvm_unreachable("Pass no longer available...");
     }
-    auto *c = static_cast<composition::support::Pass *>(p);
+    auto* c = static_cast<composition::support::Pass*>(p); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
     c->finalizeComposition();
   }
 
@@ -336,4 +345,4 @@ void CompositionFrameworkPass::writePatchInfo(std::vector<std::pair<std::string,
   file.close();
 }
 
-}
+} // namespace composition
