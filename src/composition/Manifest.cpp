@@ -13,6 +13,7 @@
 #include <memory>
 #include <sstream>
 #include <utility>
+#include <ostream>
 
 using namespace llvm;
 
@@ -22,7 +23,33 @@ using graph::constraint::Present;
 using graph::constraint::Preserved;
 using metric::Coverage;
 
-void Manifest::Undo() const {
+manifest_idx_t& operator++(manifest_idx_t& i) {
+  using T = typename std::underlying_type<manifest_idx_t>::type;
+  T val = static_cast<T>(i);
+  i = manifest_idx_t(++val);
+  return i;
+}
+
+manifest_idx_t operator++(manifest_idx_t& i, int) {
+  manifest_idx_t res(i);
+  ++i;
+  return res;
+}
+
+std::ostream& operator<<(std::ostream& out, const manifest_idx_t& i) {
+  using T = typename std::underlying_type<manifest_idx_t>::type;
+  out << static_cast<T>(i);
+  return out;
+}
+
+llvm::raw_ostream& operator<<(llvm::raw_ostream& out, const manifest_idx_t& i) {
+  using T = typename std::underlying_type<manifest_idx_t>::type;
+  out << static_cast<T>(i);
+  return out;
+}
+
+
+void Manifest::Undo() {
   dbgs() << "Undoing " << undoValues.size() << " values\n";
   for (const auto& V : undoValues) {
     if (llvm::isa<llvm::Constant>(&*V)) {

@@ -3,7 +3,7 @@
 #include <llvm/Support/raw_os_ostream.h>
 
 namespace composition {
-ManifestIndex ManifestRegistry::index = 0;
+manifest_idx_t ManifestRegistry::index = manifest_idx_t(0);
 
 void ManifestRegistry::Remove(Manifest* m) {
   auto& manifests = RegisteredManifests();

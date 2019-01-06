@@ -1,6 +1,20 @@
 #include <composition/graph/constraint/constraint.hpp>
 
 namespace composition::graph::constraint {
+
+constraint_idx_t& operator++(constraint_idx_t& i) {
+  using T = typename std::underlying_type<constraint_idx_t>::type;
+  T val = static_cast<T>(i);
+  i = constraint_idx_t(++val);
+  return i;
+}
+
+constraint_idx_t operator++(constraint_idx_t& i, int) {
+  constraint_idx_t res(i);
+  ++i;
+  return res;
+}
+
 Constraint::Constraint(Constraint::ConstraintType constraintType, Constraint::GraphType graphType, std::string info)
     : constraintType(constraintType), graphType(graphType), info(std::move(info)) {}
 

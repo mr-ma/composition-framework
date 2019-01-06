@@ -40,28 +40,30 @@ void Stats::collect(std::unordered_set<llvm::Function*> sensitiveFunctions, std:
   collect(instructions, std::move(manifests), dep);
 }
 
-std::unordered_set<llvm::Instruction*> implictInstructions(Manifest* m, const ManifestProtectionMap& dep) {
+std::unordered_set<llvm::Instruction*> implictInstructions(Manifest* m, const ManifestProtectionMap& dep,
+                                                           std::unordered_map<manifest_idx_t, Manifest*> MANIFESTS) {
   std::unordered_set<llvm::Instruction*> result{};
   std::queue<Manifest*> q{};
 
-  std::unordered_set<Manifest*> seen{};
-  for (auto [it, it_end] = dep.left.equal_range(m); it != it_end; ++it) {
-    q.push(it->second);
+  std::unordered_set<manifest_idx_t> seen{};
+  for (auto [it, it_end] = dep.left.equal_range(m->index); it != it_end; ++it) {
+    q.push(MANIFESTS.find(it->second)->second);
     seen.insert(it->second);
   }
   while (!q.empty()) {
     auto next = q.front();
-    seen.insert(next);
+    manifest_idx_t nextIdx = next->index;
+    seen.insert(nextIdx);
     q.pop();
 
     result.merge(next->Coverage());
 
-    for (auto [it, it_end] = dep.left.equal_range(next); it != it_end; ++it) {
+    for (auto [it, it_end] = dep.left.equal_range(nextIdx); it != it_end; ++it) {
       if (seen.find(it->second) != seen.end()) {
         continue;
       }
       seen.insert(it->second);
-      q.push(it->second);
+      q.push(MANIFESTS.find(it->second)->second);
     }
   }
 
@@ -103,7 +105,7 @@ void Stats::collect(std::unordered_set<llvm::Instruction*> allInstructions, std:
   std::unordered_set<llvm::Instruction*> implicitlyCoveredInstructions{};
   std::unordered_map<Manifest*, std::unordered_set<llvm::Instruction*>> manifestImplicitlyCoveredInstructions{};
   for (auto& m : manifests) {
-    manifestImplicitlyCoveredInstructions[m] = implictInstructions(m, dep);
+    manifestImplicitlyCoveredInstructions[m] = implictInstructions(m, dep, MANIFESTS);
   }
   for (auto& [m, instr] : manifestImplicitlyCoveredInstructions) {
     implicitlyCoveredInstructions.insert(instr.begin(), instr.end());

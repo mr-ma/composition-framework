@@ -24,7 +24,7 @@ using GraphProperties = boost::property<boost::graph_name_t, std::string>;
 /**
  * Describes the protection graph in boost
  */
-typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS, VertexProperties, EdgeProperties,
+typedef boost::adjacency_list<boost::setS, boost::vecS, boost::bidirectionalS, VertexProperties, EdgeProperties,
                               GraphProperties>
     graph_t;
 

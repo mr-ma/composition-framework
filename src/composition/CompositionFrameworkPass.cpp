@@ -79,20 +79,10 @@ bool CompositionFrameworkPass::doInitialization(Module& M) {
 std::unique_ptr<graph::ProtectionGraph> buildGraphFromManifests(std::vector<Manifest*> manifests) {
   auto g = std::make_unique<graph::ProtectionGraph>();
 
-  size_t total = manifests.size();
-  dbgs() << "Adding " << std::to_string(total) << " manifests to protection graph\n";
-  cStats.proposedManifests = total;
-  size_t i = 0;
+  cStats.proposedManifests = manifests.size();
   Profiler constructionProfiler{};
-  for (auto& m : manifests) {
-    m->Clean();
-    dbgs() << "#" << std::to_string(i++) << "/" << std::to_string(total) << "\r";
-    for (auto& c : m->constraints) {
-      g->addConstraint(m, c);
-    }
-  }
+  g->addManifests(manifests);
   cStats.timeGraphConstruction += constructionProfiler.stop();
-  dbgs() << "#" << std::to_string(i) << "/" << std::to_string(total) << "\n";
   return g;
 }
 
@@ -270,7 +260,14 @@ bool CompositionFrameworkPass::graphPass(llvm::Module& M) {
   reduceGraph(Graph);
   Graph->computeManifestDependencies();
 
-  Graph->optimizeProtections(Graph->getGraph(), BFI);
+  std::unordered_set<llvm::Instruction*> instructions{};
+
+  for (auto F : sensitiveFunctions) {
+    auto result = composition::metric::Coverage::ValueToInstructions(F);
+    instructions.insert(result.begin(), result.end());
+  }
+
+  Graph->optimizeProtections(Graph->getGraph(), BFI, &M, manifests, instructions);
   dbgs() << "Optimizing done\n";
 
   return false;
@@ -317,8 +314,10 @@ bool CompositionFrameworkPass::protectionPass(llvm::Module& M) {
     c->finalizeComposition();
   }
 
+  dbgs() << "Writing patchinfo\n";
   writePatchInfo(patchInfos);
 
+  dbgs() << "Collecting stats\n";
   cStats.stats.collect(sensitiveFunctions, manifests, Graph->getManifestProtectionMap());
   cStats.dump(dbgs());
 
@@ -334,6 +333,7 @@ bool CompositionFrameworkPass::protectionPass(llvm::Module& M) {
     fdStream.close();
   }
 
+  dbgs() << "Cleanup\n";
   trace::PreservedValueRegistry::Clear();
   return !manifests.empty();
 }

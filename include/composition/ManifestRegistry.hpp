@@ -40,7 +40,7 @@ protected:
   /**
    * Strictly increasing counter of the next manifest index. Thus, each manifest index is unique.
    */
-  static ManifestIndex index;
+  static manifest_idx_t index;
 
   // TODO: This currently initializes a static unordered_set in the function. Possibly there's a better way to do this.
   static std::unordered_set<Manifest*>& RegisteredManifests();

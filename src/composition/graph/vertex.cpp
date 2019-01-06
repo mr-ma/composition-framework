@@ -12,8 +12,20 @@
 namespace composition::graph {
 using composition::util::ltrim;
 using constraint::Constraint;
-using constraint::ConstraintIndex;
+using constraint::constraint_idx_t;
 using util::graphviz_encode;
+
+vertex_idx_t& operator++(vertex_idx_t& i) {
+  using T = typename std::underlying_type<vertex_idx_t>::type;
+  T val = static_cast<T>(i);
+  i = vertex_idx_t(++val);
+  return i;
+}
+vertex_idx_t operator++(vertex_idx_t& i, int) {
+  vertex_idx_t res(i);
+  ++i;
+  return res;
+}
 
 std::ostream& operator<<(std::ostream& os, const vertex_type& obj) {
   os << static_cast<std::underlying_type<vertex_type>::type>(obj);
@@ -33,7 +45,7 @@ bool vertex_t::operator==(const vertex_t& rhs) noexcept { return this->index == 
 bool vertex_t::operator!=(const vertex_t& rhs) noexcept { return !(*this == rhs); }
 
 vertex_t::vertex_t(vertex_idx_t index, llvm::Value* value, std::string name, vertex_type type,
-                   std::unordered_map<ConstraintIndex, std::shared_ptr<Constraint>> constraints) noexcept
+                   std::unordered_map<constraint_idx_t, std::shared_ptr<Constraint>> constraints) noexcept
     : index(index), value(value), name(std::move(name)), type(type), constraints(std::move(constraints)) {}
 
 vertex_type llvmToVertexType(const llvm::Value* v) {

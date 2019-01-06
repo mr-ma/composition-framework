@@ -9,6 +9,7 @@
 #include <composition/graph/algorithm/strong_components.hpp>
 #include <composition/graph/algorithm/topological_sort.hpp>
 #include <composition/graph/constraint/constraint.hpp>
+#include <composition/graph/constraint/true.hpp>
 #include <composition/graph/filter/dependency.hpp>
 #include <composition/graph/filter/removed.hpp>
 #include <composition/graph/filter/selfcycle.hpp>
@@ -30,16 +31,19 @@
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
 #include <random>
+#include <type_traits>
 #include <utility>
 
 namespace composition::graph {
 using graph::algorithm::strong_components;
 using graph::algorithm::topological_sort;
 using graph::constraint::Constraint;
+using graph::constraint::constraint_idx_t;
 using graph::constraint::Present;
 using graph::constraint::PresentConstraint;
 using graph::constraint::Preserved;
 using graph::constraint::PreservedConstraint;
+using graph::constraint::True;
 using graph::util::graph_to_dot;
 using graph::util::graph_to_graphml;
 using metric::Performance;
@@ -48,30 +52,12 @@ using util::constraint_map;
 using util::index_map;
 using util::vertex_count;
 
-// ProtectionIndex type. TODO C++ does not enforce type safety. Potentially there are ways how type safety can be
-// improved.
-using ProtectionIndex = unsigned long;
-// VertexIndex type. TODO C++ does not enforce type safety. Potentially there are ways how type safety can be improved.
-using VertexIndex = uintptr_t;
-// EdgeIndex type. TODO C++ does not enforce type safety. Potentially there are ways how type safety can be improved.
-using EdgeIndex = uintptr_t;
-
-/*
- * TODO: The framework makes use of bidirectional maps. However, the performance impact is higher than wanted.
- * A different structure, or a custom bidirectional map might result in better performance.
- */
-// Edge cache for faster lookups
-using EdgeCacheMap = boost::bimaps::bimap<boost::bimaps::multiset_of<EdgeIndex>, ed_t>;
-
-// ProtectionMap for faster lookups
-using ProtectionMap = boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest*>, ProtectionIndex>;
-
 using ManifestUndoMap =
-    boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest*>, boost::bimaps::multiset_of<llvm::Value*>>;
+    boost::bimaps::bimap<boost::bimaps::multiset_of<manifest_idx_t>, boost::bimaps::multiset_of<llvm::Value*>>;
 using ManifestProtectionMap =
-    boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest*>, boost::bimaps::multiset_of<Manifest*>>;
+    boost::bimaps::bimap<boost::bimaps::multiset_of<manifest_idx_t>, boost::bimaps::multiset_of<manifest_idx_t>>;
 using ManifestDependencyMap =
-    boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest*>, boost::bimaps::multiset_of<Manifest*>>;
+    boost::bimaps::bimap<boost::bimaps::multiset_of<manifest_idx_t>, boost::bimaps::multiset_of<manifest_idx_t>>;
 
 /**
  * The core of the composition framework, the protection graph and its algorithms
@@ -83,25 +69,17 @@ private:
    */
   graph_t Graph{};
   /**
-   * The current strictly increasing protection index
-   */
-  ProtectionIndex ProtectionIdx{};
-  /**
-   * A map of all protections
-   */
-  ProtectionMap Protections{};
-  /**
    * The current strictly increasing vertex index
    */
-  VertexIndex VertexIdx{};
+  vertex_idx_t VertexIdx{};
+  /**
+   * The current strictly increasing edge index
+   */
+  edge_idx_t EdgeIdx{};
   /**
    * Cache of vertices for faster lookup
    */
   std::unordered_map<llvm::Value*, vd_t> vertexCache{};
-  /**
-   * Cache of edges for faster lookup
-   */
-  EdgeCacheMap edgeCache{};
   /**
    * Map which captures the undo relationship between manifests.
    */
@@ -110,6 +88,15 @@ private:
    * Map which captures the protection relationship between manifests.
    */
   ManifestProtectionMap ManifestProtection{};
+
+  std::unordered_map<manifest_idx_t, Manifest*> MANIFESTS;
+
+  constraint_idx_t ConstraintIdx{};
+
+  std::unordered_map<constraint_idx_t, std::shared_ptr<Constraint>> CONSTRAINTS;
+  boost::bimaps::bimap<boost::bimaps::multiset_of<manifest_idx_t>, constraint_idx_t> MANIFESTS_CONSTRAINTS;
+  std::unordered_map<constraint_idx_t, vd_t> CONSTRAINTS_VERTICES;
+  std::unordered_map<constraint_idx_t, ed_t> CONSTRAINTS_EDGES;
 
 private:
   /**
@@ -182,13 +169,16 @@ public:
 
   const ManifestProtectionMap getManifestProtectionMap() const { return ManifestProtection; }
 
+  void addManifests(std::vector<Manifest*> manifests);
+  void addManifest(Manifest* m);
+
   /**
    * Adds a constraint to the protection graph
    * @param m the manifest associated with the constraint
    * @param c the constraint
    * @return a unique protection index
    */
-  ProtectionIndex addConstraint(Manifest* m, std::shared_ptr<Constraint> c);
+  constraint_idx_t addConstraint(manifest_idx_t idx, std::shared_ptr<Constraint> c);
 
   /**
    * Adds CFG edges to the graph
@@ -196,13 +186,13 @@ public:
    * @param child the target llvm value
    * @return a unique protection index
    */
-  ProtectionIndex addCFG(llvm::Value* parent, llvm::Value* child) {
+  edge_idx_t addCFG(llvm::Value* parent, llvm::Value* child) {
     assert(parent != nullptr);
     assert(child != nullptr);
     auto srcNode = this->add_vertex(parent);
     auto dstNode = this->add_vertex(child);
-    this->add_edge(srcNode, dstNode, edge_t{ProtectionIdx, "CFG", edge_type::CFG});
-    return ProtectionIdx++;
+    this->add_edge(srcNode, dstNode, edge_t{EdgeIdx, edge_type::CFG});
+    return EdgeIdx++;
   }
 
   /**
@@ -216,7 +206,7 @@ public:
    * Removes a manifest from the graph
    * @param m the manifest to remove
    */
-  void removeManifest(Manifest* m);
+  void removeManifest(manifest_idx_t idx);
 
   /**
    * Expands all larger llvm values (module, function, basicblock) to an equivalent instruction representation
@@ -319,7 +309,7 @@ public:
         std::set_union(presentManifests.begin(), presentManifests.end(), preservedManifests.begin(),
                        preservedManifests.end(), std::back_inserter(merged));
 
-        removeManifest(strategy->decidePresentPreserved(merged));
+        removeManifest(strategy->decidePresentPreserved(merged)->index);
         cStats.timeConflictResolving += resolvingProfiler.stop();
       }
     } while (hadConflicts);
@@ -335,17 +325,20 @@ public:
     llvm::dbgs() << "Handling cycle in component\n";
     cStats.cycles++;
 
-    std::unordered_set<Manifest*> cyclicManifests{};
+    std::unordered_set<manifest_idx_t> manifestIdx{};
     for (auto [ei, ei_end] = boost::edges(g); ei != ei_end; ++ei) {
-      cyclicManifests.insert(Protections.right.find(g[*ei].index)->second);
+      edge_t e = g[*ei];
+      for(auto [cIdx, c] : e.constraints) {
+        manifestIdx.insert(MANIFESTS_CONSTRAINTS.right.find(cIdx)->second);
+      }
     }
 
-    std::vector<Manifest*> merged{};
-    for (auto& el : cyclicManifests) {
-      merged.push_back(el);
+    std::vector<Manifest*> cyclicManifests{};
+    for (auto& el : manifestIdx) {
+      cyclicManifests.push_back(MANIFESTS.find(el)->second);
     }
 
-    removeManifest(strategy->decideCycle(merged));
+    removeManifest(strategy->decideCycle(cyclicManifests)->index);
   }
 
   /**
@@ -358,38 +351,57 @@ public:
   std::pair<std::unordered_set<Manifest*>, std::unordered_set<Manifest*>> detectPresentPreservedConflicts(graph_t& g) {
     auto [isPresent, isPreserved] = constraint_map<PresentConstraint, PreservedConstraint>(g);
 
-    std::unordered_set<Manifest*> presentManifests{};
+    std::unordered_set<manifest_idx_t> presentIdx{};
     for (auto [vd, p] : isPresent) {
       if (p != PresentConstraint::CONFLICT) {
         continue;
       }
 
-      for (auto [index, c] : g[vd].constraints) {
+      for (auto [cIdx, c] : g[vd].constraints) {
         if (llvm::isa<Present>(c.get())) {
-          presentManifests.insert(Protections.right.find(index)->second);
+          manifest_idx_t idx = MANIFESTS_CONSTRAINTS.right.find(cIdx)->second;
+          presentIdx.insert(idx);
         }
       }
     }
 
-    std::unordered_set<Manifest*> preservedManifests{};
+    std::unordered_set<manifest_idx_t> preservedIdx{};
     for (auto [vd, p] : isPreserved) {
       if (p != PreservedConstraint::CONFLICT) {
         continue;
       }
-      for (auto [index, c] : g[vd].constraints) {
+      for (auto [cIdx, c] : g[vd].constraints) {
         if (llvm::isa<Preserved>(c.get())) {
-          preservedManifests.insert(Protections.right.find(index)->second);
+          manifest_idx_t idx = MANIFESTS_CONSTRAINTS.right.find(cIdx)->second;
+          preservedIdx.insert(idx);
         }
       }
+    }
+
+    //Convert indices to manifest pointers
+    std::unordered_set<Manifest*> presentManifests{};
+    std::unordered_set<Manifest*> preservedManifests{};
+    for(auto idx : presentIdx) {
+      presentManifests.insert(MANIFESTS.find(idx)->second);
+    }
+    for(auto idx : preservedIdx) {
+      preservedManifests.insert(MANIFESTS.find(idx)->second);
     }
 
     return {presentManifests, preservedManifests};
   }
 
   template <typename graph_t>
-  void optimizeProtections(graph_t& g, const std::unordered_map<llvm::Function*, llvm::BlockFrequencyInfo*>& BFI) {
+  void optimizeProtections(graph_t& g, const std::unordered_map<llvm::Function*, llvm::BlockFrequencyInfo*>& BFI,
+                           llvm::Module* module, std::vector<Manifest*> manifests,
+                           std::unordered_set<llvm::Instruction*> allInstructions) {
     llvm::dbgs() << "Optimizing protections in the graph\n";
+    prepareHotness(g, BFI);
+    removeHotNodes(g, 1.0, module, manifests, allInstructions);
+  }
 
+  template <typename graph_t>
+  void prepareHotness(graph_t& g, const std::unordered_map<llvm::Function*, llvm::BlockFrequencyInfo*>& BFI) {
     llvm::dbgs() << "Calculating hotness\n";
     auto rg = graph::filter::filter_removed_graph(g);
 
@@ -420,6 +432,87 @@ public:
         continue;
       }
       g[*vi].hotness = g[*vi].absoluteHotness / static_cast<float>(maxHotness);
+    }
+  }
+
+  template <typename graph_t>
+  void removeHotNodes(graph_t& g, double coverage, llvm::Module* module, std::vector<Manifest*> manifests,
+                      std::unordered_set<llvm::Instruction*> allInstructions) {
+    llvm::dbgs() << "Removing hot nodes\n";
+
+    while (true) {
+      llvm::dbgs() << "Loop\n";
+      std::unordered_map<std::string, std::unordered_set<llvm::Instruction*>> instructionProtections{};
+
+      for (auto& m : manifests) {
+        for (auto& I : m->Coverage()) {
+          instructionProtections[m->name].insert(I);
+        }
+      }
+
+      std::unordered_map<llvm::Instruction*, size_t> instructionConnectivityMap{};
+      for (auto& I : allInstructions) {
+        instructionConnectivityMap[I] = 0;
+      }
+      for (auto& [p, instr] : instructionProtections) {
+        for (auto* I : instr) {
+          instructionConnectivityMap[I]++;
+        }
+      }
+
+      std::vector<size_t> connectivity{};
+      for (auto& [I, c] : instructionConnectivityMap) {
+        connectivity.push_back(c);
+      }
+      composition::metric::Connectivity instConnectivity{connectivity};
+
+      if (instConnectivity.avg <= coverage || manifests.empty()) {
+        break;
+      }
+
+      std::vector<typename graph_t::vertex_descriptor> vertices{};
+      float maxHotness = 0;
+      auto rg = graph::filter::filter_removed_graph(g);
+      for (auto [vi, vi_end] = boost::vertices(rg); vi != vi_end; ++vi) {
+        if (g[*vi].hotness > maxHotness) {
+          maxHotness = g[*vi].hotness;
+          vertices.clear();
+          vertices.push_back(*vi);
+        } else if (g[*vi].hotness == maxHotness) {
+          vertices.push_back(*vi);
+        }
+      }
+
+      std::unordered_set<Manifest*> candidates{};
+      for (auto vd : vertices) {
+        for (auto [cIdx, c] : g[vd].constraints) {
+          manifest_idx_t idx = MANIFESTS_CONSTRAINTS.right.find(cIdx)->second;
+          Manifest* m = MANIFESTS.find(idx)->second;
+          candidates.insert(m);
+        }
+      }
+
+      int minCoverage = 0;
+      Manifest* best = nullptr;
+
+      for (auto m : candidates) {
+        auto localCoverage = m->Coverage().size();
+        if (best == nullptr || localCoverage > minCoverage) {
+          minCoverage = localCoverage;
+          best = m;
+        }
+      }
+      if (best == nullptr) {
+        break;
+      }
+
+      llvm::dbgs() << "Remove\n";
+      removeManifest(best->index);
+
+      manifests.clear();
+      /*for (auto mi = Protections.left.begin(), mi_end = Protections.left.end(); mi != mi_end; ++mi) {
+        manifests.push_back(MANIFESTS.find(mi->first)->second);
+      }*/
     }
   }
 };

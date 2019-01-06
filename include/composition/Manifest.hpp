@@ -8,6 +8,7 @@
 #include <llvm/IR/Value.h>
 #include <unordered_set>
 #include <utility>
+#include <ostream>
 
 namespace composition {
 
@@ -19,9 +20,12 @@ class Manifest;
  */
 using PatchFunction = std::function<void(const Manifest&)>;
 
-// ManifestIndex type. TODO C++ does not enforce type safety. Potentially there are ways how type safety can be
-// improved.
-using ManifestIndex = unsigned long;
+// ManifestIndex type. 
+enum class manifest_idx_t : uint64_t;
+manifest_idx_t& operator++(manifest_idx_t& i);
+manifest_idx_t operator++(manifest_idx_t& i, int);
+std::ostream& operator<<(std::ostream& out, const manifest_idx_t& i);
+llvm::raw_ostream& operator<<(llvm::raw_ostream& out, const manifest_idx_t& i);
 
 /**
  * The class `Manifest` describes one instance of a protection and groups all relevant information to apply (redo) and
@@ -32,7 +36,7 @@ public:
   /**
    * Unique index of a manifest
    */
-  ManifestIndex index{};
+  manifest_idx_t index{};
   /**
    * Name of the manifest (e.g. short pass name)
    */
@@ -97,7 +101,7 @@ public:
   /**
    * Called if the manifest is removed. Must cleanup all created values.
    */
-  virtual void Undo() const;
+  virtual void Undo();
 
   /**
    * Dumps information to dbgs()
@@ -115,7 +119,10 @@ public:
  * Custom Hash Functor that computes the hash of the manifest
  */
 class ManifestHasher {
-  size_t operator()(const Manifest& m) const { return m.index; }
+  size_t operator()(const Manifest& m) const { 
+    using T = typename std::underlying_type<composition::manifest_idx_t>::type;
+    return std::hash<T>()(static_cast<T>(m.index)); 
+   }
 };
 
 /**
@@ -135,7 +142,10 @@ template <> struct hash<composition::Manifest> {
    * @param m the manifest
    * @return the `index` of the manifest
    */
-  size_t operator()(const composition::Manifest& m) const { return m.index; }
+  size_t operator()(const composition::Manifest& m) const { 
+    using T = typename std::underlying_type<composition::manifest_idx_t>::type;
+    return std::hash<T>()(static_cast<T>(m.index)); 
+  }
 };
 } // namespace std
 

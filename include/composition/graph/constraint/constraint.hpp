@@ -3,9 +3,11 @@
 #include <string>
 
 namespace composition::graph::constraint {
-// ConstraintIndex type. TODO C++ does not enforce type safety. Potentially there are ways how type safety can be
-// improved.
-typedef unsigned long ConstraintIndex;
+// ConstraintIndex type.
+enum class constraint_idx_t : uint64_t;
+constraint_idx_t& operator++(constraint_idx_t& i);
+constraint_idx_t operator++(constraint_idx_t& i, int);
+
 /**
  * Abstract class Constraint
  */

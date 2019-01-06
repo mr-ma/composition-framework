@@ -1,7 +1,6 @@
 #ifndef COMPOSITION_FRAMEWORK_GRAPH_FILTER_REMOVED_HPP
 #define COMPOSITION_FRAMEWORK_GRAPH_FILTER_REMOVED_HPP
-
-#include <composition/graph/filter/filter.hpp>
+#include <boost/graph/filtered_graph.hpp>
 
 namespace composition::graph::filter {
 /**
@@ -9,21 +8,17 @@ namespace composition::graph::filter {
  * @tparam T the type of the graph
  */
 template <typename T> struct RemovedPredicate {
-  bool operator()(typename T::edge_descriptor ed) const {
-    assert(G != nullptr);
-    return !(*G)[ed].removed;
-  }
+private:
+  T* g;
 
-  bool operator()(typename T::vertex_descriptor vd) const {
-    assert(G != nullptr);
-    return !(*G)[vd].removed;
-  }
+public:
+  bool operator()(typename T::edge_descriptor ed) const { return !(*g)[ed].removed; }
 
-  T* G;
+  bool operator()(typename T::vertex_descriptor vd) const { return !(*g)[vd].removed; }
 
   RemovedPredicate() = default;
 
-  explicit RemovedPredicate(T& G) : G(&G) {}
+  explicit RemovedPredicate(T& g) : g(&g) { assert(&g != nullptr); }
 };
 
 /**
@@ -32,8 +27,10 @@ template <typename T> struct RemovedPredicate {
  * @param g the graph to filter
  * @return a filtered representation of `g` which hides all removed vertices and edges
  */
-template <typename graph_t> auto filter_removed_graph(graph_t& g) -> decltype(filter_graph<RemovedPredicate>(g)) {
-  return filter_graph<RemovedPredicate>(g);
+template <typename graph_t>
+auto filter_removed_graph(graph_t& g)
+    -> decltype(boost::make_filtered_graph(g, RemovedPredicate<graph_t>(g), RemovedPredicate<graph_t>(g))) {
+  return boost::make_filtered_graph(g, RemovedPredicate<graph_t>(g), RemovedPredicate<graph_t>(g));
 }
 } // namespace composition::graph::filter
 #endif // COMPOSITION_FRAMEWORK_GRAPH_FILTER_REMOVED_HPP

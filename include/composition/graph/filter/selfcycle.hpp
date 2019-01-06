@@ -1,7 +1,7 @@
 #ifndef COMPOSITION_FRAMEWORK_GRAPH_FILTER_SELFCYCLE_HPP
 #define COMPOSITION_FRAMEWORK_GRAPH_FILTER_SELFCYCLE_HPP
+#include <boost/graph/filtered_graph.hpp>
 #include <composition/graph/edge.hpp>
-#include <composition/graph/filter/filter.hpp>
 
 namespace composition::graph::filter {
 /**
@@ -9,23 +9,17 @@ namespace composition::graph::filter {
  * @tparam T the type of the graph
  */
 template <typename T> struct SelfCyclePredicate {
-  bool operator()(typename T::edge_descriptor ed) const {
-    assert(g != nullptr);
-    auto source = boost::source(ed, *g);
-    auto target = boost::target(ed, *g);
-    return source != target;
-  }
-
-  bool operator()(typename T::vertex_descriptor vd) const {
-    assert(g != nullptr);
-    return true;
-  }
-
+private:
   T* g;
+
+public:
+  bool operator()(typename T::edge_descriptor ed) const { return boost::source(ed, *g) != boost::target(ed, *g); }
+
+  bool operator()(typename T::vertex_descriptor vd) const { return true; }
 
   SelfCyclePredicate() : g(nullptr) {}
 
-  explicit SelfCyclePredicate(T& g) : g(&g) {}
+  explicit SelfCyclePredicate(T& g) : g(&g) { assert(&g != nullptr); }
 };
 
 /**
@@ -34,8 +28,10 @@ template <typename T> struct SelfCyclePredicate {
  * @param g the graph to filter
  * @return a filtered representation of `g` which hides all reflexive edges
  */
-template <typename graph_t> auto filter_selfcycle_graph(graph_t& g) -> decltype(filter_graph<SelfCyclePredicate>(g)) {
-  return filter_graph<SelfCyclePredicate>(g);
+template <typename graph_t>
+auto filter_selfcycle_graph(graph_t& g)
+    -> decltype(boost::make_filtered_graph(g, SelfCyclePredicate<graph_t>(g), SelfCyclePredicate<graph_t>(g))) {
+  return boost::make_filtered_graph(g, SelfCyclePredicate<graph_t>(g), SelfCyclePredicate<graph_t>(g));
 }
 } // namespace composition::graph::filter
 #endif // COMPOSITION_FRAMEWORK_GRAPH_FILTER_SELFCYCLE_HPP

@@ -1,30 +1,25 @@
 #ifndef COMPOSITION_FRAMEWORK_GRAPH_FILTER_DEPENDENCY_HPP
 #define COMPOSITION_FRAMEWORK_GRAPH_FILTER_DEPENDENCY_HPP
+#include <boost/graph/filtered_graph.hpp>
 #include <composition/graph/edge.hpp>
-#include <composition/graph/filter/filter.hpp>
 
-namespace composition::graph::filter { 
+namespace composition::graph::filter {
 /**
  * Predicate to filter all edges which are not a dependency edge.
  * @tparam T the type of the graph
  */
-template<typename T>
-struct DependencyPredicate {
-  bool operator()(typename T::edge_descriptor ed) const {
-    assert(g != nullptr);
-    return (*g)[ed].type == edge_type::DEPENDENCY;
-  }
+template <typename T> struct DependencyPredicate {
+private:
+  T* g;
 
-  bool operator()(typename T::vertex_descriptor vd) const {
-    assert(g != nullptr);
-    return true;
-  }
+public:
+  bool operator()(typename T::edge_descriptor ed) const { return (*g)[ed].type == edge_type::DEPENDENCY; }
 
-  T *g;
+  bool operator()(typename T::vertex_descriptor vd) const { return true; }
 
   DependencyPredicate() : g(nullptr) {}
 
-  explicit DependencyPredicate(T &g) : g(&g) {}
+  explicit DependencyPredicate(T& g) : g(&g) { assert(&g != nullptr); }
 };
 
 /**
@@ -33,9 +28,10 @@ struct DependencyPredicate {
  * @param g the graph to filter
  * @return a filtered representation of `g` which hides all edges which are not a dependency edge
  */
-template<typename graph_t>
-auto filter_dependency_graph(graph_t &g) -> decltype(filter_graph<DependencyPredicate>(g)) {
-  return filter_graph<DependencyPredicate>(g);
+template <typename graph_t>
+auto filter_dependency_graph(graph_t& g)
+    -> decltype(boost::make_filtered_graph(g, DependencyPredicate<graph_t>(g), DependencyPredicate<graph_t>(g))) {
+  return boost::make_filtered_graph(g, DependencyPredicate<graph_t>(g), DependencyPredicate<graph_t>(g));
 }
-}
-#endif //COMPOSITION_FRAMEWORK_GRAPH_FILTER_DEPENDENCY_HPP
+} // namespace composition::graph::filter
+#endif // COMPOSITION_FRAMEWORK_GRAPH_FILTER_DEPENDENCY_HPP

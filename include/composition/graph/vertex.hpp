@@ -9,8 +9,10 @@
 #include <utility>
 
 namespace composition::graph {
-// vertex_idx_t type. TODO C++ does not enforce type safety. Potentially there are ways how type safety can be improved.
-typedef unsigned long vertex_idx_t;
+// vertex_idx_t type.
+enum vertex_idx_t : uintptr_t;
+vertex_idx_t& operator++(vertex_idx_t& i);
+vertex_idx_t operator++(vertex_idx_t& i, int);
 
 /**
  * Type of the vertex in a graph
@@ -45,7 +47,7 @@ struct vertex_t {
   /**
    * Existing constraints for this vertex
    */
-  std::unordered_map<constraint::ConstraintIndex, std::shared_ptr<constraint::Constraint>> constraints;
+  std::unordered_map<constraint::constraint_idx_t, std::shared_ptr<constraint::Constraint>> constraints;
 
   uint64_t absoluteHotness = 0;
   float hotness = 0;
@@ -58,9 +60,9 @@ struct vertex_t {
    * @param type the type of the vertex
    * @param constraints the constraints of the vertex
    */
-  explicit vertex_t(vertex_idx_t index = 0, llvm::Value* value = nullptr, std::string name = "",
+  explicit vertex_t(vertex_idx_t index = vertex_idx_t(0), llvm::Value* value = nullptr, std::string name = "",
                     vertex_type type = vertex_type::UNKNOWN,
-                    std::unordered_map<constraint::ConstraintIndex, std::shared_ptr<constraint::Constraint>>
+                    std::unordered_map<constraint::constraint_idx_t, std::shared_ptr<constraint::Constraint>>
                         constraints = {}) noexcept;
 
   std::ostream& operator<<(std::ostream& os) noexcept;

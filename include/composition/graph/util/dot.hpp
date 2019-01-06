@@ -42,7 +42,6 @@ template <typename graph_t> void graph_to_dot(graph_t& g, std::ostream& out) {
   dp.property("present", boost::make_assoc_property_map(isPresent));
   dp.property("preserved", boost::make_assoc_property_map(isPreserved));
 
-  dp.property("label", boost::get(&edge_t::name, g));
   dp.property("removed", boost::get(&edge_t::removed, g));
   boost::write_graphviz_dp(out, g, dp);
 }

@@ -40,7 +40,6 @@ template <typename graph_t> void graph_to_graphml(graph_t& g, std::ostream& out)
   dp.property("vertex_present", boost::make_assoc_property_map(isPresent));
   dp.property("vertex_preserved", boost::make_assoc_property_map(isPreserved));
 
-  dp.property("edge_name", boost::get(&edge_t::name, g));
   dp.property("edge_removed", boost::get(&edge_t::removed, g));
   boost::write_graphml(out, g, boost::make_assoc_property_map(index), dp);
 }

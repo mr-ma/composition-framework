@@ -14,7 +14,7 @@
 namespace composition::metric {
 
 using ManifestProtectionMap =
-    boost::bimaps::bimap<boost::bimaps::multiset_of<Manifest*>, boost::bimaps::multiset_of<Manifest*>>;
+    boost::bimaps::bimap<boost::bimaps::multiset_of<manifest_idx_t>, boost::bimaps::multiset_of<manifest_idx_t>>;
 
 /**
  * A collection of Protection Graph related metrics
@@ -33,6 +33,7 @@ public:
   Connectivity instructionConnectivity{};
   Connectivity functionConnectivity{};
   std::unordered_map<std::string, std::pair<Connectivity, Connectivity>> protectionConnectivity{};
+  std::unordered_map<manifest_idx_t, Manifest*> MANIFESTS{};
 
   Stats() = default;
 
