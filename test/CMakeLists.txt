@@ -5,7 +5,8 @@ enable_testing()
 add_executable(
         unit_tests
         main.cpp
-        topological_sort.cpp)
+        topological_sort.cpp
+        double_edges.cpp)
 
 target_link_libraries(
         unit_tests

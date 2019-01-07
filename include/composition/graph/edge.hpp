@@ -5,8 +5,8 @@
 #include <llvm/Support/raw_ostream.h>
 #include <ostream>
 #include <string>
-#include <utility>
 #include <unordered_map>
+#include <utility>
 
 namespace composition::graph {
 // edge_idx_t type.
@@ -14,6 +14,8 @@ enum class edge_idx_t : uintptr_t;
 edge_idx_t& operator++(edge_idx_t& i);
 edge_idx_t operator++(edge_idx_t& i, int);
 std::ostream& operator<<(std::ostream& out, const edge_idx_t& i);
+bool operator<(edge_idx_t lhs, edge_idx_t rhs);
+
 /**
  * Type of the edge in a graph
  */
@@ -37,10 +39,6 @@ struct edge_t {
    * Type of the edge
    */
   edge_type type;
-  /**
-   * Was the edge removed from the graph?
-   */
-  bool removed{};
 
   /**
    * Existing constraints for this edge

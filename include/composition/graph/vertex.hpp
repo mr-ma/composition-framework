@@ -13,6 +13,7 @@ namespace composition::graph {
 enum vertex_idx_t : uintptr_t;
 vertex_idx_t& operator++(vertex_idx_t& i);
 vertex_idx_t operator++(vertex_idx_t& i, int);
+bool operator<(vertex_idx_t lhs, vertex_idx_t rhs);
 
 /**
  * Type of the vertex in a graph
@@ -40,10 +41,6 @@ struct vertex_t {
    * Type of the vertex
    */
   vertex_type type;
-  /**
-   * Was the vertex removed graph?
-   */
-  bool removed{};
   /**
    * Existing constraints for this vertex
    */

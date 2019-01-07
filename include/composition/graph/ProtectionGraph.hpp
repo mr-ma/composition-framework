@@ -3,17 +3,10 @@
 #include <algorithm>
 #include <boost/bimap/bimap.hpp>
 #include <boost/bimap/multiset_of.hpp>
-#include <boost/graph/copy.hpp>
-#include <boost/graph/filtered_graph.hpp>
 #include <composition/ManifestRegistry.hpp>
 #include <composition/graph/algorithm/strong_components.hpp>
-#include <composition/graph/algorithm/topological_sort.hpp>
 #include <composition/graph/constraint/constraint.hpp>
 #include <composition/graph/constraint/true.hpp>
-#include <composition/graph/filter/dependency.hpp>
-#include <composition/graph/filter/removed.hpp>
-#include <composition/graph/filter/selfcycle.hpp>
-#include <composition/graph/graph.hpp>
 #include <composition/graph/util/dot.hpp>
 #include <composition/graph/util/graphml.hpp>
 #include <composition/graph/util/index_map.hpp>
@@ -23,6 +16,7 @@
 #include <composition/strategy/Random.hpp>
 #include <composition/strategy/Strategy.hpp>
 #include <composition/support/options.hpp>
+#include <lemon/list_graph.h>
 #include <llvm/Analysis/BlockFrequencyInfo.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Function.h>
@@ -35,22 +29,20 @@
 #include <utility>
 
 namespace composition::graph {
-using graph::algorithm::strong_components;
-using graph::algorithm::topological_sort;
-using graph::constraint::Constraint;
-using graph::constraint::constraint_idx_t;
-using graph::constraint::Present;
-using graph::constraint::PresentConstraint;
-using graph::constraint::Preserved;
-using graph::constraint::PreservedConstraint;
-using graph::constraint::True;
-using graph::util::graph_to_dot;
-using graph::util::graph_to_graphml;
-using metric::Performance;
-using support::cStats;
-using util::constraint_map;
-using util::index_map;
-using util::vertex_count;
+using composition::graph::algorithm::strong_components;
+using composition::graph::constraint::Constraint;
+using composition::graph::constraint::constraint_idx_t;
+using composition::graph::constraint::Present;
+using composition::graph::constraint::PresentConstraint;
+using composition::graph::constraint::Preserved;
+using composition::graph::constraint::PreservedConstraint;
+using composition::graph::constraint::True;
+using composition::graph::util::graph_to_dot;
+using composition::graph::util::graph_to_graphml;
+using composition::graph::util::index_map;
+using composition::graph::util::vertex_count;
+using composition::metric::Performance;
+using composition::support::cStats;
 
 using ManifestUndoMap =
     boost::bimaps::bimap<boost::bimaps::multiset_of<manifest_idx_t>, boost::bimaps::multiset_of<llvm::Value*>>;
@@ -67,7 +59,10 @@ private:
   /**
    * The graph in boost representation
    */
-  graph_t Graph{};
+  lemon::ListDigraph LG{};
+  std::unique_ptr<lemon::ListDigraph::NodeMap<vertex_t>> vertices;
+  std::unique_ptr<lemon::ListDigraph::ArcMap<edge_t>> edges;
+
   /**
    * The current strictly increasing vertex index
    */
@@ -79,7 +74,7 @@ private:
   /**
    * Cache of vertices for faster lookup
    */
-  std::unordered_map<llvm::Value*, vd_t> vertexCache{};
+  std::unordered_map<llvm::Value*, vertex_idx_t> vertexCache{};
   /**
    * Map which captures the undo relationship between manifests.
    */
@@ -93,10 +88,15 @@ private:
 
   constraint_idx_t ConstraintIdx{};
 
-  std::unordered_map<constraint_idx_t, std::shared_ptr<Constraint>> CONSTRAINTS;
-  boost::bimaps::bimap<boost::bimaps::multiset_of<manifest_idx_t>, constraint_idx_t> MANIFESTS_CONSTRAINTS;
-  std::unordered_map<constraint_idx_t, vd_t> CONSTRAINTS_VERTICES;
-  std::unordered_map<constraint_idx_t, ed_t> CONSTRAINTS_EDGES;
+  std::unordered_map<constraint_idx_t, std::shared_ptr<Constraint>> CONSTRAINTS{};
+  boost::bimaps::bimap<boost::bimaps::multiset_of<manifest_idx_t>, constraint_idx_t> MANIFESTS_CONSTRAINTS{};
+  std::unordered_map<constraint_idx_t, vertex_idx_t> CONSTRAINTS_VERTICES{};
+  std::unordered_map<constraint_idx_t, edge_idx_t> CONSTRAINTS_EDGES{};
+
+  std::map<vertex_idx_t, vertex_t> VERTICES{};
+  boost::bimaps::bimap<vertex_idx_t, lemon::ListDigraph::Node> VERTICES_DESCRIPTORS{};
+  std::map<edge_idx_t, edge_t> EDGES{};
+  boost::bimaps::bimap<edge_idx_t, lemon::ListDigraph::Arc> EDGES_DESCRIPTORS{};
 
 private:
   /**
@@ -104,13 +104,15 @@ private:
    * @param v the llvm value
    * @return a vertex descriptor for the added/existing vertex
    */
-  vd_t add_vertex(llvm::Value* v);
+  vertex_idx_t add_vertex(llvm::Value* v);
 
+  void addConstraintToVertex(constraint_idx_t ConstraintIdx, vertex_idx_t VertexIdx, std::shared_ptr<Constraint> c);
+  void addConstraintToEdge(constraint_idx_t ConstraintIdx, edge_idx_t EdgeIdx, std::shared_ptr<Constraint> c);
   /**
    * Removes a vertex from the graph
    * @param vd the vertex descriptor
    */
-  void remove_vertex(vd_t vd) noexcept;
+  void remove_vertex(vertex_idx_t vd) noexcept;
 
   /**
    * Adds an edge to the graph.
@@ -119,51 +121,20 @@ private:
    * @param e the associated edge information
    * @return an edge descriptor pointing to the added edge
    */
-  ed_t add_edge(vd_t s, vd_t d, edge_t e);
-
+  edge_idx_t add_edge(vertex_idx_t s, vertex_idx_t d, edge_t e);
   /**
    * Removes an edge from the graph
    * @param ed the edge descriptor
    */
-  void remove_edge(ed_t ed) noexcept;
-
-  /**
-   * Remaps all constraints/edges of basicblocks to instructions
-   * @param it the vertex of the basicblock
-   * @param B the llvm basicblock
-   */
-  void expandBasicBlockToInstructions(vd_t it, llvm::BasicBlock* B);
-
-  /**
-   * Replaces the source with the destination vertex
-   * @param src the source vertex descriptor
-   * @param dst the destination vertex descriptor
-   */
-  void replaceTarget(vd_t src, vd_t dst);
-
-  /**
-   * Replaces the in-edges of the source with the destination vertex
-   * @param src the source vertex descriptor
-   * @param dst the destination vertex descriptor
-   */
-  void replaceTargetInEdges(vd_t src, vd_t dst);
-
-  /**
-   * Replaces the out-edges of the source with the destination vertex
-   * @param src the source vertex descriptor
-   * @param dst the destination vertex descriptor
-   */
-  void replaceTargetOutEdges(vd_t src, vd_t dst);
+  void remove_edge(edge_idx_t ed) noexcept;
 
 public:
-  ProtectionGraph() = default;
+  ProtectionGraph();
 
   /**
    * Destroys the graph and frees memory
    */
   void destroy();
-
-  graph_t& getGraph();
 
   const ManifestDependencyMap getManifestDependencyMap() const { return DependencyUndo; }
 
@@ -171,6 +142,15 @@ public:
 
   void addManifests(std::vector<Manifest*> manifests);
   void addManifest(Manifest* m);
+
+  template <typename graph_t> void Print(graph_t& g, std::string name) {
+    // const auto& [isPresent, isPreserved] = constraint_map(g, VERTICES, VERTICES_DESCRIPTORS);
+
+    // graph_to_dot(g, name + ".dot", isPresent, isPreserved);
+    // graph_to_graphml(g, name + ".graphml", isPresent, isPreserved);
+  }
+
+  // void Print(std::string name) { Print(Graph, name); }
 
   /**
    * Adds a constraint to the protection graph
@@ -189,9 +169,7 @@ public:
   edge_idx_t addCFG(llvm::Value* parent, llvm::Value* child) {
     assert(parent != nullptr);
     assert(child != nullptr);
-    auto srcNode = this->add_vertex(parent);
-    auto dstNode = this->add_vertex(child);
-    this->add_edge(srcNode, dstNode, edge_t{EdgeIdx, edge_type::CFG});
+    this->add_edge(this->add_vertex(parent), this->add_vertex(child), edge_t{EdgeIdx, edge_type::CFG});
     return EdgeIdx++;
   }
 
@@ -209,16 +187,6 @@ public:
   void removeManifest(manifest_idx_t idx);
 
   /**
-   * Expands all larger llvm values (module, function, basicblock) to an equivalent instruction representation
-   */
-  void expandToInstructions();
-
-  /**
-   * Removes all vertices which are not instructions or llvm values.
-   */
-  void reduceToInstructions();
-
-  /**
    * Computes the dependency relationship of the manifests.
    */
   void computeManifestDependencies();
@@ -230,7 +198,7 @@ public:
    * @return true if the graph contains at least one cycle, false otherwise
    */
   template <typename graph_t> bool hasCycle(graph_t& g) {
-    Profiler sccProfiler{};
+    /*Profiler sccProfiler{};
     try {
       topological_sort(g);
       cStats.timeConflictDetection += sccProfiler.stop();
@@ -239,7 +207,7 @@ public:
       cStats.timeConflictDetection += sccProfiler.stop();
       return true;
     }
-    return false;
+    return false;*/
   }
 
   /**
@@ -248,11 +216,10 @@ public:
    * @param g the graph
    * @param strategy the strategy to use for handling conflicts
    */
-  template <typename graph_t> void conflictHandling(graph_t& g, const std::unique_ptr<strategy::Strategy>& strategy) {
-    llvm::dbgs() << "Step 1: Removing cycles...\n";
-    auto rg = graph::filter::filter_removed_graph(g);
-    auto fg = graph::filter::filter_dependency_graph(rg);
-    auto sc = graph::filter::filter_selfcycle_graph(fg);
+  void conflictHandling(const std::unique_ptr<strategy::Strategy>& strategy) {
+    /*llvm::dbgs() << "Step 1: Removing cycles...\n";
+    // auto fg = graph::filter::filter_dependency_graph(g, EDGES, EDGES_DESCRIPTORS);
+    auto sc = graph::filter::filter_selfcycle_graph(g);
 
     // First detect cycles and remove all cycles.
     bool hadConflicts;
@@ -262,11 +229,14 @@ public:
       hadConflicts = false;
       sccProfiler.reset();
 
+      llvm::dbgs() << "Quick check for cycles\n";
       bool hasOneCycle = hasCycle(sc);
       if (!hasOneCycle) {
+        llvm::dbgs() << "No cycles exist\n";
         cStats.timeConflictDetection += sccProfiler.stop();
         break;
       }
+      llvm::dbgs() << "Cycles exist\n";
 
       auto components = strong_components(sc);
       cStats.timeConflictDetection += sccProfiler.stop();
@@ -278,8 +248,7 @@ public:
           llvm::dbgs() << "Component " << std::to_string(i) << " contains cycle with " << std::to_string(vertexCount)
                        << " elements.\n";
           if (support::DumpGraphs) {
-            graph_to_dot(component, "graph_component_" + std::to_string(i) + ".dot");
-            graph_to_graphml(component, "graph_component_" + std::to_string(i) + ".graphml");
+            Print(component, "graph_component_" + std::to_string(i));
           }
           do {
             resolvingProfiler.reset();
@@ -312,7 +281,7 @@ public:
         removeManifest(strategy->decidePresentPreserved(merged)->index);
         cStats.timeConflictResolving += resolvingProfiler.stop();
       }
-    } while (hadConflicts);
+    } while (hadConflicts);*/
   }
 
   /**
@@ -322,13 +291,14 @@ public:
    * @param strategy the strategy to handle the cycle
    */
   template <typename graph_t> void handleCycle(graph_t& g, const std::unique_ptr<strategy::Strategy>& strategy) {
-    llvm::dbgs() << "Handling cycle in component\n";
+    /*llvm::dbgs() << "Handling cycle in component\n";
     cStats.cycles++;
 
     std::unordered_set<manifest_idx_t> manifestIdx{};
     for (auto [ei, ei_end] = boost::edges(g); ei != ei_end; ++ei) {
-      edge_t e = g[*ei];
-      for(auto [cIdx, c] : e.constraints) {
+      edge_idx_t idx = EDGES_DESCRIPTORS.right.at(*ei);
+      const edge_t& e = EDGES.at(idx);
+      for (auto& [cIdx, c] : e.constraints) {
         manifestIdx.insert(MANIFESTS_CONSTRAINTS.right.find(cIdx)->second);
       }
     }
@@ -338,7 +308,7 @@ public:
       cyclicManifests.push_back(MANIFESTS.find(el)->second);
     }
 
-    removeManifest(strategy->decideCycle(cyclicManifests)->index);
+    removeManifest(strategy->decideCycle(cyclicManifests)->index);*/
   }
 
   /**
@@ -349,15 +319,17 @@ public:
    */
   template <typename graph_t>
   std::pair<std::unordered_set<Manifest*>, std::unordered_set<Manifest*>> detectPresentPreservedConflicts(graph_t& g) {
-    auto [isPresent, isPreserved] = constraint_map<PresentConstraint, PreservedConstraint>(g);
+    /*const auto& [isPresent, isPreserved] =
+        constraint_map<PresentConstraint, PreservedConstraint>(g, VERTICES, VERTICES_DESCRIPTORS);
 
     std::unordered_set<manifest_idx_t> presentIdx{};
-    for (auto [vd, p] : isPresent) {
+    for (auto& [idx, p] : isPresent) {
       if (p != PresentConstraint::CONFLICT) {
         continue;
       }
 
-      for (auto [cIdx, c] : g[vd].constraints) {
+      const vertex_t& v = VERTICES.at(idx);
+      for (auto& [cIdx, c] : v.constraints) {
         if (llvm::isa<Present>(c.get())) {
           manifest_idx_t idx = MANIFESTS_CONSTRAINTS.right.find(cIdx)->second;
           presentIdx.insert(idx);
@@ -366,11 +338,12 @@ public:
     }
 
     std::unordered_set<manifest_idx_t> preservedIdx{};
-    for (auto [vd, p] : isPreserved) {
+    for (auto& [idx, p] : isPreserved) {
       if (p != PreservedConstraint::CONFLICT) {
         continue;
       }
-      for (auto [cIdx, c] : g[vd].constraints) {
+      const vertex_t& v = VERTICES.at(idx);
+      for (auto& [cIdx, c] : v.constraints) {
         if (llvm::isa<Preserved>(c.get())) {
           manifest_idx_t idx = MANIFESTS_CONSTRAINTS.right.find(cIdx)->second;
           preservedIdx.insert(idx);
@@ -378,17 +351,17 @@ public:
       }
     }
 
-    //Convert indices to manifest pointers
+    // Convert indices to manifest pointers
     std::unordered_set<Manifest*> presentManifests{};
     std::unordered_set<Manifest*> preservedManifests{};
-    for(auto idx : presentIdx) {
+    for (auto idx : presentIdx) {
       presentManifests.insert(MANIFESTS.find(idx)->second);
     }
-    for(auto idx : preservedIdx) {
+    for (auto idx : preservedIdx) {
       preservedManifests.insert(MANIFESTS.find(idx)->second);
     }
 
-    return {presentManifests, preservedManifests};
+    return {presentManifests, preservedManifests};*/
   }
 
   template <typename graph_t>
@@ -402,8 +375,8 @@ public:
 
   template <typename graph_t>
   void prepareHotness(graph_t& g, const std::unordered_map<llvm::Function*, llvm::BlockFrequencyInfo*>& BFI) {
-    llvm::dbgs() << "Calculating hotness\n";
-    auto rg = graph::filter::filter_removed_graph(g);
+    /*llvm::dbgs() << "Calculating hotness\n";
+    auto rg = g;
 
     uint64_t maxHotness = 0;
     for (auto [vi, vi_end] = boost::vertices(rg); vi != vi_end; ++vi) {
@@ -432,13 +405,13 @@ public:
         continue;
       }
       g[*vi].hotness = g[*vi].absoluteHotness / static_cast<float>(maxHotness);
-    }
+    }*/
   }
 
   template <typename graph_t>
   void removeHotNodes(graph_t& g, double coverage, llvm::Module* module, std::vector<Manifest*> manifests,
                       std::unordered_set<llvm::Instruction*> allInstructions) {
-    llvm::dbgs() << "Removing hot nodes\n";
+    /*llvm::dbgs() << "Removing hot nodes\n";
 
     while (true) {
       llvm::dbgs() << "Loop\n";
@@ -472,7 +445,7 @@ public:
 
       std::vector<typename graph_t::vertex_descriptor> vertices{};
       float maxHotness = 0;
-      auto rg = graph::filter::filter_removed_graph(g);
+      auto rg = g;
       for (auto [vi, vi_end] = boost::vertices(rg); vi != vi_end; ++vi) {
         if (g[*vi].hotness > maxHotness) {
           maxHotness = g[*vi].hotness;
@@ -510,10 +483,10 @@ public:
       removeManifest(best->index);
 
       manifests.clear();
-      /*for (auto mi = Protections.left.begin(), mi_end = Protections.left.end(); mi != mi_end; ++mi) {
+      for (auto mi = Protections.left.begin(), mi_end = Protections.left.end(); mi != mi_end; ++mi) {
         manifests.push_back(MANIFESTS.find(mi->first)->second);
-      }*/
-    }
+      }
+    }*/
   }
 };
 } // namespace composition::graph

@@ -17,7 +17,7 @@ using util::graphviz_encode;
 
 vertex_idx_t& operator++(vertex_idx_t& i) {
   using T = typename std::underlying_type<vertex_idx_t>::type;
-  T val = static_cast<T>(i);
+  auto val = static_cast<T>(i);
   i = vertex_idx_t(++val);
   return i;
 }
@@ -25,6 +25,11 @@ vertex_idx_t operator++(vertex_idx_t& i, int) {
   vertex_idx_t res(i);
   ++i;
   return res;
+}
+
+bool operator<(vertex_idx_t lhs, vertex_idx_t rhs) {
+  using T = typename std::underlying_type<vertex_idx_t>::type;
+  return static_cast<T>(lhs) < static_cast<T>(rhs);
 }
 
 std::ostream& operator<<(std::ostream& os, const vertex_type& obj) {

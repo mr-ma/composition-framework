@@ -4,7 +4,7 @@ namespace composition::graph::constraint {
 
 constraint_idx_t& operator++(constraint_idx_t& i) {
   using T = typename std::underlying_type<constraint_idx_t>::type;
-  T val = static_cast<T>(i);
+  auto val = static_cast<T>(i);
   i = constraint_idx_t(++val);
   return i;
 }

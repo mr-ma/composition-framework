@@ -11,9 +11,9 @@
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
 #include <memory>
+#include <ostream>
 #include <sstream>
 #include <utility>
-#include <ostream>
 
 using namespace llvm;
 
@@ -25,7 +25,7 @@ using metric::Coverage;
 
 manifest_idx_t& operator++(manifest_idx_t& i) {
   using T = typename std::underlying_type<manifest_idx_t>::type;
-  T val = static_cast<T>(i);
+  auto val = static_cast<T>(i);
   i = manifest_idx_t(++val);
   return i;
 }
@@ -47,7 +47,6 @@ llvm::raw_ostream& operator<<(llvm::raw_ostream& out, const manifest_idx_t& i) {
   out << static_cast<T>(i);
   return out;
 }
-
 
 void Manifest::Undo() {
   dbgs() << "Undoing " << undoValues.size() << " values\n";
@@ -149,13 +148,13 @@ void Manifest::dump() {
   }
   dbgs() << "\tConstraints: \n";
 
-  for (auto it = constraints.begin(), it_end = constraints.end(); it != it_end; ++it) {
-    dbgs() << "\t\t" << (*it)->getInfo() << " ";
-    if (auto d = dyn_cast<Dependency>((*it).get())) {
+  for (auto& constraint : constraints) {
+    dbgs() << "\t\t" << constraint->getInfo() << " ";
+    if (auto d = dyn_cast<Dependency>(constraint.get())) {
       dbgs() << "Dependency between " << valueToName(d->getFrom()) << " and " << valueToName(d->getTo());
-    } else if (auto present = dyn_cast<Present>((*it).get())) {
+    } else if (auto present = dyn_cast<Present>(constraint.get())) {
       dbgs() << "Present of " << valueToName(present->getTarget());
-    } else if (auto preserved = dyn_cast<Preserved>((*it).get())) {
+    } else if (auto preserved = dyn_cast<Preserved>(constraint.get())) {
       dbgs() << "Preserved of " << valueToName(preserved->getTarget());
 
     } else {

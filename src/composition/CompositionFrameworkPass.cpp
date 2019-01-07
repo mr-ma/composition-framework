@@ -24,7 +24,6 @@ using namespace llvm;
 namespace composition {
 using graph::ManifestDependencyMap;
 using graph::ManifestProtectionMap;
-using graph::filter::filter_removed_graph;
 using graph::util::graph_to_dot;
 using graph::util::graph_to_graphml;
 using support::AddCFG;
@@ -76,7 +75,7 @@ bool CompositionFrameworkPass::doInitialization(Module& M) {
   return true;
 }
 
-std::unique_ptr<graph::ProtectionGraph> buildGraphFromManifests(std::vector<Manifest*> manifests) {
+std::unique_ptr<graph::ProtectionGraph> buildGraphFromManifests(const std::vector<Manifest*>& manifests) {
   auto g = std::make_unique<graph::ProtectionGraph>();
 
   cStats.proposedManifests = manifests.size();
@@ -123,28 +122,8 @@ void addCallGraph(std::unique_ptr<graph::ProtectionGraph>& g, llvm::Module& M) {
 void printGraphs(std::unique_ptr<graph::ProtectionGraph>& g, std::string name) {
   if (DumpGraphs) {
     dbgs() << "Writing graphs\n";
-    auto fg = filter_removed_graph(g->getGraph());
-    graph_to_dot(g->getGraph(), name + ".dot");
-    graph_to_graphml(g->getGraph(), name + ".graphml");
-    graph_to_dot(fg, name + "_removed.dot");
-    graph_to_graphml(fg, name + "_removed.graphml");
+    // g->Print(name + ".dot");
   }
-}
-
-void expandGraph(std::unique_ptr<graph::ProtectionGraph>& g) {
-  dbgs() << "Expand graph to instructions\n";
-  Profiler constructionProfiler{};
-  g->expandToInstructions();
-  cStats.timeGraphConstruction += constructionProfiler.stop();
-  dbgs() << "Done\n";
-}
-
-void reduceGraph(std::unique_ptr<graph::ProtectionGraph>& g) {
-  dbgs() << "Remove non instruction vertices from graph\n";
-  Profiler constructionProfiler{};
-  g->reduceToInstructions();
-  cStats.timeGraphConstruction += constructionProfiler.stop();
-  dbgs() << "Done\n";
 }
 
 bool CompositionFrameworkPass::runOnModule(llvm::Module& M) {
@@ -182,12 +161,6 @@ bool CompositionFrameworkPass::analysisPass(llvm::Module& M) {
   Graph = buildGraphFromManifests(manifests);
   addCallGraph(Graph, M);
   printGraphs(Graph, "graph_raw");
-
-  expandGraph(Graph);
-  printGraphs(Graph, "graph_expanded");
-
-  reduceGraph(Graph);
-  printGraphs(Graph, "graph_reduced");
 
   return false;
 }
@@ -240,7 +213,7 @@ bool CompositionFrameworkPass::graphPass(llvm::Module& M) {
   dbgs() << "Calculating Manifest dependencies\n";
   Graph->computeManifestDependencies();
   dbgs() << "GraphPass strong_components\n";
-  Graph->conflictHandling(Graph->getGraph(), strategies.at(UseStrategy.getValue()));
+  Graph->conflictHandling(strategies.at(UseStrategy.getValue()));
 
   printGraphs(Graph, "graph_scc");
   dbgs() << "GraphPass done\n";
@@ -256,8 +229,6 @@ bool CompositionFrameworkPass::graphPass(llvm::Module& M) {
     }
   }
   Graph = buildGraphFromManifests(manifests);
-  expandGraph(Graph);
-  reduceGraph(Graph);
   Graph->computeManifestDependencies();
 
   std::unordered_set<llvm::Instruction*> instructions{};
@@ -267,7 +238,7 @@ bool CompositionFrameworkPass::graphPass(llvm::Module& M) {
     instructions.insert(result.begin(), result.end());
   }
 
-  Graph->optimizeProtections(Graph->getGraph(), BFI, &M, manifests, instructions);
+  // Graph->optimizeProtections(BFI, &M, manifests, instructions);
   dbgs() << "Optimizing done\n";
 
   return false;

@@ -15,6 +15,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
 find_package(Boost 1.58 REQUIRED COMPONENTS graph)
 find_package(LLVM 6.0 REQUIRED CONFIG)
 find_package(nlohmann_json REQUIRED)
+find_package(LEMON REQUIRED)
 
 ##
 ## CONFIGURATION
@@ -29,13 +30,11 @@ set(Boost_USE_STATIC_RUNTIME OFF)
 ##
 
 add_library(CompositionFramework SHARED
-        include/composition/graph/graph.hpp
         include/composition/graph/ProtectionGraph.hpp
         include/composition/graph/edge.hpp
         include/composition/graph/vertex.hpp
 
         include/composition/graph/algorithm/strong_components.hpp
-        include/composition/graph/algorithm/topological_sort.hpp
 
         include/composition/graph/constraint/bitmask.hpp
         include/composition/graph/constraint/constraint.hpp
@@ -43,11 +42,6 @@ add_library(CompositionFramework SHARED
         include/composition/graph/constraint/present.hpp
         include/composition/graph/constraint/preserved.hpp
         include/composition/graph/constraint/true.hpp
-
-        include/composition/graph/filter/filter.hpp
-        include/composition/graph/filter/removed.hpp
-        include/composition/graph/filter/dependency.hpp
-        include/composition/graph/filter/selfcycle.hpp
 
         include/composition/graph/util/dot.hpp
         include/composition/graph/util/graphviz.hpp
@@ -139,6 +133,7 @@ target_include_directories(CompositionFramework
         ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${Boost_INCLUDE_DIRS}
         ${LLVM_INCLUDE_DIRS}
+        ${LEMON_INCLUDE_DIRS}
         )
 
 if ($ENV{CLION_IDE})
@@ -147,7 +142,7 @@ if ($ENV{CLION_IDE})
 endif ()
 
 
-target_compile_options(CompositionFramework PRIVATE -g)
+target_compile_options(CompositionFramework PRIVATE -g -fno-rtti)
 target_compile_features(CompositionFramework PUBLIC cxx_std_17)
 target_link_libraries(CompositionFramework PRIVATE Boost::graph nlohmann_json::nlohmann_json)
 

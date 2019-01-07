@@ -9,6 +9,7 @@
 
 namespace composition::graph::algorithm {
 
+using composition::graph::util::index_map;
 /**
  * Algorithm to compute the strong components in a graph.
  * @tparam graph_t the type of `g` to support any type of graph
