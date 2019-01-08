@@ -6,9 +6,9 @@
 #include <cstdint>
 #include <functional>
 #include <llvm/IR/Value.h>
+#include <ostream>
 #include <unordered_set>
 #include <utility>
-#include <ostream>
 
 namespace composition {
 
@@ -20,10 +20,10 @@ class Manifest;
  */
 using PatchFunction = std::function<void(const Manifest&)>;
 
-// ManifestIndex type. 
+// ManifestIndex type.
 enum class manifest_idx_t : uint64_t;
 manifest_idx_t& operator++(manifest_idx_t& i);
-manifest_idx_t operator++(manifest_idx_t& i, int);
+const manifest_idx_t operator++(manifest_idx_t& i, int);
 std::ostream& operator<<(std::ostream& out, const manifest_idx_t& i);
 llvm::raw_ostream& operator<<(llvm::raw_ostream& out, const manifest_idx_t& i);
 
@@ -110,28 +110,9 @@ public:
 
   /**
    * Removes invalid values from the manifest
-   * @return true if all constraints are still valid, false otherwise
    */
-  bool Clean();
+  void Clean();
 };
-
-/**
- * Custom Hash Functor that computes the hash of the manifest
- */
-class ManifestHasher {
-  size_t operator()(const Manifest& m) const { 
-    using T = typename std::underlying_type<composition::manifest_idx_t>::type;
-    return std::hash<T>()(static_cast<T>(m.index)); 
-   }
-};
-
-/**
- * Custom comparator that compares the ids of the manifests.
- */
-class ManifestComparator {
-  bool operator()(const Manifest& m1, const Manifest& m2) const { return m1.index == m2.index; }
-};
-
 } // namespace composition
 
 namespace std {
@@ -142,9 +123,9 @@ template <> struct hash<composition::Manifest> {
    * @param m the manifest
    * @return the `index` of the manifest
    */
-  size_t operator()(const composition::Manifest& m) const { 
+  size_t operator()(const composition::Manifest& m) const {
     using T = typename std::underlying_type<composition::manifest_idx_t>::type;
-    return std::hash<T>()(static_cast<T>(m.index)); 
+    return std::hash<T>()(static_cast<T>(m.index));
   }
 };
 } // namespace std

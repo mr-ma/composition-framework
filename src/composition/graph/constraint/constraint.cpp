@@ -9,7 +9,7 @@ constraint_idx_t& operator++(constraint_idx_t& i) {
   return i;
 }
 
-constraint_idx_t operator++(constraint_idx_t& i, int) {
+const constraint_idx_t operator++(constraint_idx_t& i, int) {
   constraint_idx_t res(i);
   ++i;
   return res;

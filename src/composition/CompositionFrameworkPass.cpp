@@ -110,7 +110,7 @@ void addCallGraph(std::unique_ptr<graph::ProtectionGraph>& g, llvm::Module& M) {
           }
 
           // Only direct calls are possible to track
-          g->addCFG(&F, Callee);
+          // g->addCFG(&F, Callee);
         }
       }
     }
@@ -160,6 +160,7 @@ bool CompositionFrameworkPass::analysisPass(llvm::Module& M) {
 
   Graph = buildGraphFromManifests(manifests);
   addCallGraph(Graph, M);
+  Graph->addHierarchy(M);
   printGraphs(Graph, "graph_raw");
 
   return false;
@@ -218,7 +219,7 @@ bool CompositionFrameworkPass::graphPass(llvm::Module& M) {
   printGraphs(Graph, "graph_scc");
   dbgs() << "GraphPass done\n";
 
-  dbgs() << "Optimizing\n";
+  /*dbgs() << "Optimizing\n";
   auto manifests = SortedManifests();
   Graph->destroy();
 
@@ -239,7 +240,7 @@ bool CompositionFrameworkPass::graphPass(llvm::Module& M) {
   }
 
   // Graph->optimizeProtections(BFI, &M, manifests, instructions);
-  dbgs() << "Optimizing done\n";
+  dbgs() << "Optimizing done\n";*/
 
   return false;
 }
@@ -289,7 +290,7 @@ bool CompositionFrameworkPass::protectionPass(llvm::Module& M) {
   writePatchInfo(patchInfos);
 
   dbgs() << "Collecting stats\n";
-  cStats.stats.collect(sensitiveFunctions, manifests, Graph->getManifestProtectionMap());
+  // cStats.stats.collect(sensitiveFunctions, manifests, Graph->getManifestProtectionMap());
   cStats.dump(dbgs());
 
   if (!DumpStats.empty()) {
@@ -303,6 +304,7 @@ bool CompositionFrameworkPass::protectionPass(llvm::Module& M) {
     }
     fdStream.close();
   }
+  Graph->destroy();
 
   dbgs() << "Cleanup\n";
   trace::PreservedValueRegistry::Clear();

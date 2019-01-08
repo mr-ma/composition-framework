@@ -21,7 +21,7 @@ vertex_idx_t& operator++(vertex_idx_t& i) {
   i = vertex_idx_t(++val);
   return i;
 }
-vertex_idx_t operator++(vertex_idx_t& i, int) {
+const vertex_idx_t operator++(vertex_idx_t& i, int) {
   vertex_idx_t res(i);
   ++i;
   return res;

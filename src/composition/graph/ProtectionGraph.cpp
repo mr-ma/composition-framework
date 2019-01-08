@@ -39,19 +39,30 @@ void ProtectionGraph::addManifest(Manifest* m) {
   }
 }
 
-vertex_idx_t ProtectionGraph::add_vertex(llvm::Value* v) {
-  auto vFound = vertexCache.find(v);
-  if (vFound != vertexCache.end() && VERTICES.find(vFound->second) != VERTICES.end()) {
+vertex_idx_t ProtectionGraph::add_vertex(llvm::Value* value) {
+  auto vFound = vertexCache.find(value);
+  if (vFound != vertexCache.end() && VERTICES_DESCRIPTORS.find(vFound->second) != VERTICES_DESCRIPTORS.end()) {
     return vFound->second;
   }
   vertex_idx_t idx = VertexIdx++;
 
   auto vd = LG.addNode();
-  (*vertices)[vd] = vertex_t(idx, v, llvmToVertexName(v), llvmToVertexType(v), {});
-  // VERTICES.insert({idx, vd});
+  (*vertices)[vd] = vertex_t(idx, value, llvmToVertexName(value), llvmToVertexType(value));
   VERTICES_DESCRIPTORS.insert({idx, vd});
-  vertexCache.insert({v, idx});
+  vertexCache.insert({value, idx});
   return idx;
+}
+
+vertex_idx_t ProtectionGraph::add_vertex(
+    llvm::Value* value,
+    const std::unordered_map<constraint::constraint_idx_t, std::shared_ptr<constraint::Constraint>>& constraints) {
+  vertex_idx_t idx = add_vertex(value);
+  auto& v = (*vertices)[VERTICES_DESCRIPTORS.at(idx)];
+
+  for (auto& [cIdx, c] : constraints) {
+    v.constraints.insert({cIdx, c});
+    CONSTRAINTS_VERTICES.insert({cIdx, idx});
+  }
 }
 
 void ProtectionGraph::remove_vertex(vertex_idx_t idx) noexcept {
@@ -75,27 +86,34 @@ void ProtectionGraph::remove_vertex(vertex_idx_t idx) noexcept {
   // VERTICES_DESCRIPTORS.left.erase(idx);*/
 }
 
-edge_idx_t ProtectionGraph::add_edge(vertex_idx_t sIdx, vertex_idx_t dIdx, edge_t newE) {
+edge_idx_t ProtectionGraph::add_edge(vertex_idx_t sIdx, vertex_idx_t dIdx) {
   assert(sIdx != dIdx);
-  auto source = VERTICES_DESCRIPTORS.left.at(sIdx);
-  auto destination = VERTICES_DESCRIPTORS.left.at(dIdx);
+  auto source = VERTICES_DESCRIPTORS.at(sIdx);
+  auto destination = VERTICES_DESCRIPTORS.at(dIdx);
   assert(source != destination);
 
   lemon::ListDigraph::Arc ed = lemon::findArc(LG, source, destination);
   if (ed != lemon::INVALID) {
-    edge_idx_t idx = EDGES_DESCRIPTORS.right.at(ed);
-    // edge_t& e = EDGES.at(idx);
-    edge_t& e = (*edges)[ed];
-    e.constraints.insert(newE.constraints.begin(), newE.constraints.end());
-    EDGES_DESCRIPTORS.insert({idx, ed});
-    return idx;
+    return (*edges)[ed].index;
   }
   ed = LG.addArc(source, destination);
 
-  edge_idx_t idx = newE.index;
-  // EDGES.insert({idx, ed});
-  (*edges)[ed] = newE;
+  edge_idx_t idx = EdgeIdx++;
+  (*edges)[ed] = edge_t{idx};
   EDGES_DESCRIPTORS.insert({idx, ed});
+  return idx;
+}
+
+edge_idx_t ProtectionGraph::add_edge(
+    vertex_idx_t sIdx, vertex_idx_t dIdx,
+    const std::unordered_map<constraint::constraint_idx_t, std::shared_ptr<constraint::Constraint>>& constraints) {
+  edge_idx_t idx = add_edge(sIdx, dIdx);
+  auto& e = (*edges)[EDGES_DESCRIPTORS.at(idx)];
+
+  for (auto& [cIdx, c] : constraints) {
+    e.constraints.insert({cIdx, c});
+    CONSTRAINTS_EDGES.insert({ConstraintIdx, EdgeIdx});
+  }
   return idx;
 }
 
@@ -109,14 +127,14 @@ void ProtectionGraph::remove_edge(edge_idx_t idx) noexcept {
     */
 }
 
-void ProtectionGraph::removeManifest(manifest_idx_t idx) {
-  for (auto [it, it_end] = MANIFESTS_CONSTRAINTS.left.equal_range(idx); it != it_end; ++it) {
+void ProtectionGraph::removeManifest(manifest_idx_t mIdx) {
+  for (auto [it, it_end] = MANIFESTS_CONSTRAINTS.left.equal_range(mIdx); it != it_end; ++it) {
     constraint_idx_t cIdx = it->second;
 
     auto vFound = CONSTRAINTS_VERTICES.find(cIdx);
     if (vFound != CONSTRAINTS_VERTICES.end()) {
       vertex_idx_t idx = vFound->second;
-      vertex_t& v = VERTICES.at(idx);
+      vertex_t& v = (*vertices)[VERTICES_DESCRIPTORS.at(idx)];
       v.constraints.erase(cIdx);
 
       if (v.constraints.empty()) {
@@ -124,79 +142,64 @@ void ProtectionGraph::removeManifest(manifest_idx_t idx) {
       }
     } else {
       auto eFound = CONSTRAINTS_EDGES.find(cIdx);
-      if (eFound != CONSTRAINTS_EDGES.end()) {
-        edge_idx_t idx = eFound->second;
-        edge_t& e = EDGES.at(idx);
-        e.constraints.erase(cIdx);
-
-        if (e.constraints.empty()) {
-          remove_edge(idx);
-        }
-      } else {
+      if (eFound == CONSTRAINTS_EDGES.end()) {
         llvm_unreachable("Constraint was neither a vertice nor an edge.");
+      }
+
+      edge_idx_t idx = eFound->second;
+      edge_t& e = (*edges)[EDGES_DESCRIPTORS.at(idx)];
+      e.constraints.erase(cIdx);
+
+      if (e.constraints.empty()) {
+        remove_edge(idx);
       }
     }
   }
 
-  for (auto [it, it_end] = DependencyUndo.right.equal_range(idx); it != it_end; ++it) {
+  for (auto [it, it_end] = DependencyUndo.right.equal_range(mIdx); it != it_end; ++it) {
     removeManifest(it->second);
   }
-  DependencyUndo.right.erase(idx);
+  DependencyUndo.right.erase(mIdx);
   // DependencyUndo.left.erase(idx);
-  ManifestProtection.right.erase(idx);
-  ManifestProtection.left.erase(idx);
+  ManifestProtection.right.erase(mIdx);
+  ManifestProtection.left.erase(mIdx);
 
-  ManifestRegistry::Remove(MANIFESTS.find(idx)->second);
-  MANIFESTS.erase(idx);
+  ManifestRegistry::Remove(MANIFESTS.find(mIdx)->second);
+  MANIFESTS.erase(mIdx);
 }
 
 constraint_idx_t ProtectionGraph::addConstraint(manifest_idx_t idx, std::shared_ptr<Constraint> c) {
-  CONSTRAINTS.insert({ConstraintIdx, c});
   MANIFESTS_CONSTRAINTS.insert({idx, ConstraintIdx});
   if (auto d = dyn_cast<Dependency>(c.get())) {
     auto dstNode = add_vertex(d->getFrom());
     auto srcNode = add_vertex(d->getTo());
-    edge_idx_t idx = add_edge(srcNode, dstNode, edge_t{EdgeIdx++, edge_type::DEPENDENCY});
-    addConstraintToEdge(ConstraintIdx, idx, c);
+    add_edge(srcNode, dstNode, {{ConstraintIdx, c}});
   } else if (auto present = dyn_cast<Present>(c.get())) {
-    vertex_idx_t idx = add_vertex(present->getTarget());
-    addConstraintToVertex(ConstraintIdx, idx, c);
+    add_vertex(present->getTarget(), {{ConstraintIdx, c}});
   } else if (auto preserved = dyn_cast<Preserved>(c.get())) {
-    vertex_idx_t idx = add_vertex(preserved->getTarget());
-    addConstraintToVertex(ConstraintIdx, idx, c);
+    add_vertex(preserved->getTarget(), {{ConstraintIdx, c}});
   } else if (auto tr = dyn_cast<True>(c.get())) {
-    vertex_idx_t idx = add_vertex(tr->getTarget());
-    addConstraintToVertex(ConstraintIdx, idx, c);
+    add_vertex(tr->getTarget(), {{ConstraintIdx, c}});
   } else {
     llvm_unreachable("Constraint unknown!");
   }
   return ConstraintIdx++;
 }
 
-void ProtectionGraph::addConstraintToVertex(constraint_idx_t ConstraintIdx, vertex_idx_t VertexIdx,
-                                            std::shared_ptr<Constraint> c) {
-  (*vertices)[VERTICES_DESCRIPTORS.left.at(VertexIdx)].constraints.insert({ConstraintIdx, c});
-  CONSTRAINTS_VERTICES.insert({ConstraintIdx, VertexIdx});
-}
-
-void ProtectionGraph::addConstraintToEdge(constraint_idx_t ConstraintIdx, edge_idx_t EdgeIdx,
-                                          std::shared_ptr<Constraint> c) {
-  (*edges)[EDGES_DESCRIPTORS.left.at(EdgeIdx)].constraints.insert({ConstraintIdx, c});
-  CONSTRAINTS_EDGES.insert({ConstraintIdx, EdgeIdx});
-}
-
 std::vector<Manifest*> ProtectionGraph::topologicalSortManifests(std::unordered_set<Manifest*> manifests) {
+  lemon::ListDigraph::NodeMap<int> order{LG};
+  assert(lemon::checkedTopologicalSort(LG, order) == true);
+
   std::set<Manifest*> all{manifests.begin(), manifests.end()};
   std::set<Manifest*> seen{};
 
   for (lemon::ListDigraph::NodeIt n(LG); n != lemon::INVALID; ++n) {
     for (lemon::ListDigraph::InArcIt ei(LG, n); ei != lemon::INVALID; ++ei) {
-      edge_idx_t idx = EDGES_DESCRIPTORS.right.at(ei);
       const edge_t& e = (*edges)[ei];
       for (auto& [cIdx, c] : e.constraints) {
         auto it = MANIFESTS_CONSTRAINTS.right.find(cIdx);
         if (it == MANIFESTS_CONSTRAINTS.right.end()) {
-          llvm_unreachable("Protection was lost.");
+          continue;
         }
         manifest_idx_t idx = it->second;
         seen.insert(MANIFESTS.find(idx)->second);
@@ -208,23 +211,26 @@ std::vector<Manifest*> ProtectionGraph::topologicalSortManifests(std::unordered_
   std::set_difference(all.begin(), all.end(), seen.begin(), seen.end(), std::back_inserter(result));
 
   seen.clear();
-  lemon::ListDigraph::NodeMap<int> order{LG};
+  // lemon::ListDigraph::NodeMap<int> order{LG};
   assert(lemon::checkedTopologicalSort(LG, order) == true);
 
-  const int nodes = lemon::countNodes(LG);
+  const unsigned long nodes = lemon::countNodes(LG);
   std::vector<lemon::ListDigraph::Node> sorted(nodes);
 
   for (lemon::ListDigraph::NodeIt n(LG); n != lemon::INVALID; ++n) {
-    sorted[order[n]] = static_cast<lemon::ListDigraph::Node>(n);
+    sorted[nodes - order[n] - 1] = static_cast<lemon::ListDigraph::Node>(n);
   }
 
   for (lemon::ListDigraph::Node& n : sorted) {
     for (lemon::ListDigraph::InArcIt ei(LG, n); ei != lemon::INVALID; ++ei) {
-      edge_idx_t idx = EDGES_DESCRIPTORS.right.at(ei);
       const edge_t& e = (*edges)[ei];
+      edge_idx_t idx = e.index;
       for (auto& [cIdx, c] : e.constraints) {
-        manifest_idx_t idx = MANIFESTS_CONSTRAINTS.right.find(cIdx)->second;
-        Manifest* manifest = MANIFESTS.find(idx)->second;
+        auto mFound = MANIFESTS_CONSTRAINTS.right.find(cIdx);
+        if (mFound == MANIFESTS_CONSTRAINTS.right.end()) {
+          continue;
+        }
+        Manifest* manifest = MANIFESTS.at(mFound->second);
 
         if (seen.find(manifest) != seen.end()) {
           continue;
@@ -236,6 +242,22 @@ std::vector<Manifest*> ProtectionGraph::topologicalSortManifests(std::unordered_
   }
 
   return result;
+}
+
+void ProtectionGraph::addHierarchy(llvm::Module& M) {
+  for (auto&& F : M) {
+    auto fNode = add_vertex(&F);
+    for (auto&& BB : F) {
+      auto bbNode = add_vertex(&BB);
+      add_edge(bbNode, fNode, {{ConstraintIdx++, std::make_shared<Dependency>("hierarchy", &BB, &F)}});
+      // add_edge(fNode, bbNode, edge_t{});
+      for (auto&& I : BB) {
+        auto iNode = add_vertex(&I);
+        add_edge(iNode, bbNode, {{ConstraintIdx++, std::make_shared<Dependency>("hierarchy", &I, &BB)}});
+        // add_edge(bbNode, iNode, edge_t{});
+      }
+    }
+  }
 }
 
 void ProtectionGraph::destroy() {

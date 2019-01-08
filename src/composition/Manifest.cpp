@@ -30,7 +30,7 @@ manifest_idx_t& operator++(manifest_idx_t& i) {
   return i;
 }
 
-manifest_idx_t operator++(manifest_idx_t& i, int) {
+const manifest_idx_t operator++(manifest_idx_t& i, int) {
   manifest_idx_t res(i);
   ++i;
   return res;
@@ -131,7 +131,7 @@ std::string valueToName(llvm::Value* v) {
     return v->getName();
   }
   std::stringstream s{};
-  s << std::addressof(v);
+  s << reinterpret_cast<uintptr_t>(v);
   return s.str();
 }
 
@@ -164,17 +164,25 @@ void Manifest::dump() {
   }
 }
 
-bool Manifest::Clean() {
-  for (auto it = undoValues.begin(), it_end = undoValues.end(); it != it_end; ++it) {
+void Manifest::Clean() {
+  for (auto it = undoValues.begin(); it != undoValues.end();) {
     if (!it->pointsToAliveValue()) {
       it = undoValues.erase(it);
+    } else {
+      ++it;
     }
   }
-  for (auto it = constraints.begin(), it_end = constraints.end(); it != it_end; ++it) {
+  for (auto it = constraints.begin(); it != constraints.end();) {
     if (!(*it)->isValid()) {
       it = constraints.erase(it);
+    } else {
+      auto* dep = llvm::dyn_cast<Dependency>(it->get());
+      if (dep != nullptr && dep->getFrom() == dep->getTo()) {
+        it = constraints.erase(it);
+      } else {
+        ++it;
+      }
     }
   }
-  return true;
 }
 } // namespace composition

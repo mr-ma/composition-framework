@@ -3,6 +3,7 @@
 
 // @src: https://github.com/rcorcs/llvm-heat-printer
 
+namespace composition::metric {
 using llvm::BasicBlock;
 using llvm::BlockFrequencyInfo;
 using llvm::Function;
@@ -10,7 +11,6 @@ using llvm::function_ref;
 using llvm::LLVMContext;
 using llvm::Module;
 
-namespace composition::metric {
 bool Performance::hasProfiling(Module& M) {
   for (auto& F : M) {
     for (auto& BB : F) {

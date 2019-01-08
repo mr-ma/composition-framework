@@ -1,6 +1,8 @@
 #include <composition/graph/constraint/dependency.hpp>
 
 namespace composition::graph::constraint {
+using llvm::WeakVH;
+
 Dependency::Dependency(std::string info, llvm::Value* from, llvm::Value* to)
     : Constraint(ConstraintType::CK_DEPENDENCY, GraphType::EDGE, std::move(info)), from(from), to(to) {}
 

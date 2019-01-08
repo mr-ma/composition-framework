@@ -26,7 +26,7 @@ void ManifestRegistry::Add(Manifest* m) {
 
 void ManifestRegistry::destroy() {
   for (auto* m : RegisteredManifests()) {
-    delete m;
+    // delete m;
   }
   RegisteredManifests().clear();
 }

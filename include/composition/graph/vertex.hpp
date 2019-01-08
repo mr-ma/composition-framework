@@ -12,7 +12,7 @@ namespace composition::graph {
 // vertex_idx_t type.
 enum vertex_idx_t : uintptr_t;
 vertex_idx_t& operator++(vertex_idx_t& i);
-vertex_idx_t operator++(vertex_idx_t& i, int);
+const vertex_idx_t operator++(vertex_idx_t& i, int);
 bool operator<(vertex_idx_t lhs, vertex_idx_t rhs);
 
 /**

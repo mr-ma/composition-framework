@@ -12,20 +12,9 @@ namespace composition::graph {
 // edge_idx_t type.
 enum class edge_idx_t : uintptr_t;
 edge_idx_t& operator++(edge_idx_t& i);
-edge_idx_t operator++(edge_idx_t& i, int);
+const edge_idx_t operator++(edge_idx_t& i, int);
 std::ostream& operator<<(std::ostream& out, const edge_idx_t& i);
 bool operator<(edge_idx_t lhs, edge_idx_t rhs);
-
-/**
- * Type of the edge in a graph
- */
-enum class edge_type {
-  UNKNOWN,
-  CFG,
-  DEPENDENCY,
-};
-
-std::ostream& operator<<(std::ostream& os, const edge_type& obj);
 
 /**
  * Defines the structure of an edge in the graph.
@@ -35,11 +24,6 @@ struct edge_t {
    * Unique index of the edge
    */
   edge_idx_t index;
-  /**
-   * Type of the edge
-   */
-  edge_type type;
-
   /**
    * Existing constraints for this edge
    */
@@ -51,7 +35,9 @@ struct edge_t {
    * @param name the name of the edge
    * @param type the type of the edge
    */
-  explicit edge_t(edge_idx_t index = edge_idx_t(0), edge_type type = edge_type::UNKNOWN) noexcept;
+  explicit edge_t(edge_idx_t index = edge_idx_t(0),
+                  std::unordered_map<constraint::constraint_idx_t, std::shared_ptr<constraint::Constraint>>
+                      constraints = {}) noexcept;
 
   std::ostream& operator<<(std::ostream& os) noexcept;
 

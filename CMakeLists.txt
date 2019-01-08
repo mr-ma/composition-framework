@@ -34,8 +34,6 @@ add_library(CompositionFramework SHARED
         include/composition/graph/edge.hpp
         include/composition/graph/vertex.hpp
 
-        include/composition/graph/algorithm/strong_components.hpp
-
         include/composition/graph/constraint/bitmask.hpp
         include/composition/graph/constraint/constraint.hpp
         include/composition/graph/constraint/dependency.hpp
@@ -46,8 +44,6 @@ add_library(CompositionFramework SHARED
         include/composition/graph/util/dot.hpp
         include/composition/graph/util/graphviz.hpp
         include/composition/graph/util/graphml.hpp
-        include/composition/graph/util/index_map.hpp
-        include/composition/graph/util/vertex_count.hpp
         include/composition/graph/util/constraint_map.hpp
 
         include/composition/metric/Coverage.hpp

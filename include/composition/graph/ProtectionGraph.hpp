@@ -4,13 +4,10 @@
 #include <boost/bimap/bimap.hpp>
 #include <boost/bimap/multiset_of.hpp>
 #include <composition/ManifestRegistry.hpp>
-#include <composition/graph/algorithm/strong_components.hpp>
 #include <composition/graph/constraint/constraint.hpp>
 #include <composition/graph/constraint/true.hpp>
 #include <composition/graph/util/dot.hpp>
 #include <composition/graph/util/graphml.hpp>
-#include <composition/graph/util/index_map.hpp>
-#include <composition/graph/util/vertex_count.hpp>
 #include <composition/metric/Performance.hpp>
 #include <composition/profiler.hpp>
 #include <composition/strategy/Random.hpp>
@@ -29,7 +26,6 @@
 #include <utility>
 
 namespace composition::graph {
-using composition::graph::algorithm::strong_components;
 using composition::graph::constraint::Constraint;
 using composition::graph::constraint::constraint_idx_t;
 using composition::graph::constraint::Present;
@@ -39,8 +35,6 @@ using composition::graph::constraint::PreservedConstraint;
 using composition::graph::constraint::True;
 using composition::graph::util::graph_to_dot;
 using composition::graph::util::graph_to_graphml;
-using composition::graph::util::index_map;
-using composition::graph::util::vertex_count;
 using composition::metric::Performance;
 using composition::support::cStats;
 
@@ -62,6 +56,8 @@ private:
   lemon::ListDigraph LG{};
   std::unique_ptr<lemon::ListDigraph::NodeMap<vertex_t>> vertices;
   std::unique_ptr<lemon::ListDigraph::ArcMap<edge_t>> edges;
+  std::unordered_map<vertex_idx_t, lemon::ListDigraph::Node> VERTICES_DESCRIPTORS{};
+  std::unordered_map<edge_idx_t, lemon::ListDigraph::Arc> EDGES_DESCRIPTORS{};
 
   /**
    * The current strictly increasing vertex index
@@ -88,15 +84,9 @@ private:
 
   constraint_idx_t ConstraintIdx{};
 
-  std::unordered_map<constraint_idx_t, std::shared_ptr<Constraint>> CONSTRAINTS{};
   boost::bimaps::bimap<boost::bimaps::multiset_of<manifest_idx_t>, constraint_idx_t> MANIFESTS_CONSTRAINTS{};
   std::unordered_map<constraint_idx_t, vertex_idx_t> CONSTRAINTS_VERTICES{};
   std::unordered_map<constraint_idx_t, edge_idx_t> CONSTRAINTS_EDGES{};
-
-  std::map<vertex_idx_t, vertex_t> VERTICES{};
-  boost::bimaps::bimap<vertex_idx_t, lemon::ListDigraph::Node> VERTICES_DESCRIPTORS{};
-  std::map<edge_idx_t, edge_t> EDGES{};
-  boost::bimaps::bimap<edge_idx_t, lemon::ListDigraph::Arc> EDGES_DESCRIPTORS{};
 
 private:
   /**
@@ -104,10 +94,11 @@ private:
    * @param v the llvm value
    * @return a vertex descriptor for the added/existing vertex
    */
-  vertex_idx_t add_vertex(llvm::Value* v);
+  vertex_idx_t add_vertex(llvm::Value* value);
+  vertex_idx_t add_vertex(
+      llvm::Value* value,
+      const std::unordered_map<constraint::constraint_idx_t, std::shared_ptr<constraint::Constraint>>& constraints);
 
-  void addConstraintToVertex(constraint_idx_t ConstraintIdx, vertex_idx_t VertexIdx, std::shared_ptr<Constraint> c);
-  void addConstraintToEdge(constraint_idx_t ConstraintIdx, edge_idx_t EdgeIdx, std::shared_ptr<Constraint> c);
   /**
    * Removes a vertex from the graph
    * @param vd the vertex descriptor
@@ -121,7 +112,10 @@ private:
    * @param e the associated edge information
    * @return an edge descriptor pointing to the added edge
    */
-  edge_idx_t add_edge(vertex_idx_t s, vertex_idx_t d, edge_t e);
+  edge_idx_t add_edge(vertex_idx_t s, vertex_idx_t d);
+  edge_idx_t add_edge(
+      vertex_idx_t s, vertex_idx_t d,
+      const std::unordered_map<constraint::constraint_idx_t, std::shared_ptr<constraint::Constraint>>& constraints);
   /**
    * Removes an edge from the graph
    * @param ed the edge descriptor
@@ -160,18 +154,7 @@ public:
    */
   constraint_idx_t addConstraint(manifest_idx_t idx, std::shared_ptr<Constraint> c);
 
-  /**
-   * Adds CFG edges to the graph
-   * @param parent the source llvm value
-   * @param child the target llvm value
-   * @return a unique protection index
-   */
-  edge_idx_t addCFG(llvm::Value* parent, llvm::Value* child) {
-    assert(parent != nullptr);
-    assert(child != nullptr);
-    this->add_edge(this->add_vertex(parent), this->add_vertex(child), edge_t{EdgeIdx, edge_type::CFG});
-    return EdgeIdx++;
-  }
+  void addHierarchy(llvm::Module& M);
 
   /**
    * Performs a topological sorting of the given manifests according to the protection graph

@@ -4,13 +4,11 @@
 #include <boost/algorithm/string/replace.hpp>
 #include <composition/graph/edge.hpp>
 #include <composition/graph/util/constraint_map.hpp>
-#include <composition/graph/util/index_map.hpp>
 #include <composition/graph/vertex.hpp>
 #include <fstream>
 #include <ostream>
 
 namespace composition::graph::util {
-using composition::graph::util::index_map;
 /**
  * Writes the graph `g` to the file `filename` in graphml format
  * @tparam graph_t the type of the graph `g`
