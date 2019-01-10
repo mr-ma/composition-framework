@@ -13,6 +13,7 @@
 #include <composition/strategy/Random.hpp>
 #include <composition/strategy/Strategy.hpp>
 #include <composition/support/options.hpp>
+#include <lemon/graph_to_eps.h>
 #include <lemon/list_graph.h>
 #include <llvm/Analysis/BlockFrequencyInfo.h>
 #include <llvm/IR/BasicBlock.h>
@@ -70,7 +71,10 @@ private:
   /**
    * Cache of vertices for faster lookup
    */
-  std::unordered_map<llvm::Value*, vertex_idx_t> vertexCache{};
+  std::unordered_map<llvm::Value*, vertex_idx_t> vertexRealCache{};
+  std::unordered_map<llvm::Value*, vertex_idx_t> vertexShadowCache{};
+  std::array<decltype(&vertexRealCache), 2> vertexCache = {{&vertexRealCache, &vertexShadowCache}};
+
   /**
    * Map which captures the undo relationship between manifests.
    */
@@ -94,7 +98,7 @@ private:
    * @param v the llvm value
    * @return a vertex descriptor for the added/existing vertex
    */
-  vertex_idx_t add_vertex(llvm::Value* value);
+  vertex_idx_t add_vertex(llvm::Value* value, bool shadow);
   vertex_idx_t add_vertex(
       llvm::Value* value,
       const std::unordered_map<constraint::constraint_idx_t, std::shared_ptr<constraint::Constraint>>& constraints);
@@ -137,14 +141,41 @@ public:
   void addManifests(std::vector<Manifest*> manifests);
   void addManifest(Manifest* m);
 
-  template <typename graph_t> void Print(graph_t& g, std::string name) {
+  void Print(std::string name) {
+    auto texts = lemon::ListDigraph::NodeMap<std::string>(LG);
+    auto coords = lemon::ListDigraph::NodeMap<lemon::dim2::Point<int>>(LG);
+    auto sizes = lemon::ListDigraph::NodeMap<int>(LG);
+    int i = 0;
+    for (lemon::ListDigraph::NodeIt n(LG); n != lemon::INVALID; ++n) {
+      texts[n] = (*vertices)[n].name;
+      coords[n] = lemon::dim2::Point<int>(i % 2, i / 2);
+      sizes[n] = 1;
+      ++i;
+    }
+
+    auto widths = lemon::ListDigraph::ArcMap<double>(LG);
+    for (lemon::ListDigraph::ArcIt e(LG); e != lemon::INVALID; ++e) {
+      widths[e] = 0.5;
+    }
+
+    lemon::graphToEps(LG, name + ".eps")
+        .nodeSizes(sizes)
+        .negateY()
+        //.absoluteNodeSizes()
+        .coords(coords)
+        .nodeTexts(texts)
+        .nodeTextSize(0.05)
+        .drawArrows()
+        .arrowWidth(0.1)
+        .edgeWidths(widths)
+        .absoluteEdgeWidths()
+        .run();
+
     // const auto& [isPresent, isPreserved] = constraint_map(g, VERTICES, VERTICES_DESCRIPTORS);
 
     // graph_to_dot(g, name + ".dot", isPresent, isPreserved);
     // graph_to_graphml(g, name + ".graphml", isPresent, isPreserved);
   }
-
-  // void Print(std::string name) { Print(Graph, name); }
 
   /**
    * Adds a constraint to the protection graph
@@ -155,6 +186,8 @@ public:
   constraint_idx_t addConstraint(manifest_idx_t idx, std::shared_ptr<Constraint> c);
 
   void addHierarchy(llvm::Module& M);
+
+  void connectShadowNodes();
 
   /**
    * Performs a topological sorting of the given manifests according to the protection graph

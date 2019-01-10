@@ -1,5 +1,6 @@
 #include <composition/AnalysisRegistry.hpp>
 #include <composition/CompositionFrameworkPass.hpp>
+#include <composition/graph/constraint/dependency.hpp>
 #include <composition/graph/constraint/true.hpp>
 #include <composition/graph/util/dot.hpp>
 #include <composition/graph/util/graphml.hpp>
@@ -10,6 +11,7 @@
 #include <composition/support/Pass.hpp>
 #include <composition/support/options.hpp>
 #include <composition/trace/PreservedValueRegistry.hpp>
+#include <function-filter/Filter.hpp>
 #include <llvm/Analysis/BlockFrequencyInfo.h>
 #include <llvm/IR/CallSite.h>
 #include <llvm/IR/Constants.h>
@@ -17,7 +19,6 @@
 #include <llvm/Support/Error.h>
 #include <llvm/Support/raw_os_ostream.h>
 #include <llvm/Support/raw_ostream.h>
-#include <self-checksumming/FunctionFilter.h>
 
 using namespace llvm;
 
@@ -50,8 +51,37 @@ void CompositionFrameworkPass::getAnalysisUsage(llvm::AnalysisUsage& AU) const {
   }
 }
 
+void test() {
+  composition::graph::ProtectionGraph G{};
+  LLVMContext Context;
+  std::unique_ptr<llvm::Module> M(new Module("test", Context));
+
+  Type* ty = Type::getInt64Ty(Context);
+  llvm::Function* f1 = cast<Function>(M->getOrInsertFunction("f1", ty, ty, nullptr));
+  llvm::Function* f2 = cast<Function>(M->getOrInsertFunction("f2", ty, ty, nullptr));
+  BasicBlock* bb2 = BasicBlock::Create(Context, "EntryBlock", f2);
+  Value* One = ConstantInt::get(ty, 1);
+  Value* ret = ReturnInst::Create(Context, One, bb2);
+
+  auto m1 = new Manifest("sc-1", f2, {}, {std::make_shared<composition::graph::constraint::Dependency>("sc-1", f1, f2)},
+                         true, {});
+  auto m2 = new Manifest("sc-2", f1, {}, {std::make_shared<composition::graph::constraint::Dependency>("sc-2", f2, f1)},
+                         true, {});
+  std::vector<Manifest*> manifests = {m1, m2};
+  std::unordered_set<Manifest*> unordered = {m1, m2};
+  G.addManifests(manifests);
+  G.Print("nohierarchy");
+  G.addHierarchy(*M);
+  G.Print("noshadow");
+  G.connectShadowNodes();
+  G.Print("full");
+  G.topologicalSortManifests(unordered);
+  dbgs() << "Working?\n";
+}
+
 bool CompositionFrameworkPass::doInitialization(Module& M) {
   dbgs() << "AnalysisPass loaded...\n";
+  // test();
   // The following code loads all the tags from the source code.
   // The tags are then applied to the function for which a tag was used.
   // The tags may be used by any pass to decide if it is e.g., a sensitive
@@ -122,7 +152,7 @@ void addCallGraph(std::unique_ptr<graph::ProtectionGraph>& g, llvm::Module& M) {
 void printGraphs(std::unique_ptr<graph::ProtectionGraph>& g, std::string name) {
   if (DumpGraphs) {
     dbgs() << "Writing graphs\n";
-    // g->Print(name + ".dot");
+    g->Print(name);
   }
 }
 
@@ -161,6 +191,7 @@ bool CompositionFrameworkPass::analysisPass(llvm::Module& M) {
   Graph = buildGraphFromManifests(manifests);
   addCallGraph(Graph, M);
   Graph->addHierarchy(M);
+  Graph->connectShadowNodes();
   printGraphs(Graph, "graph_raw");
 
   return false;

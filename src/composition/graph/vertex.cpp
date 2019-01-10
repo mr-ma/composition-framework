@@ -16,8 +16,7 @@ using constraint::constraint_idx_t;
 using util::graphviz_encode;
 
 vertex_idx_t& operator++(vertex_idx_t& i) {
-  using T = typename std::underlying_type<vertex_idx_t>::type;
-  auto val = static_cast<T>(i);
+  auto val = static_cast<typename std::underlying_type<vertex_idx_t>::type>(i);
   i = vertex_idx_t(++val);
   return i;
 }
@@ -74,9 +73,10 @@ std::string llvmToVertexName(const llvm::Value* v) {
     if (I->getParent() != nullptr && I->getParent()->getParent() != nullptr) {
       name << I->getFunction()->getName().str() << "_" << static_cast<const void*>(I->getFunction()) << "_";
     }
-    name << std::addressof(v);
+    name << reinterpret_cast<uintptr_t>(v);
   } else if (auto* F = llvm::dyn_cast<llvm::Function>(v)) {
-    name << F->getName().str() << "_" << std::addressof(F);
+    // name << F->getName().str() << "_" << reinterpret_cast<uintptr_t>(F);
+    name << F->getName().str();
   } else {
     name << v->getName().str();
   }

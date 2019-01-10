@@ -12,16 +12,17 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
 ##
 ## Dependencies
 ##
-find_package(Boost 1.58 REQUIRED COMPONENTS graph)
-find_package(LLVM 6.0 REQUIRED CONFIG)
+find_package(Boost 1.58 REQUIRED)
+find_package(LLVM 7.0 REQUIRED CONFIG)
 find_package(nlohmann_json REQUIRED)
 find_package(LEMON REQUIRED)
+find_package(function-filter REQUIRED)
 
 ##
 ## CONFIGURATION
 ##
 set(Boost_USE_STATIC_LIBS OFF)
-set(Boost_USE_MULTITHREADED ON)
+set(Boost_USE_MULTITHREADED OFF)
 set(Boost_USE_STATIC_RUNTIME OFF)
 
 ##
@@ -42,7 +43,6 @@ add_library(CompositionFramework SHARED
         include/composition/graph/constraint/true.hpp
 
         include/composition/graph/util/dot.hpp
-        include/composition/graph/util/graphviz.hpp
         include/composition/graph/util/graphml.hpp
         include/composition/graph/util/constraint_map.hpp
 
@@ -84,8 +84,6 @@ add_library(CompositionFramework SHARED
         src/composition/graph/constraint/present.cpp
         src/composition/graph/constraint/preserved.cpp
         src/composition/graph/constraint/true.cpp
-
-        src/composition/graph/util/graphviz.cpp
 
         src/composition/metric/Coverage.cpp
         src/composition/metric/Performance.cpp
@@ -133,14 +131,14 @@ target_include_directories(CompositionFramework
         )
 
 if ($ENV{CLION_IDE})
-    include_directories("/usr/include/llvm-6.0/")
-    include_directories("/usr/include/llvm-c-6.0/")
+    include_directories("/usr/include/llvm-7.0/")
+    include_directories("/usr/include/llvm-c-7.0/")
 endif ()
 
 
 target_compile_options(CompositionFramework PRIVATE -g -fno-rtti)
 target_compile_features(CompositionFramework PUBLIC cxx_std_17)
-target_link_libraries(CompositionFramework PRIVATE Boost::graph nlohmann_json::nlohmann_json)
+target_link_libraries(CompositionFramework PRIVATE lemon nlohmann_json::nlohmann_json)
 
 target_compile_features(rtlib PUBLIC cxx_std_17)
 

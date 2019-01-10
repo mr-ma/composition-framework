@@ -7,7 +7,7 @@
         "{BINARY}",
         "{OUTPUT}/sc_guide.txt",
         "patch_guide",
-	"{OUTPUT}/sc.stats"
+        "{OUTPUT}/sc.stats"
       ]
     ],
     "oh": [
