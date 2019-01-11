@@ -4,12 +4,12 @@
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
 
-using namespace llvm;
 namespace composition::trace {
-using util::getPassName;
+using composition::util::getPassName;
+using llvm::dbgs;
 
 template <typename ExtraDataT>
-void TraceableValueState::Config::onRAUW(const ExtraDataT&, Value* oldValue, Value* newValue) {
+void TraceableValueState::Config::onRAUW(const ExtraDataT&, llvm::Value* oldValue, llvm::Value* newValue) {
   std::vector<std::pair<std::string, PreservedCallback>> callbacks;
   for (auto [it, it_end] = TraceableInfoMap.equal_range(oldValue); it != it_end; ++it) {
     if (it->second.preservedCallback == nullptr) {
@@ -34,7 +34,7 @@ void TraceableValueState::Config::onRAUW(const ExtraDataT&, Value* oldValue, Val
   }
 }
 
-template <typename ExtraDataT> void TraceableValueState::Config::onDelete(const ExtraDataT&, Value* oldValue) {
+template <typename ExtraDataT> void TraceableValueState::Config::onDelete(const ExtraDataT&, llvm::Value* oldValue) {
   std::vector<std::pair<std::string, PresentCallback>> callbacks;
   for (auto [it, it_end] = TraceableInfoMap.equal_range(oldValue); it != it_end; ++it) {
     if (it->second.presentCallback == nullptr) {
@@ -67,7 +67,7 @@ void TraceableValueState::erase(llvm::Value* v) {
   TraceableInfoMap.erase(v);
 }
 
-uint64_t TraceableValueState::getNumber(Value* v, TraceableCallbackInfo info) {
+uint64_t TraceableValueState::getNumber(llvm::Value* v, TraceableCallbackInfo info) {
   auto [MapIter, Inserted] = GlobalNumbers.insert({v, NextNumber});
   if (Inserted) {
     NextNumber++;
@@ -77,5 +77,5 @@ uint64_t TraceableValueState::getNumber(Value* v, TraceableCallbackInfo info) {
   return MapIter->second;
 }
 
-std::multimap<Value*, TraceableCallbackInfo> TraceableValueState::TraceableInfoMap = {};
+std::multimap<llvm::Value*, TraceableCallbackInfo> TraceableValueState::TraceableInfoMap = {};
 } // namespace composition::trace

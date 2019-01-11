@@ -1,17 +1,11 @@
-#include <array>
 #include <composition/graph/ProtectionGraph.hpp>
 #include <composition/graph/constraint/dependency.hpp>
-#include <cstdint>
 #include <lemon/connectivity.h>
-#include <llvm/Support/raw_ostream.h>
-#include <unordered_set>
 
-using namespace llvm;
 namespace composition::graph {
-
-using graph::constraint::constraint_idx_t;
-using graph::constraint::Dependency;
-using support::cStats;
+using composition::graph::constraint::Dependency;
+using llvm::dbgs;
+using llvm::dyn_cast;
 
 ProtectionGraph::ProtectionGraph() {
   vertices = std::make_unique<lemon::ListDigraph::NodeMap<vertex_t>>(LG);

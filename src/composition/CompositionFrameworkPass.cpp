@@ -20,20 +20,37 @@
 #include <llvm/Support/raw_os_ostream.h>
 #include <llvm/Support/raw_ostream.h>
 
-using namespace llvm;
-
 namespace composition {
-using graph::ManifestDependencyMap;
-using graph::ManifestProtectionMap;
-using graph::util::graph_to_dot;
-using graph::util::graph_to_graphml;
-using support::AddCFG;
-using support::cStats;
-using support::DumpGraphs;
-using support::DumpStats;
-using support::PatchInfo;
-using support::UseStrategy;
-using support::WeightConfig;
+using composition::graph::ManifestDependencyMap;
+using composition::graph::ManifestProtectionMap;
+using composition::graph::util::graph_to_dot;
+using composition::graph::util::graph_to_graphml;
+using composition::support::AddCFG;
+using composition::support::cStats;
+using composition::support::DumpGraphs;
+using composition::support::DumpStats;
+using composition::support::PatchInfo;
+using composition::support::UseStrategy;
+using composition::support::WeightConfig;
+using llvm::BasicBlock;
+using llvm::BlockFrequencyInfoWrapperPass;
+using llvm::CallSite;
+using llvm::cast;
+using llvm::ConstantArray;
+using llvm::ConstantDataArray;
+using llvm::ConstantInt;
+using llvm::ConstantStruct;
+using llvm::dbgs;
+using llvm::dyn_cast;
+using llvm::Function;
+using llvm::GlobalVariable;
+using llvm::LLVMContext;
+using llvm::Module;
+using llvm::raw_os_ostream;
+using llvm::report_fatal_error;
+using llvm::ReturnInst;
+using llvm::Type;
+using llvm::Value;
 
 static llvm::RegisterPass<CompositionFrameworkPass> X("composition-framework", "Composition Framework Pass", false,
                                                       false);

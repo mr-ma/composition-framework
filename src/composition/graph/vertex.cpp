@@ -10,10 +10,10 @@
 #include <sstream>
 
 namespace composition::graph {
+using composition::graph::constraint::Constraint;
+using composition::graph::constraint::constraint_idx_t;
+using composition::graph::util::graphviz_encode;
 using composition::util::ltrim;
-using constraint::Constraint;
-using constraint::constraint_idx_t;
-using util::graphviz_encode;
 
 vertex_idx_t& operator++(vertex_idx_t& i) {
   auto val = static_cast<typename std::underlying_type<vertex_idx_t>::type>(i);

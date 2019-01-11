@@ -15,13 +15,15 @@
 #include <sstream>
 #include <utility>
 
-using namespace llvm;
-
 namespace composition {
-using graph::constraint::Dependency;
-using graph::constraint::Present;
-using graph::constraint::Preserved;
-using metric::Coverage;
+using composition::graph::constraint::Dependency;
+using composition::graph::constraint::Present;
+using composition::graph::constraint::Preserved;
+using composition::metric::Coverage;
+using llvm::dbgs;
+using llvm::dyn_cast;
+using llvm::isa;
+using llvm::UndefValue;
 
 manifest_idx_t& operator++(manifest_idx_t& i) {
   using T = typename std::underlying_type<manifest_idx_t>::type;
@@ -127,7 +129,7 @@ Manifest::Manifest(std::string name, llvm::Value* protectee, PatchFunction patch
 }
 
 std::string valueToName(llvm::Value* v) {
-  if (isa<Function>(v)) {
+  if (isa<llvm::Function>(v)) {
     return v->getName();
   }
   std::stringstream s{};

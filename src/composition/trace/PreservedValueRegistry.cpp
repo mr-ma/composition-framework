@@ -5,19 +5,27 @@
 #include <string>
 #include <utility>
 
-using namespace llvm;
 namespace composition::trace {
-TraceableCallbackInfo PreservedValueRegistry::Register(const std::string& name, Value* v,
+using llvm::BasicBlock;
+using llvm::dbgs;
+using llvm::dyn_cast;
+using llvm::Function;
+using llvm::Instruction;
+using llvm::LLVMContext;
+using llvm::MDNode;
+using llvm::MDString;
+
+TraceableCallbackInfo PreservedValueRegistry::Register(const std::string& name, llvm::Value* v,
                                                        const PreservedCallback& callback) {
   return Register(name, v, nullptr, callback);
 }
 
-TraceableCallbackInfo PreservedValueRegistry::Register(const std::string& name, Value* v,
+TraceableCallbackInfo PreservedValueRegistry::Register(const std::string& name, llvm::Value* v,
                                                        const PresentCallback& callback) {
   return Register(name, v, callback, nullptr);
 }
 
-TraceableCallbackInfo PreservedValueRegistry::Register(const std::string& name, Value* v,
+TraceableCallbackInfo PreservedValueRegistry::Register(const std::string& name, llvm::Value* v,
                                                        const PresentCallback& presentCallback,
                                                        const PreservedCallback& preservedCallback) {
   if (presentCallback) {

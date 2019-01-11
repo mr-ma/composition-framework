@@ -1,6 +1,8 @@
 #ifndef COMPOSITION_FRAMEWORK_GRAPH_PROTECTIONGRAPH_HPP
 #define COMPOSITION_FRAMEWORK_GRAPH_PROTECTIONGRAPH_HPP
+
 #include <algorithm>
+#include <array>
 #include <boost/bimap/bimap.hpp>
 #include <boost/bimap/multiset_of.hpp>
 #include <composition/ManifestRegistry.hpp>
@@ -13,6 +15,7 @@
 #include <composition/strategy/Random.hpp>
 #include <composition/strategy/Strategy.hpp>
 #include <composition/support/options.hpp>
+#include <cstdint>
 #include <lemon/graph_to_eps.h>
 #include <lemon/list_graph.h>
 #include <llvm/Analysis/BlockFrequencyInfo.h>
@@ -24,6 +27,7 @@
 #include <llvm/Support/raw_ostream.h>
 #include <random>
 #include <type_traits>
+#include <unordered_set>
 #include <utility>
 
 namespace composition::graph {
@@ -71,9 +75,10 @@ private:
   /**
    * Cache of vertices for faster lookup
    */
-  std::unordered_map<llvm::Value*, vertex_idx_t> vertexRealCache{};
-  std::unordered_map<llvm::Value*, vertex_idx_t> vertexShadowCache{};
-  std::array<decltype(&vertexRealCache), 2> vertexCache = {{&vertexRealCache, &vertexShadowCache}};
+  using vertex_cache_t = std::unordered_map<llvm::Value*, vertex_idx_t>;
+  vertex_cache_t vertexRealCache{};
+  vertex_cache_t vertexShadowCache{};
+  std::array<vertex_cache_t*, 2> vertexCache = {{&vertexRealCache, &vertexShadowCache}};
 
   /**
    * Map which captures the undo relationship between manifests.

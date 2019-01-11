@@ -2,7 +2,8 @@
 #include <composition/strategy/Weight.hpp>
 
 namespace composition::strategy {
-using namespace metric;
+using composition::metric::Performance;
+using composition::metric::Weights;
 
 Weight::Weight(Weights W, std::unordered_map<llvm::Function*, llvm::BlockFrequencyInfo*> BFI)
     : W(std::move(W)), BFI(std::move(BFI)) {}

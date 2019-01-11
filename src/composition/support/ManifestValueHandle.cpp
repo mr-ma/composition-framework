@@ -2,11 +2,11 @@
 #include <composition/util/functions.hpp>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
-using namespace llvm;
 
 namespace composition::support {
 #ifndef NDEBUG
-using util::getPassName;
+using composition::util::getPassName;
+using llvm::dbgs;
 
 void ManifestValueHandle::deleted() {
   dbgs() << "Value deleted from: " << getPassName() << "\n";
@@ -14,7 +14,7 @@ void ManifestValueHandle::deleted() {
   this->clearValPtr();
 }
 
-void ManifestValueHandle::allUsesReplacedWith(Value* value) {
+void ManifestValueHandle::allUsesReplacedWith(llvm::Value* value) {
   dbgs() << "Value RAUWED from: " << getPassName() << "\n";
 }
 
