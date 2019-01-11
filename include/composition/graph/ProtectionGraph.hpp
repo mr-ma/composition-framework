@@ -33,10 +33,6 @@
 namespace composition::graph {
 using composition::graph::constraint::Constraint;
 using composition::graph::constraint::constraint_idx_t;
-using composition::graph::constraint::Present;
-using composition::graph::constraint::PresentConstraint;
-using composition::graph::constraint::Preserved;
-using composition::graph::constraint::PreservedConstraint;
 using composition::graph::constraint::True;
 using composition::graph::util::graph_to_dot;
 using composition::graph::util::graph_to_graphml;
@@ -211,25 +207,6 @@ public:
    * Computes the dependency relationship of the manifests.
    */
   void computeManifestDependencies();
-
-  /**
-   * Checks if the graph `g` contains a cycle
-   * @tparam graph_t the type of the graph `g`
-   * @param g the graph
-   * @return true if the graph contains at least one cycle, false otherwise
-   */
-  template <typename graph_t> bool hasCycle(graph_t& g) {
-    /*Profiler sccProfiler{};
-    try {
-      topological_sort(g);
-      cStats.timeConflictDetection += sccProfiler.stop();
-      return false;
-    } catch (boost::not_a_dag&) {
-      cStats.timeConflictDetection += sccProfiler.stop();
-      return true;
-    }
-    return false;*/
-  }
 
   /**
    * Detects and handles the conflicts in the graph `g`

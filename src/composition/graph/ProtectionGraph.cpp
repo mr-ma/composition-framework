@@ -1,9 +1,13 @@
 #include <composition/graph/ProtectionGraph.hpp>
 #include <composition/graph/constraint/dependency.hpp>
+#include <composition/graph/constraint/present.hpp>
+#include <composition/graph/constraint/preserved.hpp>
 #include <lemon/connectivity.h>
 
 namespace composition::graph {
 using composition::graph::constraint::Dependency;
+using composition::graph::constraint::Present;
+using composition::graph::constraint::Preserved;
 using llvm::dbgs;
 using llvm::dyn_cast;
 
@@ -180,6 +184,24 @@ constraint_idx_t ProtectionGraph::addConstraint(manifest_idx_t idx, std::shared_
     llvm_unreachable("Constraint unknown!");
   }
   return ConstraintIdx++;
+}
+
+void vertexConflicts() {
+  /*
+    std::unordered_map<vertex_idx_t, present_t> isPresent;
+    std::unordered_map<vertex_idx_t, preserved_t> isPreserved;
+    PresentConstraint present = PresentConstraint::NONE;
+    PreservedConstraint preserved = PreservedConstraint::NONE;
+    for (auto& c : v.constraints) {
+      if (auto* p1 = llvm::dyn_cast<Preserved>(c.second.get())) {
+        preserved =
+            p1->isInverse() ? preserved | PreservedConstraint::NOT_PRESERVED : preserved |
+    PreservedConstraint::PRESERVED; } else if (auto* p2 = llvm::dyn_cast<Present>(c.second.get())) { present =
+    p2->isInverse() ? present | PresentConstraint::NOT_PRESENT : present | PresentConstraint::PRESENT;
+      }
+    }
+    isPresent.insert({idx, static_cast<present_t>(present)});
+    isPreserved.insert({idx, static_cast<preserved_t>(preserved)});*/
 }
 
 std::vector<Manifest*> ProtectionGraph::topologicalSortManifests(std::unordered_set<Manifest*> manifests) {

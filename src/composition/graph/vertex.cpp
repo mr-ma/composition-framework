@@ -1,4 +1,3 @@
-#include <composition/graph/util/graphviz.hpp>
 #include <composition/graph/vertex.hpp>
 #include <composition/util/strings.hpp>
 #include <llvm/IR/BasicBlock.h>
@@ -12,7 +11,6 @@
 namespace composition::graph {
 using composition::graph::constraint::Constraint;
 using composition::graph::constraint::constraint_idx_t;
-using composition::graph::util::graphviz_encode;
 using composition::util::ltrim;
 
 vertex_idx_t& operator++(vertex_idx_t& i) {
@@ -37,7 +35,7 @@ std::ostream& operator<<(std::ostream& os, const vertex_type& obj) {
 }
 
 std::ostream& vertex_t::operator<<(std::ostream& os) noexcept {
-  os << this->index << "," << graphviz_encode(this->name) << "," << this->type << ",";
+  os << this->index << "," << this->name << "," << this->type << ",";
   for (const auto& c : this->constraints) {
     os << c.second->getInfo() << " ";
   }

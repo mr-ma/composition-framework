@@ -3,7 +3,6 @@
 
 #include <boost/algorithm/string/replace.hpp>
 #include <composition/graph/edge.hpp>
-#include <composition/graph/util/constraint_map.hpp>
 #include <composition/graph/vertex.hpp>
 #include <fstream>
 #include <ostream>
