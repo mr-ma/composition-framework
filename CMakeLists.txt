@@ -44,7 +44,6 @@ add_library(CompositionFramework SHARED
 
         include/composition/graph/util/dot.hpp
         include/composition/graph/util/graphml.hpp
-        include/composition/graph/util/constraint_map.hpp
 
         include/composition/metric/Coverage.hpp
         include/composition/metric/Performance.hpp

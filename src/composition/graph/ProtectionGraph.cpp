@@ -7,7 +7,9 @@
 namespace composition::graph {
 using composition::graph::constraint::Dependency;
 using composition::graph::constraint::Present;
+using composition::graph::constraint::PresentConstraint;
 using composition::graph::constraint::Preserved;
+using composition::graph::constraint::PreservedConstraint;
 using llvm::dbgs;
 using llvm::dyn_cast;
 
@@ -187,21 +189,20 @@ constraint_idx_t ProtectionGraph::addConstraint(manifest_idx_t idx, std::shared_
 }
 
 void vertexConflicts() {
-  /*
-    std::unordered_map<vertex_idx_t, present_t> isPresent;
-    std::unordered_map<vertex_idx_t, preserved_t> isPreserved;
-    PresentConstraint present = PresentConstraint::NONE;
-    PreservedConstraint preserved = PreservedConstraint::NONE;
-    for (auto& c : v.constraints) {
-      if (auto* p1 = llvm::dyn_cast<Preserved>(c.second.get())) {
-        preserved =
-            p1->isInverse() ? preserved | PreservedConstraint::NOT_PRESERVED : preserved |
-    PreservedConstraint::PRESERVED; } else if (auto* p2 = llvm::dyn_cast<Present>(c.second.get())) { present =
-    p2->isInverse() ? present | PresentConstraint::NOT_PRESENT : present | PresentConstraint::PRESENT;
-      }
+  std::unordered_map<vertex_idx_t, size_t> isPresent;
+  std::unordered_map<vertex_idx_t, size_t> isPreserved;
+  PresentConstraint present = PresentConstraint::NONE;
+  PreservedConstraint preserved = PreservedConstraint::NONE;
+  for (auto& c : v.constraints) {
+    if (auto* p1 = llvm::dyn_cast<Preserved>(c.second.get())) {
+      preserved =
+          p1->isInverse() ? preserved | PreservedConstraint::NOT_PRESERVED : preserved | PreservedConstraint::PRESERVED;
+    } else if (auto* p2 = llvm::dyn_cast<Present>(c.second.get())) {
+      present = p2->isInverse() ? present | PresentConstraint::NOT_PRESENT : present | PresentConstraint::PRESENT;
     }
-    isPresent.insert({idx, static_cast<present_t>(present)});
-    isPreserved.insert({idx, static_cast<preserved_t>(preserved)});*/
+  }
+  isPresent.insert({idx, static_cast<size_t>(present)});
+  isPreserved.insert({idx, static_cast<size_t>(preserved)});
 }
 
 std::vector<Manifest*> ProtectionGraph::topologicalSortManifests(std::unordered_set<Manifest*> manifests) {
@@ -229,7 +230,7 @@ std::vector<Manifest*> ProtectionGraph::topologicalSortManifests(std::unordered_
   lemon::ListDigraph::NodeMap<int> order{LG};
   assert(lemon::checkedTopologicalSort(LG, order) == true);
 
-  const unsigned long nodes = lemon::countNodes(LG);
+  const auto nodes = static_cast<unsigned long>(lemon::countNodes(LG));
   std::vector<lemon::ListDigraph::Node> sorted(nodes);
 
   for (lemon::ListDigraph::NodeIt n(LG); n != lemon::INVALID; ++n) {
