@@ -189,9 +189,6 @@ constraint_idx_t ProtectionGraph::addConstraint(manifest_idx_t idx, std::shared_
 }
 
 std::vector<Manifest*> ProtectionGraph::topologicalSortManifests(std::unordered_set<Manifest*> manifests) {
-  lemon::ListDigraph::NodeMap<int> order{LG};
-  assert(lemon::checkedTopologicalSort(LG, order) == true);
-
   std::set<Manifest*> all{manifests.begin(), manifests.end()};
   std::set<Manifest*> seen{};
 
@@ -213,14 +210,14 @@ std::vector<Manifest*> ProtectionGraph::topologicalSortManifests(std::unordered_
   std::set_difference(all.begin(), all.end(), seen.begin(), seen.end(), std::back_inserter(result));
 
   seen.clear();
-  // lemon::ListDigraph::NodeMap<int> order{LG};
+  lemon::ListDigraph::NodeMap<int> order{LG};
   assert(lemon::checkedTopologicalSort(LG, order) == true);
 
   const unsigned long nodes = lemon::countNodes(LG);
   std::vector<lemon::ListDigraph::Node> sorted(nodes);
 
   for (lemon::ListDigraph::NodeIt n(LG); n != lemon::INVALID; ++n) {
-    sorted[nodes - order[n] - 1] = static_cast<lemon::ListDigraph::Node>(n);
+    sorted[order[n]] = static_cast<lemon::ListDigraph::Node>(n);
   }
 
   for (lemon::ListDigraph::Node& n : sorted) {
