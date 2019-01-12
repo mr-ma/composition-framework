@@ -262,10 +262,12 @@ bool CompositionFrameworkPass::graphPass(llvm::Module& M) {
   dbgs() << "Calculating Manifest dependencies\n";
   Graph->computeManifestDependencies();
   dbgs() << "GraphPass strong_components\n";
-  Graph->conflictHandling(strategies.at(UseStrategy.getValue()));
-
-  printGraphs(Graph, "graph_scc");
+  auto accepted = Graph->conflictHandling(strategies.at(UseStrategy.getValue()), M);
   dbgs() << "GraphPass done\n";
+
+  Graph->destroy();
+  Graph = buildGraphFromManifests(accepted);
+  Graph->computeManifestDependencies();
 
   /*dbgs() << "Optimizing\n";
   auto manifests = SortedManifests();

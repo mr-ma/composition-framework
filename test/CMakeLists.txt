@@ -4,7 +4,7 @@ enable_testing()
 
 add_executable(unit_tests
         main.cpp
-        topological_sort.cpp
+        cycles.cpp
         double_edges.cpp)
 
 target_compile_features(unit_tests PUBLIC cxx_std_17)
@@ -12,6 +12,11 @@ target_compile_features(unit_tests PUBLIC cxx_std_17)
 target_link_libraries(
         unit_tests
         PRIVATE Catch2::Catch2)
+
+target_include_directories(unit_tests
+        PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
+        $<INSTALL_INTERFACE:include>)
 
 include(CTest)
 include(ParseAndAddCatchTests)

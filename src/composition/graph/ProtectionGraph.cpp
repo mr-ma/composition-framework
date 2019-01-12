@@ -1,10 +1,12 @@
 #include <composition/graph/ProtectionGraph.hpp>
+#include <composition/graph/algorithm/all_cycles.hpp>
 #include <composition/graph/constraint/dependency.hpp>
 #include <composition/graph/constraint/present.hpp>
 #include <composition/graph/constraint/preserved.hpp>
 #include <lemon/connectivity.h>
 
 namespace composition::graph {
+using composition::graph::algorithm::AllCycles;
 using composition::graph::constraint::Dependency;
 using composition::graph::constraint::Present;
 using composition::graph::constraint::PresentConstraint;
@@ -283,6 +285,244 @@ std::set<std::pair<manifest_idx_t, manifest_idx_t>> ProtectionGraph::computeDepe
   }
 
   return dependencies;
+}
+
+std::set<std::set<manifest_idx_t>> ProtectionGraph::computeCycles() {
+  if (lemon::dag(LG)) {
+    return {};
+  }
+
+  std::set<std::set<manifest_idx_t>> cycles{};
+
+  /*llvm::dbgs() << "Cycles...\n";
+  AllCycles a{};
+  llvm::dbgs() << "Nodes: " << lemon::countNodes(LG) << " Edges: " << lemon::countArcs(LG) << "\n";
+  std::set<std::set<lemon::ListDigraph::Node>> all = a.simpleCycles(LG);
+  llvm::dbgs() << "End...\n";*/
+
+  lemon::ListDigraph::NodeMap<int> components{LG};
+  const int numComponents = lemon::stronglyConnectedComponents(LG, components);
+
+  std::map<int, std::set<lemon::ListDigraph::Node>> sccs{};
+  for (lemon::ListDigraph::NodeIt scNode(LG); scNode != lemon::INVALID; ++scNode) {
+    sccs[components[scNode]].insert(scNode);
+  }
+
+  for (auto& [sccId, scc] : sccs) {
+    if (scc.size() == 1) {
+      continue;
+    } else {
+      std::set<manifest_idx_t> cycle{};
+
+      for (auto& s : scc) {
+        for (lemon::ListDigraph::OutArcIt e(LG, s); e != lemon::INVALID; ++e) {
+          assert(LG.target(e) != s);
+          if (scc.find(LG.target(e)) == scc.end()) {
+            continue;
+          }
+          const edge_t& ed = (*edges)[e];
+          for (auto& [cIdx, c] : ed.constraints) {
+            if (auto mFound = MANIFESTS_CONSTRAINTS.right.find(cIdx); mFound != MANIFESTS_CONSTRAINTS.right.end()) {
+              cycle.insert(mFound->second);
+            }
+          }
+        }
+        for (lemon::ListDigraph::InArcIt e(LG, s); e != lemon::INVALID; ++e) {
+          assert(LG.source(e) != s);
+          if (scc.find(LG.source(e)) == scc.end()) {
+            continue;
+          }
+          const edge_t& ed = (*edges)[e];
+          for (auto& [cIdx, c] : ed.constraints) {
+            if (auto mFound = MANIFESTS_CONSTRAINTS.right.find(cIdx); mFound != MANIFESTS_CONSTRAINTS.right.end()) {
+              cycle.insert(mFound->second);
+            }
+          }
+        }
+      }
+
+      if (cycle.size() > 1) {
+        cycles.insert(cycle);
+      }
+    }
+  }
+
+  return cycles;
+}
+
+std::vector<Manifest*> ProtectionGraph::conflictHandling(const std::unique_ptr<strategy::Strategy>& strategy,
+                                                         llvm::Module& M) {
+  bool hasCycles = false;
+  auto conflicts = vertexConflicts();
+  auto dependencies = computeDependencies();
+  auto cycles = computeCycles();
+  do {
+    size_t N = MANIFESTS.size();
+    boost::bimaps::bimap<int, manifest_idx_t> colsToM{};
+
+    std::vector<int> rows{};
+    std::vector<int> cols{};
+    std::vector<double> coeffs{};
+
+    // cost function
+    auto cost = [](Manifest* m) -> double { return 1; };
+    auto conflict = [&](glp_prob* lp, std::pair<manifest_idx_t, manifest_idx_t> pair) {
+      // m1 and m2 conflict; m1 + m2 <= 1
+      auto row = glp_add_rows(lp, 1);
+      glp_set_row_bnds(lp, row, GLP_UP, 0.0, 1.0);
+      std::ostringstream os;
+      os << "conflict_" << pair.first << "_" << pair.second;
+      glp_set_row_name(lp, row, os.str().c_str());
+
+      rows.push_back(row);
+      cols.push_back(colsToM.right.at(pair.first));
+      coeffs.push_back(1.0);
+
+      rows.push_back(row);
+      cols.push_back(colsToM.right.at(pair.second));
+      coeffs.push_back(1.0);
+    };
+    auto dependency = [&](glp_prob* lp, std::pair<manifest_idx_t, manifest_idx_t> pair) {
+      // m1 depends on m2; m1 <= m2; m1 - m2 <= 0
+      auto row = glp_add_rows(lp, 1);
+      glp_set_row_bnds(lp, row, GLP_UP, 0.0, 0.0);
+      std::ostringstream os;
+      os << "dependency_" << pair.first << "_" << pair.second;
+      glp_set_row_name(lp, row, os.str().c_str());
+
+      rows.push_back(row);
+      cols.push_back(colsToM.right.at(pair.first));
+      coeffs.push_back(1.0);
+
+      rows.push_back(row);
+      cols.push_back(colsToM.right.at(pair.second));
+      coeffs.push_back(-1.0);
+    };
+
+    int cycleCount = 0;
+    auto cycle = [&](glp_prob* lp, std::set<manifest_idx_t> ms) {
+      // m1..mN form a cycle; m1+m2+..+mN <= N-1
+      auto row = glp_add_rows(lp, 1);
+      glp_set_row_bnds(lp, row, GLP_UP, 0.0, ms.size() - 1);
+      std::ostringstream os;
+      os << "cycle_" << cycleCount++;
+      glp_set_row_name(lp, row, os.str().c_str());
+
+      for (auto& idx : ms) {
+        rows.push_back(row);
+        cols.push_back(colsToM.right.at(idx));
+        coeffs.push_back(1.0);
+      }
+    };
+
+    auto lp = glp_create_prob();     // creates a problem object
+    glp_set_prob_name(lp, "sample"); // assigns a symbolic name to the problem object
+    glp_set_obj_dir(lp, GLP_MIN);
+
+    // ROWS
+    glp_add_rows(lp, 3); // adds three rows to the problem object
+    // row 1
+    glp_set_row_name(lp, 1, "explicit");          // assigns name p to first row
+    glp_set_row_bnds(lp, 1, GLP_LO, 6000.0, 0.0); // 0 < explicit <= inf
+    // row 2
+    glp_set_row_name(lp, 2, "implicit");       // assigns name q to second row
+    glp_set_row_bnds(lp, 2, GLP_LO, 0.0, 0.0); // 0 < implicit <= inf
+    // row 3
+    glp_set_row_name(lp, 3, "unique");         // assigns name q to second row
+    glp_set_row_bnds(lp, 3, GLP_LO, 0.0, 0.0); // 0 < unique <= inf
+
+    // COLUMNS
+    glp_add_cols(lp, N); // adds three columns to the problem object
+
+    auto i = 1;
+    for (auto& [mIdx, m] : MANIFESTS) {
+      // column N
+      std::ostringstream os;
+      os << "m" << m->index;
+      glp_set_col_name(lp, i, os.str().c_str()); // assigns name m_n to nth column
+      glp_set_col_kind(lp, i, GLP_BV);           // values are binary
+      glp_set_col_bnds(lp, i, GLP_DB, 0.0, 1.0); // values are binary
+      glp_set_obj_coef(lp, i, cost(m));          // costs
+
+      colsToM.insert({i, m->index});
+
+      // explicit
+      rows.push_back(1);
+      cols.push_back(i);
+      coeffs.push_back(m->Coverage().size());
+
+      // implicit
+      rows.push_back(2);
+      cols.push_back(i);
+      coeffs.push_back(0);
+
+      // unique
+      rows.push_back(3);
+      cols.push_back(i);
+      coeffs.push_back(0);
+
+      ++i;
+    }
+
+    // Add dependencies
+    for (auto&& pair : dependencies) {
+      dependency(lp, pair);
+    }
+
+    // Add conflicts
+    for (auto&& pair : conflicts) {
+      conflict(lp, pair);
+    }
+
+    // Add cycles
+    for (auto&& c : cycles) {
+      cycle(lp, c);
+    }
+
+    size_t dataSize = rows.size();
+    // now prepend the required position zero placeholder (any value will do but zero is safe)
+    // first create length one vectors using default member construction
+    std::vector<int> iav(1, 0);
+    std::vector<int> jav(1, 0);
+    std::vector<double> arv(1, 0);
+
+    // then concatenate these with the original data vectors
+    iav.insert(iav.end(), rows.begin(), rows.end());
+    jav.insert(jav.end(), cols.begin(), cols.end());
+    arv.insert(arv.end(), coeffs.begin(), coeffs.end());
+
+    glp_load_matrix(lp, dataSize, &iav[0], &jav[0], &arv[0]); // calls the routine glp_load_matrix
+    glp_write_lp(lp, NULL, "prob.glp");
+
+    glp_simplex(lp, NULL); // calls the routine glp_simplex to solve LP problem
+    glp_intopt(lp, NULL);
+    auto total_cost = glp_mip_obj_val(lp);
+    glp_print_mip(lp, "sol.glp");
+
+    std::vector<Manifest*> accepted{};
+    for (auto& [col, mIdx] : colsToM) {
+      if (glp_mip_col_val(lp, col) == 1) {
+        accepted.push_back(MANIFESTS.at(mIdx));
+      }
+    }
+    glp_delete_prob(lp);
+
+    ProtectionGraph pg{};
+    pg.addManifests(accepted);
+    pg.addHierarchy(M);
+    pg.connectShadowNodes();
+    auto newCycles = pg.computeCycles();
+    if (!newCycles.empty()) {
+      hasCycles = true;
+      for (auto& c : newCycles) {
+        cycles.insert(c);
+      }
+    } else {
+      return accepted;
+    }
+  } while (hasCycles);
+
+  llvm_unreachable("Reached end of conflict handling");
 }
 
 std::vector<Manifest*> ProtectionGraph::topologicalSortManifests(std::unordered_set<Manifest*> manifests) {

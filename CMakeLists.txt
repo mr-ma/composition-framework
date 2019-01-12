@@ -35,6 +35,8 @@ add_library(CompositionFramework SHARED
         include/composition/graph/edge.hpp
         include/composition/graph/vertex.hpp
 
+        include/composition/graph/algorithm/all_cycles.hpp
+
         include/composition/graph/constraint/bitmask.hpp
         include/composition/graph/constraint/constraint.hpp
         include/composition/graph/constraint/dependency.hpp

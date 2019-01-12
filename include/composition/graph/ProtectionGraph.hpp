@@ -211,207 +211,79 @@ public:
 
   std::set<std::pair<manifest_idx_t, manifest_idx_t>> vertexConflicts();
   std::set<std::pair<manifest_idx_t, manifest_idx_t>> computeDependencies();
+  std::set<std::set<manifest_idx_t>> computeCycles();
   /**
    * Detects and handles the conflicts in the graph `g`
    * @tparam graph_t the type of the graph `g`
    * @param g the graph
    * @param strategy the strategy to use for handling conflicts
    */
-  void conflictHandling(const std::unique_ptr<strategy::Strategy>& strategy) {
-    auto conflicts = vertexConflicts();
-    auto dependencies = computeDependencies();
+  std::vector<Manifest*> conflictHandling(const std::unique_ptr<strategy::Strategy>& strategy, llvm::Module& M);
+  /*llvm::dbgs() << "Step 1: Removing cycles...\n";
+  // auto fg = graph::filter::filter_dependency_graph(g, EDGES, EDGES_DESCRIPTORS);
+  auto sc = graph::filter::filter_selfcycle_graph(g);
 
-    size_t N = MANIFESTS.size();
-    boost::bimaps::bimap<int, manifest_idx_t> colsToM{};
+  // First detect cycles and remove all cycles.
+  bool hadConflicts;
+  Profiler sccProfiler{};
+  Profiler resolvingProfiler{};
+  do {
+    hadConflicts = false;
+    sccProfiler.reset();
 
-    std::vector<int> rows{};
-    std::vector<int> cols{};
-    std::vector<double> coeffs{};
-
-    // cost function
-    auto cost = [](Manifest* m) -> double { return 1; };
-    auto conflict = [&](glp_prob* lp, std::pair<manifest_idx_t, manifest_idx_t> pair) {
-      // m1 and m2 conflict; m1 + m2 <= 1
-      auto row = glp_add_rows(lp, 1);
-      glp_set_row_bnds(lp, row, GLP_UP, 0.0, 1.0);
-      std::ostringstream os;
-      os << "conflict_" << pair.first << "_" << pair.second;
-      glp_set_row_name(lp, row, os.str().c_str());
-
-      rows.push_back(row);
-      cols.push_back(colsToM.right.at(pair.first));
-      coeffs.push_back(1.0);
-
-      rows.push_back(row);
-      cols.push_back(colsToM.right.at(pair.second));
-      coeffs.push_back(1.0);
-    };
-    auto dependency = [&](glp_prob* lp, std::pair<manifest_idx_t, manifest_idx_t> pair) {
-      // m1 depends on m2; m1 <= m2; m1 - m2 <= 0
-
-      auto row = glp_add_rows(lp, 1);
-      glp_set_row_bnds(lp, row, GLP_UP, 0.0, 0.0);
-      std::ostringstream os;
-      os << "dependency_" << pair.first << "_" << pair.second;
-      glp_set_row_name(lp, row, os.str().c_str());
-
-      rows.push_back(row);
-      cols.push_back(colsToM.right.at(pair.first));
-      coeffs.push_back(1.0);
-
-      rows.push_back(row);
-      cols.push_back(colsToM.right.at(pair.second));
-      coeffs.push_back(-1.0);
-    };
-
-    auto lp = glp_create_prob();     // creates a problem object
-    glp_set_prob_name(lp, "sample"); // assigns a symbolic name to the problem object
-    glp_set_obj_dir(lp, GLP_MIN);
-
-    // ROWS
-    glp_add_rows(lp, 3); // adds three rows to the problem object
-    // row 1
-    glp_set_row_name(lp, 1, "explicit");          // assigns name p to first row
-    glp_set_row_bnds(lp, 1, GLP_LO, 6000.0, 0.0); // 0 < explicit <= inf
-    // row 2
-    glp_set_row_name(lp, 2, "implicit");       // assigns name q to second row
-    glp_set_row_bnds(lp, 2, GLP_LO, 0.0, 0.0); // 0 < implicit <= inf
-    // row 3
-    glp_set_row_name(lp, 3, "unique");         // assigns name q to second row
-    glp_set_row_bnds(lp, 3, GLP_LO, 0.0, 0.0); // 0 < unique <= inf
-
-    // COLUMNS
-    glp_add_cols(lp, N); // adds three columns to the problem object
-
-    auto i = 1;
-    for (auto& [mIdx, m] : MANIFESTS) {
-      // column N
-      std::ostringstream os;
-      os << "m" << m->index;
-      glp_set_col_name(lp, i, os.str().c_str()); // assigns name m_n to nth column
-      glp_set_col_kind(lp, i, GLP_IV);           // values are binary
-      glp_set_col_bnds(lp, i, GLP_DB, 0.0, 1.0); // values are binary
-      glp_set_obj_coef(lp, i, cost(m));          // costs
-
-      colsToM.insert({i, m->index});
-
-      // explicit
-      rows.push_back(1);
-      cols.push_back(i);
-      coeffs.push_back(m->Coverage().size());
-
-      // implicit
-      rows.push_back(2);
-      cols.push_back(i);
-      coeffs.push_back(0);
-
-      // unique
-      rows.push_back(3);
-      cols.push_back(i);
-      coeffs.push_back(0);
-
-      ++i;
-    }
-
-    // Add dependencies
-    for (auto&& pair : dependencies) {
-      dependency(lp, pair);
-    }
-
-    // Add conflicts
-    for (auto&& pair : conflicts) {
-      conflict(lp, pair);
-    }
-
-    size_t dataSize = rows.size();
-    // now prepend the required position zero placeholder (any value will do but zero is safe)
-    // first create length one vectors using default member construction
-    std::vector<int> iav(1, 0);
-    std::vector<int> jav(1, 0);
-    std::vector<double> arv(1, 0);
-
-    // then concatenate these with the original data vectors
-    iav.insert(iav.end(), rows.begin(), rows.end());
-    jav.insert(jav.end(), cols.begin(), cols.end());
-    arv.insert(arv.end(), coeffs.begin(), coeffs.end());
-
-    glp_load_matrix(lp, dataSize, &iav[0], &jav[0], &arv[0]); // calls the routine glp_load_matrix
-    glp_write_lp(lp, NULL, "prob.glp");
-
-    glp_simplex(lp, NULL); // calls the routine glp_simplex to solve LP problem
-    auto total_cost = glp_mip_obj_val(lp);
-    glp_print_sol(lp, "sol.glp");
-    for (auto& [col, mIdx] : colsToM) {
-      auto m1 = glp_mip_col_val(lp, col);
-    }
-    glp_delete_prob(lp);
-
-    /*llvm::dbgs() << "Step 1: Removing cycles...\n";
-    // auto fg = graph::filter::filter_dependency_graph(g, EDGES, EDGES_DESCRIPTORS);
-    auto sc = graph::filter::filter_selfcycle_graph(g);
-
-    // First detect cycles and remove all cycles.
-    bool hadConflicts;
-    Profiler sccProfiler{};
-    Profiler resolvingProfiler{};
-    do {
-      hadConflicts = false;
-      sccProfiler.reset();
-
-      llvm::dbgs() << "Quick check for cycles\n";
-      bool hasOneCycle = hasCycle(sc);
-      if (!hasOneCycle) {
-        llvm::dbgs() << "No cycles exist\n";
-        cStats.timeConflictDetection += sccProfiler.stop();
-        break;
-      }
-      llvm::dbgs() << "Cycles exist\n";
-
-      auto components = strong_components(sc);
+    llvm::dbgs() << "Quick check for cycles\n";
+    bool hasOneCycle = hasCycle(sc);
+    if (!hasOneCycle) {
+      llvm::dbgs() << "No cycles exist\n";
       cStats.timeConflictDetection += sccProfiler.stop();
-      int i = 0;
-      for (auto& component : components) {
-        auto vertexCount = vertex_count(component);
-        if (vertexCount != 1) {
-          hadConflicts = true;
-          llvm::dbgs() << "Component " << std::to_string(i) << " contains cycle with " << std::to_string(vertexCount)
-                       << " elements.\n";
-          if (support::DumpGraphs) {
-            Print(component, "graph_component_" + std::to_string(i));
-          }
-          do {
-            resolvingProfiler.reset();
-            handleCycle(component, strategy);
-            cStats.timeConflictResolving += resolvingProfiler.stop();
-          } while (hasCycle(component));
-          ++i;
-        }
-      }
-    } while (hadConflicts);
+      break;
+    }
+    llvm::dbgs() << "Cycles exist\n";
 
-    llvm::dbgs() << "Step 2: Removing remaining present/preserved conflicts...\n";
-    // Then remove remaining present/preserved conflicts.
-    do {
-      hadConflicts = false;
-
-      sccProfiler.reset();
-      auto [presentManifests, preservedManifests] = detectPresentPreservedConflicts(g);
-      cStats.timeConflictDetection += sccProfiler.stop();
-      if (!presentManifests.empty() || !preservedManifests.empty()) {
+    auto components = strong_components(sc);
+    cStats.timeConflictDetection += sccProfiler.stop();
+    int i = 0;
+    for (auto& component : components) {
+      auto vertexCount = vertex_count(component);
+      if (vertexCount != 1) {
         hadConflicts = true;
-        llvm::dbgs() << "Handling conflict...\n";
-        cStats.conflicts++;
-
-        resolvingProfiler.reset();
-        std::vector<Manifest*> merged{};
-        std::set_union(presentManifests.begin(), presentManifests.end(), preservedManifests.begin(),
-                       preservedManifests.end(), std::back_inserter(merged));
-
-        removeManifest(strategy->decidePresentPreserved(merged)->index);
-        cStats.timeConflictResolving += resolvingProfiler.stop();
+        llvm::dbgs() << "Component " << std::to_string(i) << " contains cycle with " << std::to_string(vertexCount)
+                     << " elements.\n";
+        if (support::DumpGraphs) {
+          Print(component, "graph_component_" + std::to_string(i));
+        }
+        do {
+          resolvingProfiler.reset();
+          handleCycle(component, strategy);
+          cStats.timeConflictResolving += resolvingProfiler.stop();
+        } while (hasCycle(component));
+        ++i;
       }
-    } while (hadConflicts);*/
-  }
+    }
+  } while (hadConflicts);
+
+  llvm::dbgs() << "Step 2: Removing remaining present/preserved conflicts...\n";
+  // Then remove remaining present/preserved conflicts.
+  do {
+    hadConflicts = false;
+
+    sccProfiler.reset();
+    auto [presentManifests, preservedManifests] = detectPresentPreservedConflicts(g);
+    cStats.timeConflictDetection += sccProfiler.stop();
+    if (!presentManifests.empty() || !preservedManifests.empty()) {
+      hadConflicts = true;
+      llvm::dbgs() << "Handling conflict...\n";
+      cStats.conflicts++;
+
+      resolvingProfiler.reset();
+      std::vector<Manifest*> merged{};
+      std::set_union(presentManifests.begin(), presentManifests.end(), preservedManifests.begin(),
+                     preservedManifests.end(), std::back_inserter(merged));
+
+      removeManifest(strategy->decidePresentPreserved(merged)->index);
+      cStats.timeConflictResolving += resolvingProfiler.stop();
+    }
+  } while (hadConflicts);*/
 
   /**
    * Handles a cycle in the graph
@@ -438,68 +310,6 @@ public:
     }
 
     removeManifest(strategy->decideCycle(cyclicManifests)->index);*/
-  }
-
-  /**
-   * Detects present/preserved conflicts in the graph
-   * @tparam graph_t the type of the graph `g`
-   * @param g the graph
-   * @return the detected present/preserved conflicting manifests
-   */
-  template <typename graph_t>
-  std::pair<std::unordered_set<Manifest*>, std::unordered_set<Manifest*>> detectPresentPreservedConflicts(graph_t& g) {
-    /*const auto& [isPresent, isPreserved] =
-        constraint_map<PresentConstraint, PreservedConstraint>(g, VERTICES, VERTICES_DESCRIPTORS);
-
-    std::unordered_set<manifest_idx_t> presentIdx{};
-    for (auto& [idx, p] : isPresent) {
-      if (p != PresentConstraint::CONFLICT) {
-        continue;
-      }
-
-      const vertex_t& v = VERTICES.at(idx);
-      for (auto& [cIdx, c] : v.constraints) {
-        if (llvm::isa<Present>(c.get())) {
-          manifest_idx_t idx = MANIFESTS_CONSTRAINTS.right.find(cIdx)->second;
-          presentIdx.insert(idx);
-        }
-      }
-    }
-
-    std::unordered_set<manifest_idx_t> preservedIdx{};
-    for (auto& [idx, p] : isPreserved) {
-      if (p != PreservedConstraint::CONFLICT) {
-        continue;
-      }
-      const vertex_t& v = VERTICES.at(idx);
-      for (auto& [cIdx, c] : v.constraints) {
-        if (llvm::isa<Preserved>(c.get())) {
-          manifest_idx_t idx = MANIFESTS_CONSTRAINTS.right.find(cIdx)->second;
-          preservedIdx.insert(idx);
-        }
-      }
-    }
-
-    // Convert indices to manifest pointers
-    std::unordered_set<Manifest*> presentManifests{};
-    std::unordered_set<Manifest*> preservedManifests{};
-    for (auto idx : presentIdx) {
-      presentManifests.insert(MANIFESTS.find(idx)->second);
-    }
-    for (auto idx : preservedIdx) {
-      preservedManifests.insert(MANIFESTS.find(idx)->second);
-    }
-
-    return {presentManifests, preservedManifests};*/
-  }
-
-  template <typename graph_t>
-  void optimizeProtections(graph_t& g, const std::unordered_map<llvm::Function*, llvm::BlockFrequencyInfo*>& BFI,
-                           llvm::Module* module, std::vector<Manifest*> manifests,
-                           std::unordered_set<llvm::Instruction*> allInstructions) {
-    llvm::dbgs() << "Optimizing protections in the graph\n";
-    prepareHotness(g, BFI);
-    removeHotNodes(g, 1.0, module, manifests, allInstructions);
   }
 
   template <typename graph_t>
