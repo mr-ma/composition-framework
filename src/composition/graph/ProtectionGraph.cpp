@@ -188,21 +188,101 @@ constraint_idx_t ProtectionGraph::addConstraint(manifest_idx_t idx, std::shared_
   return ConstraintIdx++;
 }
 
-void vertexConflicts() {
-  std::unordered_map<vertex_idx_t, size_t> isPresent;
-  std::unordered_map<vertex_idx_t, size_t> isPreserved;
-  PresentConstraint present = PresentConstraint::NONE;
-  PreservedConstraint preserved = PreservedConstraint::NONE;
-  for (auto& c : v.constraints) {
-    if (auto* p1 = llvm::dyn_cast<Preserved>(c.second.get())) {
+void addToConstraintsMaps(const vertex_t& v, PresentConstraint& present, PreservedConstraint& preserved,
+                          std::set<constraint_idx_t>& presentConstraints,
+                          std::set<constraint_idx_t>& preservedConstraints) {
+  if (v.constraints.empty()) {
+    return;
+  }
+
+  for (auto& [cIdx, c] : v.constraints) {
+    if (auto* p1 = llvm::dyn_cast<Present>(c.get())) {
+      presentConstraints.insert(cIdx);
+      present = p1->isInverse() ? present | PresentConstraint::NOT_PRESENT : present | PresentConstraint::PRESENT;
+    } else if (auto* p2 = llvm::dyn_cast<Preserved>(c.get())) {
+      preservedConstraints.insert(cIdx);
       preserved =
-          p1->isInverse() ? preserved | PreservedConstraint::NOT_PRESERVED : preserved | PreservedConstraint::PRESERVED;
-    } else if (auto* p2 = llvm::dyn_cast<Present>(c.second.get())) {
-      present = p2->isInverse() ? present | PresentConstraint::NOT_PRESENT : present | PresentConstraint::PRESENT;
+          p2->isInverse() ? preserved | PreservedConstraint::NOT_PRESERVED : preserved | PreservedConstraint::PRESERVED;
     }
   }
-  isPresent.insert({idx, static_cast<size_t>(present)});
-  isPreserved.insert({idx, static_cast<size_t>(preserved)});
+}
+
+std::set<std::pair<manifest_idx_t, manifest_idx_t>> ProtectionGraph::vertexConflicts() {
+  std::set<std::pair<manifest_idx_t, manifest_idx_t>> conflicts{};
+
+  for (lemon::ListDigraph::NodeIt n(LG); n != lemon::INVALID; ++n) {
+    PresentConstraint present = PresentConstraint::NONE;
+    PreservedConstraint preserved = PreservedConstraint::NONE;
+
+    std::set<constraint_idx_t> presentConstraints{};
+    std::set<constraint_idx_t> preservedConstraints{};
+    vertex_t& v = (*vertices)[n];
+    addToConstraintsMaps(v, present, preserved, presentConstraints, preservedConstraints);
+
+    auto addParentBB = [&, this](llvm::BasicBlock* BB) {
+      if (BB->getParent() != nullptr) {
+        llvm::Function* F = BB->getParent();
+        if (auto vFound = vertexCache[false]->find(F); vFound != vertexCache[false]->end()) {
+          vertex_t& v = (*vertices)[VERTICES_DESCRIPTORS.at(vFound->second)];
+          addToConstraintsMaps(v, present, preserved, presentConstraints, preservedConstraints);
+        }
+      }
+    };
+
+    auto addParentI = [&, this](llvm::Instruction* I) {
+      if (I->getParent() != nullptr) {
+        llvm::BasicBlock* BB = I->getParent();
+        if (auto vFound = vertexCache[false]->find(BB); vFound != vertexCache[false]->end()) {
+          vertex_t& v = (*vertices)[VERTICES_DESCRIPTORS.at(vFound->second)];
+          addToConstraintsMaps(v, present, preserved, presentConstraints, preservedConstraints);
+          addParentBB(BB);
+        }
+      }
+    };
+
+    if (auto I = llvm::dyn_cast<llvm::Instruction>(v.value)) {
+      addParentI(I);
+    } else if (auto BB = llvm::dyn_cast<llvm::BasicBlock>(v.value)) {
+      addParentBB(BB);
+    }
+
+    if (present == PresentConstraint::CONFLICT) {
+      for (auto i = presentConstraints.begin(), i_end = presentConstraints.end(); i != i_end; ++i) {
+        for (auto j = std::next(i, 1), j_end = presentConstraints.end(); j != j_end; ++j) {
+          manifest_idx_t m1 = MANIFESTS_CONSTRAINTS.right.at(*i);
+          manifest_idx_t m2 = MANIFESTS_CONSTRAINTS.right.at(*j);
+
+          conflicts.insert({m1, m2});
+        }
+      }
+    }
+
+    if (preserved == PreservedConstraint::CONFLICT) {
+      for (auto i = preservedConstraints.begin(), i_end = preservedConstraints.end(); i != i_end; ++i) {
+        for (auto j = std::next(i, 1), j_end = preservedConstraints.end(); j != j_end; ++j) {
+          manifest_idx_t m1 = MANIFESTS_CONSTRAINTS.right.at(*i);
+          manifest_idx_t m2 = MANIFESTS_CONSTRAINTS.right.at(*j);
+
+          conflicts.insert({m1, m2});
+        }
+      }
+    }
+  }
+
+  return conflicts;
+}
+
+std::set<std::pair<manifest_idx_t, manifest_idx_t>> ProtectionGraph::computeDependencies() {
+  std::set<std::pair<manifest_idx_t, manifest_idx_t>> dependencies{};
+
+  for (auto& [mIdx, m] : MANIFESTS) {
+    // Manifest dependencies
+    for (auto [it, it_end] = DependencyUndo.right.equal_range(mIdx); it != it_end; ++it) {
+      dependencies.insert({it->second, mIdx});
+    }
+  }
+
+  return dependencies;
 }
 
 std::vector<Manifest*> ProtectionGraph::topologicalSortManifests(std::unordered_set<Manifest*> manifests) {

@@ -137,7 +137,7 @@ endif ()
 
 target_compile_options(CompositionFramework PRIVATE -g -fno-rtti)
 target_compile_features(CompositionFramework PUBLIC cxx_std_17)
-target_link_libraries(CompositionFramework PRIVATE lemon nlohmann_json::nlohmann_json)
+target_link_libraries(CompositionFramework PRIVATE glpk lemon nlohmann_json::nlohmann_json)
 
 target_compile_features(rtlib PUBLIC cxx_std_17)
 

@@ -26,6 +26,7 @@ manifest_idx_t& operator++(manifest_idx_t& i);
 const manifest_idx_t operator++(manifest_idx_t& i, int);
 std::ostream& operator<<(std::ostream& out, const manifest_idx_t& i);
 llvm::raw_ostream& operator<<(llvm::raw_ostream& out, const manifest_idx_t& i);
+std::string to_string(manifest_idx_t const&);
 
 /**
  * The class `Manifest` describes one instance of a protection and groups all relevant information to apply (redo) and
