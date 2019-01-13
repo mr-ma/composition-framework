@@ -2,7 +2,7 @@
 
 namespace composition::graph::constraint {
 Present::Present(std::string info, llvm::Value* target, bool inverse)
-    : Constraint(ConstraintType::CK_PRESENT, GraphType::VERTEX, std::move(info)), target(target), inverse(inverse) {}
+    : Constraint(ConstraintType::CK_PRESENT, std::move(info)), target(target), inverse(inverse) {}
 
 llvm::Value* Present::getTarget() const { return target; }
 

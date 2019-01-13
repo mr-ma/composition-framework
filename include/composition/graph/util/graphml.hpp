@@ -32,14 +32,6 @@ void graph_to_graphml(graph_t& g, const std::string& filename,
  */
 template <typename graph_t>
 void graph_to_graphml(graph_t& g, std::ostream& out, const std::unordered_map<vertex_idx_t, size_t>& isPresent,
-                      const std::unordered_map<vertex_idx_t, size_t>& isPreserved) {
-  // auto index = std::move(index_map(g));
-
-  // boost::dynamic_properties dp;
-  //  dp.property("vertex_present", boost::make_assoc_property_map(isPresent));
-  // dp.property("vertex_preserved", boost::make_assoc_property_map(isPreserved));
-
-  // boost::write_graphml(out, g, boost::make_assoc_property_map(index), dp);
-}
+                      const std::unordered_map<vertex_idx_t, size_t>& isPreserved) {}
 } // namespace composition::graph::util
 #endif // COMPOSITION_FRAMEWORK_GRAPH_UTIL_GRAPHML_HPP

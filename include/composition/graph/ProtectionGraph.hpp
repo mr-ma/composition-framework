@@ -12,8 +12,6 @@
 #include <composition/graph/util/graphml.hpp>
 #include <composition/metric/Performance.hpp>
 #include <composition/profiler.hpp>
-#include <composition/strategy/Random.hpp>
-#include <composition/strategy/Strategy.hpp>
 #include <composition/support/options.hpp>
 #include <cstdint>
 #include <glpk.h>

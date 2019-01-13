@@ -4,7 +4,7 @@ namespace composition::graph::constraint {
 using llvm::WeakVH;
 
 Dependency::Dependency(std::string info, llvm::Value* from, llvm::Value* to)
-    : Constraint(ConstraintType::CK_DEPENDENCY, GraphType::EDGE, std::move(info)), from(from), to(to) {}
+    : Constraint(ConstraintType::CK_DEPENDENCY, std::move(info)), from(from), to(to) {}
 
 llvm::Value* Dependency::getFrom() const { return from; }
 

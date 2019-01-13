@@ -6,8 +6,6 @@
 #include <composition/graph/util/graphml.hpp>
 #include <composition/metric/Performance.hpp>
 #include <composition/metric/Weights.hpp>
-#include <composition/strategy/Avoidance.hpp>
-#include <composition/strategy/Weight.hpp>
 #include <composition/support/Pass.hpp>
 #include <composition/support/options.hpp>
 #include <composition/trace/PreservedValueRegistry.hpp>

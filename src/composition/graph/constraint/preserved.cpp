@@ -2,7 +2,7 @@
 
 namespace composition::graph::constraint {
 Preserved::Preserved(std::string info, llvm::Value* target, bool inverse)
-    : Constraint(ConstraintType::CK_PRESERVED, GraphType::VERTEX, std::move(info)), target(target), inverse(inverse) {}
+    : Constraint(ConstraintType::CK_PRESERVED, std::move(info)), target(target), inverse(inverse) {}
 
 llvm::Value* Preserved::getTarget() const { return target; }
 

@@ -31,16 +31,7 @@ void graph_to_dot(graph_t& g, const std::string& filename, const std::unordered_
  */
 template <typename graph_t>
 void graph_to_dot(graph_t& g, std::ostream& out, const std::unordered_map<vertex_idx_t, size_t>& isPresent,
-                  const std::unordered_map<vertex_idx_t, size_t>& isPreserved) {
-  // auto index = std::move(index_map(g));
-
-  // boost::dynamic_properties dp;
-  // dp.property("node_id", boost::make_assoc_property_map(index));
-  // dp.property("present", boost::make_assoc_property_map(isPresent));
-  // dp.property("preserved", boost::make_assoc_property_map(isPreserved));
-
-  // boost::write_graphviz_dp(out, g, dp);
-}
+                  const std::unordered_map<vertex_idx_t, size_t>& isPreserved) {}
 } // namespace composition::graph::util
 
 #endif // COMPOSITION_FRAMEWORK_GRAPH_UTIL_DOT_HPP

@@ -2,7 +2,7 @@
 
 namespace composition::graph::constraint {
 True::True(std::string info, llvm::Value* target)
-    : Constraint(ConstraintType::CK_TRUE, GraphType::VERTEX, std::move(info)), target(target) {}
+    : Constraint(ConstraintType::CK_TRUE, std::move(info)), target(target) {}
 
 llvm::Value* True::getTarget() const { return target; }
 
