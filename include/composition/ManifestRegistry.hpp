@@ -4,7 +4,7 @@
 #include <composition/Manifest.hpp>
 #include <cstdint>
 #include <string>
-#include <unordered_set>
+#include <set>
 
 namespace composition {
 
@@ -23,7 +23,7 @@ public:
    * Retrieves and returns all registered manifests.
    * @return an `unordered_set` of `Manifest` pointers
    */
-  static std::unordered_set<Manifest*>& GetAll();
+  static std::set<Manifest*>& GetAll();
 
   /**
    * Removes a manifest from the registry.
@@ -43,7 +43,7 @@ protected:
   static manifest_idx_t index;
 
   // TODO: This currently initializes a static unordered_set in the function. Possibly there's a better way to do this.
-  static std::unordered_set<Manifest*>& RegisteredManifests();
+  static std::set<Manifest*>& RegisteredManifests();
 };
 } // namespace composition
 

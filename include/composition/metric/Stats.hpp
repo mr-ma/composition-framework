@@ -10,6 +10,8 @@
 #include <llvm/IR/Module.h>
 #include <llvm/Support/raw_ostream.h>
 #include <nlohmann/json.hpp>
+#include <set>
+#include <unordered_map>
 
 namespace composition::metric {
 
@@ -37,24 +39,28 @@ public:
 
   Stats() = default;
 
+  explicit Stats(std::set<Manifest*> manifests);
+
   explicit Stats(std::istream& i);
 
   void dump(llvm::raw_ostream& o);
 
-  void collect(std::unordered_set<llvm::Function*> sensitiveFunctions, std::vector<Manifest*> manifests,
+  void setManifests(std::set<Manifest*> manifests);
+
+  void collect(std::set<llvm::Function*> sensitiveFunctions, std::vector<Manifest*> manifests,
                const ManifestProtectionMap& dep);
 
   void collect(llvm::Module* M, std::vector<Manifest*> manifests, const ManifestProtectionMap& dep);
 
   void collect(llvm::Value* V, std::vector<Manifest*> manifests, const ManifestProtectionMap& dep);
 
-  void collect(std::unordered_set<llvm::Instruction*> allInstructions, std::vector<Manifest*> manifests,
+  void collect(std::set<llvm::Instruction*> allInstructions, std::vector<Manifest*> manifests,
                const ManifestProtectionMap& dep);
 
 private:
-  std::unordered_set<llvm::Instruction*> protectedInstructionsDistinct{};
-  std::map<std::string, std::unordered_set<llvm::Instruction*>> protectedInstructions{};
-  std::map<std::string, std::unordered_set<llvm::Function*>> protectedFunctions{};
+  std::set<llvm::Instruction*> protectedInstructionsDistinct{};
+  std::map<std::string, std::set<llvm::Instruction*>> protectedInstructions{};
+  std::map<std::string, std::set<llvm::Function*>> protectedFunctions{};
 
   std::pair<Connectivity, Connectivity>
   instructionFunctionConnectivity(const std::unordered_map<llvm::Instruction*, size_t>& instructionConnectivityMap);

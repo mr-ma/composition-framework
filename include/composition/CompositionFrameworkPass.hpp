@@ -26,7 +26,7 @@ private:
   /**
    * A list of sensitive functions
    */
-  std::unordered_set<llvm::Function*> sensitiveFunctions{};
+  std::set<llvm::Function*> sensitiveFunctions{};
 
 public:
   CompositionFrameworkPass() : ModulePass(ID) {}

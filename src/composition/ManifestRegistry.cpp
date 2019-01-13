@@ -13,11 +13,10 @@ void ManifestRegistry::Remove(Manifest* m) {
     m->dump();
     m->Undo();
     manifests.erase(m);
-    delete m;
   }
 }
 
-std::unordered_set<Manifest*>& ManifestRegistry::GetAll() { return RegisteredManifests(); }
+std::set<Manifest*>& ManifestRegistry::GetAll() { return RegisteredManifests(); }
 
 void ManifestRegistry::Add(Manifest* m) {
   m->index = index++;
@@ -31,8 +30,8 @@ void ManifestRegistry::destroy() {
   RegisteredManifests().clear();
 }
 
-std::unordered_set<Manifest*>& ManifestRegistry::RegisteredManifests() {
-  static std::unordered_set<Manifest*> value = {};
+std::set<Manifest*>& ManifestRegistry::RegisteredManifests() {
+  static std::set<Manifest*> value = {};
   return value;
 }
 

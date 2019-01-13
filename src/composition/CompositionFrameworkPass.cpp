@@ -84,15 +84,14 @@ void test() {
                          true, {});
   auto m2 = new Manifest("sc-2", f1, {}, {std::make_shared<composition::graph::constraint::Dependency>("sc-2", f2, f1)},
                          true, {});
-  std::vector<Manifest*> manifests = {m1, m2};
-  std::unordered_set<Manifest*> unordered = {m1, m2};
+  std::set<Manifest*> manifests = {m1, m2};
   G.addManifests(manifests);
   G.Print("nohierarchy");
   G.addHierarchy(*M);
   G.Print("noshadow");
   G.connectShadowNodes();
   G.Print("full");
-  G.topologicalSortManifests(unordered);
+  G.topologicalSortManifests(manifests);
   dbgs() << "Working?\n";
 }
 
@@ -122,7 +121,7 @@ bool CompositionFrameworkPass::doInitialization(Module& M) {
   return true;
 }
 
-std::unique_ptr<graph::ProtectionGraph> buildGraphFromManifests(const std::vector<Manifest*>& manifests) {
+std::unique_ptr<graph::ProtectionGraph> buildGraphFromManifests(const std::set<Manifest*>& manifests) {
   auto g = std::make_unique<graph::ProtectionGraph>();
 
   cStats.proposedManifests = manifests.size();
@@ -202,10 +201,7 @@ bool CompositionFrameworkPass::analysisPass(llvm::Module& M) {
   dbgs() << "AnalysisPass running\n";
 
   auto mSet = ManifestRegistry::GetAll();
-  std::vector<Manifest*> manifests{};
-  manifests.insert(manifests.end(), mSet.begin(), mSet.end());
-
-  Graph = buildGraphFromManifests(manifests);
+  Graph = buildGraphFromManifests(mSet);
   addCallGraph(Graph, M);
   Graph->addHierarchy(M);
   Graph->connectShadowNodes();
@@ -218,7 +214,8 @@ bool CompositionFrameworkPass::graphPass(llvm::Module& M) {
   dbgs() << "GraphPass running\n";
 
   auto& filterPass = getAnalysis<FunctionFilterPass>();
-  sensitiveFunctions = filterPass.get_functions_info()->get_functions();
+  auto sFunc = filterPass.get_functions_info()->get_functions();
+  sensitiveFunctions = {sFunc.begin(), sFunc.end()};
 
   metric::Weights w;
   if (!WeightConfig.empty()) {
@@ -237,60 +234,36 @@ bool CompositionFrameworkPass::graphPass(llvm::Module& M) {
     BFI.insert({&F, &bf});
   }
 
-  std::random_device r{};
-  auto rng = std::default_random_engine{r()};
-
-  std::unordered_map<std::string, std::unique_ptr<strategy::Strategy>> strategies;
-  strategies.emplace("random", std::make_unique<strategy::Random>(rng));
-  strategies.emplace("avoidance", std::make_unique<strategy::Avoidance>(strategy::Avoidance({
-                                      {"cm", -1},
-                                      {"oh_assert_", 1},
-                                      {"oh_assert", 1},
-                                      {"sroh_assert", 1},
-                                      {"sroh_hash", 2},
-                                      {"oh_hash_", 2},
-                                      {"oh_hash", 2},
-                                      {"sc", 3},
-                                      {"cfi", 4},
-                                  })));
-  strategies.emplace("weight", std::make_unique<strategy::Weight>(w, BFI));
-
-  if (strategies.find(UseStrategy.getValue()) == strategies.end()) {
-    report_fatal_error("The given composition-framework strategy does not exist.", false);
-  }
-
   dbgs() << "Calculating Manifest dependencies\n";
   Graph->computeManifestDependencies();
-  dbgs() << "GraphPass strong_components\n";
-  auto accepted = Graph->conflictHandling(strategies.at(UseStrategy.getValue()), M);
-  dbgs() << "GraphPass done\n";
+
+  dbgs() << "Running ILP\n";
+  auto accepted = Graph->conflictHandling(M);
+
+  dbgs() << "Removing unselected manifests\n";
+  // Just keep accepted manifests
+  std::set<Manifest*> registered = ManifestRegistry::GetAll();
+  for (auto& m : registered) {
+    if (accepted.find(m) == accepted.end()) {
+      ManifestRegistry::Remove(m);
+    }
+  }
 
   Graph->destroy();
   Graph = buildGraphFromManifests(accepted);
+  Graph->addHierarchy(M);
+  Graph->connectShadowNodes();
   Graph->computeManifestDependencies();
+  cStats.stats.setManifests(accepted);
 
-  /*dbgs() << "Optimizing\n";
-  auto manifests = SortedManifests();
-  Graph->destroy();
-
-  // Rebuild the graph so we work with a clean version
-  for (auto& m : manifests) {
-    for (auto& u : m->UndoValues()) {
-      m->constraints.push_back(std::make_shared<graph::constraint::True>("true", u));
-    }
-  }
-  Graph = buildGraphFromManifests(manifests);
-  Graph->computeManifestDependencies();
-
-  std::unordered_set<llvm::Instruction*> instructions{};
-
+  /*
+  std::set<llvm::Instruction*> instructions{};
   for (auto F : sensitiveFunctions) {
     auto result = composition::metric::Coverage::ValueToInstructions(F);
     instructions.insert(result.begin(), result.end());
   }
 
-  // Graph->optimizeProtections(BFI, &M, manifests, instructions);
-  dbgs() << "Optimizing done\n";*/
+  */
 
   return false;
 }
@@ -340,7 +313,7 @@ bool CompositionFrameworkPass::protectionPass(llvm::Module& M) {
   writePatchInfo(patchInfos);
 
   dbgs() << "Collecting stats\n";
-  // cStats.stats.collect(sensitiveFunctions, manifests, Graph->getManifestProtectionMap());
+  cStats.stats.collect(sensitiveFunctions, manifests, Graph->getManifestProtectionMap());
   cStats.dump(dbgs());
 
   if (!DumpStats.empty()) {

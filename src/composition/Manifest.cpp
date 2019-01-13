@@ -95,15 +95,15 @@ void Manifest::Undo() {
 
 void Manifest::Redo() const { patchFunction(*this); }
 
-std::unordered_set<llvm::Instruction*> Manifest::Coverage() const {
+std::set<llvm::Instruction*> Manifest::Coverage() {
   if (protectee.pointsToAliveValue()) {
     return Coverage::ValueToInstructions(&*protectee);
   }
   return {};
 }
 
-std::unordered_set<llvm::Value*> Manifest::UndoValues() const {
-  std::unordered_set<llvm::Value*> undos{};
+std::set<llvm::Value*> Manifest::UndoValues() const {
+  std::set<llvm::Value*> undos{};
   for (const auto& g : undoValues) {
     if (auto* I = llvm::dyn_cast<llvm::Instruction>(&*g)) {
       undos.insert(I);

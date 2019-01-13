@@ -6,8 +6,9 @@
 #include <cstdint>
 #include <functional>
 #include <llvm/IR/Value.h>
+#include <optional>
 #include <ostream>
-#include <unordered_set>
+#include <set>
 #include <utility>
 
 namespace composition {
@@ -90,9 +91,9 @@ public:
 
   bool operator<(const Manifest& other) const;
 
-  virtual std::unordered_set<llvm::Instruction*> Coverage() const;
+  virtual std::set<llvm::Instruction*> Coverage();
 
-  virtual std::unordered_set<llvm::Value*> UndoValues() const;
+  virtual std::set<llvm::Value*> UndoValues() const;
 
   /**
    * Called if the manifest stays in the program

@@ -20,7 +20,7 @@ ProtectionGraph::ProtectionGraph() {
   edges = std::make_unique<lemon::ListDigraph::ArcMap<edge_t>>(LG);
 }
 
-void ProtectionGraph::addManifests(std::vector<Manifest*> manifests) {
+void ProtectionGraph::addManifests(std::set<Manifest*> manifests) {
   size_t total = manifests.size();
   dbgs() << "Adding " << std::to_string(total) << " manifests to protection graph\n";
 
@@ -71,27 +71,6 @@ vertex_idx_t ProtectionGraph::add_vertex(
   return idx;
 }
 
-void ProtectionGraph::remove_vertex(vertex_idx_t idx) noexcept {
-  /*graph_t& g = Graph;
-
-  // vd_t vd = VERTICES_DESCRIPTORS.left.at(idx);
-  for (auto [ei, ei_end] = boost::in_edges(vd, g); ei != ei_end; ++ei) {
-    auto iFound = EDGES_DESCRIPTORS.right.find(*ei);
-    if (iFound != EDGES_DESCRIPTORS.right.end()) {
-      EDGES_DESCRIPTORS.right.erase(iFound);
-    }
-  }
-  for (auto [ei, ei_end] = boost::out_edges(vd, g); ei != ei_end; ++ei) {
-    auto iFound = EDGES_DESCRIPTORS.right.find(*ei);
-    if (iFound != EDGES_DESCRIPTORS.right.end()) {
-      EDGES_DESCRIPTORS.right.erase(iFound);
-    }
-  }
-  boost::remove_vertex(vd, g);
-  VERTICES.erase(idx);
-  // VERTICES_DESCRIPTORS.left.erase(idx);*/
-}
-
 edge_idx_t ProtectionGraph::add_edge(vertex_idx_t sIdx, vertex_idx_t dIdx) {
   assert(sIdx != dIdx);
   auto source = VERTICES_DESCRIPTORS.at(sIdx);
@@ -120,56 +99,6 @@ edge_idx_t ProtectionGraph::add_edge(
     CONSTRAINTS_EDGES.insert({ConstraintIdx, EdgeIdx});
   }
   return idx;
-}
-
-void ProtectionGraph::remove_edge(edge_idx_t idx) noexcept {
-  /*
-    for (auto [ei, ei_end] = EDGES_DESCRIPTORS.left.equal_range(idx); ei != ei_end; ++ei) {
-      boost::remove_edge(ei->second, g);
-    }
-    EDGES.erase(idx);
-    EDGES_DESCRIPTORS.left.erase(idx);
-    */
-}
-
-void ProtectionGraph::removeManifest(manifest_idx_t mIdx) {
-  /*for (auto [it, it_end] = MANIFESTS_CONSTRAINTS.left.equal_range(mIdx); it != it_end; ++it) {
-    constraint_idx_t cIdx = it->second;
-
-    if (auto vFound = CONSTRAINTS_VERTICES.find(cIdx); vFound != CONSTRAINTS_VERTICES.end()) {
-      vertex_idx_t idx = vFound->second;
-      vertex_t& v = (*vertices)[VERTICES_DESCRIPTORS.at(idx)];
-      v.constraints.erase(cIdx);
-
-      if (v.constraints.empty()) {
-        remove_vertex(idx);
-      }
-    } else {
-      auto eFound = CONSTRAINTS_EDGES.find(cIdx);
-      if (eFound == CONSTRAINTS_EDGES.end()) {
-        llvm_unreachable("Constraint was neither a vertice nor an edge.");
-      }
-
-      edge_idx_t idx = eFound->second;
-      edge_t& e = (*edges)[EDGES_DESCRIPTORS.at(idx)];
-      e.constraints.erase(cIdx);
-
-      if (e.constraints.empty()) {
-        remove_edge(idx);
-      }
-    }
-  }
-
-  for (auto [it, it_end] = DependencyUndo.right.equal_range(mIdx); it != it_end; ++it) {
-    removeManifest(it->second);
-  }
-  DependencyUndo.right.erase(mIdx);
-  // DependencyUndo.left.erase(idx);
-  ManifestProtection.right.erase(mIdx);
-  ManifestProtection.left.erase(mIdx);
-
-  ManifestRegistry::Remove(MANIFESTS.find(mIdx)->second);
-  MANIFESTS.erase(mIdx);*/
 }
 
 constraint_idx_t ProtectionGraph::addConstraint(manifest_idx_t idx, std::shared_ptr<Constraint> c) {
@@ -350,14 +279,15 @@ std::set<std::set<manifest_idx_t>> ProtectionGraph::computeCycles() {
   return cycles;
 }
 
-std::vector<Manifest*> ProtectionGraph::conflictHandling(const std::unique_ptr<strategy::Strategy>& strategy,
-                                                         llvm::Module& M) {
+std::set<Manifest*> ProtectionGraph::conflictHandling(llvm::Module& M) {
+  Profiler resolvingProfiler{};
+
   bool hasCycles = false;
   auto conflicts = vertexConflicts();
   auto dependencies = computeDependencies();
   auto cycles = computeCycles();
+
   do {
-    size_t N = MANIFESTS.size();
     boost::bimaps::bimap<int, manifest_idx_t> colsToM{};
 
     std::vector<int> rows{};
@@ -432,36 +362,32 @@ std::vector<Manifest*> ProtectionGraph::conflictHandling(const std::unique_ptr<s
     glp_set_row_bnds(lp, 3, GLP_LO, 0.0, 0.0); // 0 < unique <= inf
 
     // COLUMNS
-    glp_add_cols(lp, N); // adds three columns to the problem object
-
-    auto i = 1;
     for (auto& [mIdx, m] : MANIFESTS) {
       // column N
       std::ostringstream os;
       os << "m" << m->index;
-      glp_set_col_name(lp, i, os.str().c_str()); // assigns name m_n to nth column
-      glp_set_col_kind(lp, i, GLP_BV);           // values are binary
-      glp_set_col_bnds(lp, i, GLP_DB, 0.0, 1.0); // values are binary
-      glp_set_obj_coef(lp, i, cost(m));          // costs
+      auto col = glp_add_cols(lp, 1);
+      glp_set_col_name(lp, col, os.str().c_str()); // assigns name m_n to nth column
+      glp_set_col_kind(lp, col, GLP_BV);           // values are binary
+      glp_set_col_bnds(lp, col, GLP_DB, 0.0, 1.0); // values are binary
+      glp_set_obj_coef(lp, col, cost(m));          // costs
 
-      colsToM.insert({i, m->index});
+      colsToM.insert({col, m->index});
 
       // explicit
       rows.push_back(1);
-      cols.push_back(i);
+      cols.push_back(col);
       coeffs.push_back(m->Coverage().size());
 
       // implicit
       rows.push_back(2);
-      cols.push_back(i);
+      cols.push_back(col);
       coeffs.push_back(0);
 
       // unique
       rows.push_back(3);
-      cols.push_back(i);
+      cols.push_back(col);
       coeffs.push_back(0);
-
-      ++i;
     }
 
     // Add dependencies
@@ -499,10 +425,10 @@ std::vector<Manifest*> ProtectionGraph::conflictHandling(const std::unique_ptr<s
     auto total_cost = glp_mip_obj_val(lp);
     glp_print_mip(lp, "sol.glp");
 
-    std::vector<Manifest*> accepted{};
+    std::set<Manifest*> accepted{};
     for (auto& [col, mIdx] : colsToM) {
       if (glp_mip_col_val(lp, col) == 1) {
-        accepted.push_back(MANIFESTS.at(mIdx));
+        accepted.insert(MANIFESTS.at(mIdx));
       }
     }
     glp_delete_prob(lp);
@@ -518,6 +444,7 @@ std::vector<Manifest*> ProtectionGraph::conflictHandling(const std::unique_ptr<s
         cycles.insert(c);
       }
     } else {
+      cStats.timeConflictResolving += resolvingProfiler.stop();
       return accepted;
     }
   } while (hasCycles);
@@ -525,7 +452,7 @@ std::vector<Manifest*> ProtectionGraph::conflictHandling(const std::unique_ptr<s
   llvm_unreachable("Reached end of conflict handling");
 }
 
-std::vector<Manifest*> ProtectionGraph::topologicalSortManifests(std::unordered_set<Manifest*> manifests) {
+std::vector<Manifest*> ProtectionGraph::topologicalSortManifests(std::set<Manifest*> manifests) {
   std::set<Manifest*> all{manifests.begin(), manifests.end()};
   std::set<Manifest*> seen{};
 

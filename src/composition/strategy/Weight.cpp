@@ -29,8 +29,8 @@ Manifest* Weight::decide(std::vector<Manifest*> manifests) {
   return *manifests.begin();
 }
 
-std::unordered_set<llvm::BasicBlock*> getBlocks(llvm::Value* v) {
-  std::unordered_set<llvm::BasicBlock*> blocks{};
+std::set<llvm::BasicBlock*> getBlocks(llvm::Value* v) {
+  std::set<llvm::BasicBlock*> blocks{};
 
   if (auto* F = llvm::dyn_cast<llvm::Function>(v)) {
     for (auto& BB : *F) {
@@ -46,8 +46,8 @@ std::unordered_set<llvm::BasicBlock*> getBlocks(llvm::Value* v) {
   return blocks;
 }
 
-std::unordered_set<llvm::BasicBlock*> getBlocks(std::unordered_set<llvm::Instruction*> vs) {
-  std::unordered_set<llvm::BasicBlock*> allBlocks{};
+std::set<llvm::BasicBlock*> getBlocks(std::set<llvm::Instruction*> vs) {
+  std::set<llvm::BasicBlock*> allBlocks{};
   for (auto* v : vs) {
     auto newBlocks = getBlocks(v);
     allBlocks.insert(newBlocks.begin(), newBlocks.end());
@@ -55,8 +55,8 @@ std::unordered_set<llvm::BasicBlock*> getBlocks(std::unordered_set<llvm::Instruc
   return allBlocks;
 }
 
-std::unordered_set<llvm::BasicBlock*> getBlocks(std::unordered_set<llvm::Value*> vs) {
-  std::unordered_set<llvm::BasicBlock*> allBlocks{};
+std::set<llvm::BasicBlock*> getBlocks(std::set<llvm::Value*> vs) {
+  std::set<llvm::BasicBlock*> allBlocks{};
   for (auto* v : vs) {
     auto newBlocks = getBlocks(v);
     allBlocks.insert(newBlocks.begin(), newBlocks.end());
@@ -64,7 +64,7 @@ std::unordered_set<llvm::BasicBlock*> getBlocks(std::unordered_set<llvm::Value*>
   return allBlocks;
 }
 
-Weight::Score Weight::calculateScore(const Manifest& m) {
+Weight::Score Weight::calculateScore(Manifest& m) {
   auto cov = m.Coverage();
   auto undo = m.UndoValues();
 

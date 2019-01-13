@@ -5,6 +5,7 @@
 #include <composition/strategy/Strategy.hpp>
 #include <llvm/Analysis/BlockFrequencyInfo.h>
 #include <llvm/IR/Function.h>
+#include <unordered_map>
 
 namespace composition::strategy {
 /**
@@ -23,7 +24,7 @@ private:
   Manifest* decide(std::vector<Manifest*> manifests);
 
   using Score = float;
-  Score calculateScore(const Manifest& m);
+  Score calculateScore(Manifest& m);
 };
 } // namespace composition::strategy
 #endif // COMPOSITION_FRAMEWORK_STRATEGY_WEIGHT_HPP
