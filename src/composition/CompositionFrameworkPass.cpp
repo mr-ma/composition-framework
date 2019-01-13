@@ -11,6 +11,7 @@
 #include <composition/trace/PreservedValueRegistry.hpp>
 #include <function-filter/Filter.hpp>
 #include <llvm/Analysis/BlockFrequencyInfo.h>
+#include <llvm/Analysis/BranchProbabilityInfo.h>
 #include <llvm/IR/CallSite.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/Support/Debug.h>
@@ -32,6 +33,7 @@ using composition::support::UseStrategy;
 using composition::support::WeightConfig;
 using llvm::BasicBlock;
 using llvm::BlockFrequencyInfoWrapperPass;
+using llvm::BranchProbabilityInfoWrapperPass;
 using llvm::CallSite;
 using llvm::cast;
 using llvm::ConstantArray;
@@ -57,6 +59,7 @@ char CompositionFrameworkPass::ID = 0;
 
 void CompositionFrameworkPass::getAnalysisUsage(llvm::AnalysisUsage& AU) const {
   AU.addRequired<BlockFrequencyInfoWrapperPass>();
+  AU.addRequired<BranchProbabilityInfoWrapperPass>();
   AU.addRequiredTransitive<FunctionFilterPass>();
   AU.setPreservesAll();
 
@@ -228,17 +231,25 @@ bool CompositionFrameworkPass::graphPass(llvm::Module& M) {
     if (F.isDeclaration()) {
       continue;
     }
-    dbgs() << F.getName() << "\n";
-    auto& bfiPass = getAnalysis<BlockFrequencyInfoWrapperPass>(F);
-    auto& bf = bfiPass.getBFI();
-    BFI.insert({&F, &bf});
+    // dbgs() << F.getName() << "\n";
+    // BFI.insert({&F, bf});
+
+    for (const llvm::BasicBlock& B : F) {
+      const llvm::Function* par = B.getParent();
+      assert(par != nullptr);
+      llvm::Function* parf = const_cast<llvm::Function*>(par);
+      auto& bfiPass = getAnalysis<BlockFrequencyInfoWrapperPass>(*parf);
+      const llvm::BlockFrequencyInfo& bf = bfiPass.getBFI();
+
+      //  dbgs() << bf.getBlockProfileCount(&B).getValueOr(0) << "\n";
+    }
   }
 
   dbgs() << "Calculating Manifest dependencies\n";
   Graph->computeManifestDependencies();
 
   dbgs() << "Running ILP\n";
-  auto accepted = Graph->conflictHandling(M);
+  auto accepted = Graph->conflictHandling(M, BFI);
 
   dbgs() << "Removing unselected manifests\n";
   // Just keep accepted manifests
@@ -255,15 +266,6 @@ bool CompositionFrameworkPass::graphPass(llvm::Module& M) {
   Graph->connectShadowNodes();
   Graph->computeManifestDependencies();
   cStats.stats.setManifests(accepted);
-
-  /*
-  std::set<llvm::Instruction*> instructions{};
-  for (auto F : sensitiveFunctions) {
-    auto result = composition::metric::Coverage::ValueToInstructions(F);
-    instructions.insert(result.begin(), result.end());
-  }
-
-  */
 
   return false;
 }

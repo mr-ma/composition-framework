@@ -1,6 +1,17 @@
 #include <composition/metric/Coverage.hpp>
 namespace composition::metric {
 
+std::set<llvm::Instruction*> Coverage::ValuesToInstructions(std::set<llvm::Value*> values) {
+  std::set<llvm::Instruction*> instructions = {};
+  for (auto& v : values) {
+    auto newInstructions = Coverage::ValueToInstructions(v);
+    for (auto& I : newInstructions) {
+      instructions.insert(I);
+    }
+  }
+  return instructions;
+}
+
 std::set<llvm::Instruction*> Coverage::ValueToInstructions(llvm::Value* v) {
   std::set<llvm::Instruction*> instructions = {};
 

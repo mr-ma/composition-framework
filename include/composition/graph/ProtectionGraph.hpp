@@ -191,129 +191,15 @@ public:
   std::set<std::pair<manifest_idx_t, manifest_idx_t>> vertexConflicts();
   std::set<std::pair<manifest_idx_t, manifest_idx_t>> computeDependencies();
   std::set<std::set<manifest_idx_t>> computeCycles();
+  std::set<std::set<manifest_idx_t>> computeConnectivity(llvm::Module& M);
   /**
    * Detects and handles the conflicts in the graph `g`
    * @tparam graph_t the type of the graph `g`
    * @param g the graph
    * @param strategy the strategy to use for handling conflicts
    */
-  std::set<Manifest*> conflictHandling(llvm::Module& M);
-
-  template <typename graph_t>
-  void prepareHotness(graph_t& g, const std::unordered_map<llvm::Function*, llvm::BlockFrequencyInfo*>& BFI) {
-    /*llvm::dbgs() << "Calculating hotness\n";
-    auto rg = g;
-
-    uint64_t maxHotness = 0;
-    for (auto [vi, vi_end] = boost::vertices(rg); vi != vi_end; ++vi) {
-      if (g[*vi].type != vertex_type::INSTRUCTION) {
-        continue;
-      }
-      auto* value = static_cast<llvm::Instruction*>(g[*vi].value);
-      if (value == nullptr || value->getParent() == nullptr || value->getParent()->getParent() == nullptr) {
-        continue;
-      }
-
-      if (BFI.find(value->getParent()->getParent()) == BFI.end()) {
-        continue;
-      }
-
-      auto hotness = Performance::getBlockFreq(value->getParent(), BFI.at(value->getParent()->getParent()), false);
-      g[*vi].absoluteHotness = hotness;
-
-      if (hotness > maxHotness) {
-        maxHotness = hotness;
-      }
-    }
-
-    for (auto [vi, vi_end] = boost::vertices(rg); vi != vi_end; ++vi) {
-      if (g[*vi].type != vertex_type::INSTRUCTION) {
-        continue;
-      }
-      g[*vi].hotness = g[*vi].absoluteHotness / static_cast<float>(maxHotness);
-    }*/
-  }
-
-  template <typename graph_t>
-  void removeHotNodes(graph_t& g, double coverage, llvm::Module* module, std::vector<Manifest*> manifests,
-                      std::unordered_set<llvm::Instruction*> allInstructions) {
-    /*llvm::dbgs() << "Removing hot nodes\n";
-
-    while (true) {
-      llvm::dbgs() << "Loop\n";
-      std::unordered_map<std::string, std::unordered_set<llvm::Instruction*>> instructionProtections{};
-
-      for (auto& m : manifests) {
-        for (auto& I : m->Coverage()) {
-          instructionProtections[m->name].insert(I);
-        }
-      }
-
-      std::unordered_map<llvm::Instruction*, size_t> instructionConnectivityMap{};
-      for (auto& I : allInstructions) {
-        instructionConnectivityMap[I] = 0;
-      }
-      for (auto& [p, instr] : instructionProtections) {
-        for (auto* I : instr) {
-          instructionConnectivityMap[I]++;
-        }
-      }
-
-      std::vector<size_t> connectivity{};
-      for (auto& [I, c] : instructionConnectivityMap) {
-        connectivity.push_back(c);
-      }
-      composition::metric::Connectivity instConnectivity{connectivity};
-
-      if (instConnectivity.avg <= coverage || manifests.empty()) {
-        break;
-      }
-
-      std::vector<typename graph_t::vertex_descriptor> vertices{};
-      float maxHotness = 0;
-      auto rg = g;
-      for (auto [vi, vi_end] = boost::vertices(rg); vi != vi_end; ++vi) {
-        if (g[*vi].hotness > maxHotness) {
-          maxHotness = g[*vi].hotness;
-          vertices.clear();
-          vertices.push_back(*vi);
-        } else if (g[*vi].hotness == maxHotness) {
-          vertices.push_back(*vi);
-        }
-      }
-
-      std::unordered_set<Manifest*> candidates{};
-      for (auto vd : vertices) {
-        for (auto [cIdx, c] : g[vd].constraints) {
-          manifest_idx_t idx = MANIFESTS_CONSTRAINTS.right.find(cIdx)->second;
-          Manifest* m = MANIFESTS.find(idx)->second;
-          candidates.insert(m);
-        }
-      }
-
-      int minCoverage = 0;
-      Manifest* best = nullptr;
-
-      for (auto m : candidates) {
-        auto localCoverage = m->Coverage().size();
-        if (best == nullptr || localCoverage > minCoverage) {
-          minCoverage = localCoverage;
-          best = m;
-        }
-      }
-      if (best == nullptr) {
-        break;
-      }
-
-      llvm::dbgs() << "Remove\n";
-      removeManifest(best->index);
-
-      manifests.clear();
-      for (auto mi = Protections.left.begin(), mi_end = Protections.left.end(); mi != mi_end; ++mi) {
-        manifests.push_back(MANIFESTS.find(mi->first)->second);
-      }
-    }*/
-  }
+  std::set<Manifest*> conflictHandling(llvm::Module& M,
+                                       const std::unordered_map<llvm::Function*, llvm::BlockFrequencyInfo*>& BFI);
 };
 } // namespace composition::graph
 #endif // COMPOSITION_FRAMEWORK_GRAPH_PROTECTIONGRAPH_HPP

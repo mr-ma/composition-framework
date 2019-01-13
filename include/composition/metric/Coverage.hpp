@@ -14,6 +14,7 @@ namespace composition::metric {
  */
 class Coverage {
 public:
+  static std::set<llvm::Instruction*> ValuesToInstructions(std::set<llvm::Value*> values);
   /**
    * Returns all instructions which `v` represents
    * @param v the Value

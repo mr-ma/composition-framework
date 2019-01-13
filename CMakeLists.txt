@@ -52,6 +52,7 @@ add_library(CompositionFramework SHARED
         include/composition/metric/Weights.hpp
         include/composition/metric/Stats.hpp
         include/composition/metric/Connectivity.hpp
+        include/composition/metric/ManifestStats.hpp
 
         include/composition/trace/TraceableValue.hpp
         include/composition/trace/PreservedValueRegistry.hpp
@@ -128,7 +129,7 @@ if ($ENV{CLION_IDE})
 endif ()
 
 
-target_compile_options(CompositionFramework PRIVATE -g -fno-rtti)
+target_compile_options(CompositionFramework PRIVATE -g -fno-rtti -fstandalone-debug)
 target_compile_features(CompositionFramework PUBLIC cxx_std_17)
 target_link_libraries(CompositionFramework PRIVATE glpk lemon nlohmann_json::nlohmann_json)
 
