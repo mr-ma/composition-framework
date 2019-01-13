@@ -101,6 +101,9 @@ edge_idx_t ProtectionGraph::add_edge(
   return idx;
 }
 
+size_t ProtectionGraph::countVertices() { return lemon::countNodes(LG); }
+size_t ProtectionGraph::countEdges() { return lemon::countArcs(LG); }
+
 constraint_idx_t ProtectionGraph::addConstraint(manifest_idx_t idx, std::shared_ptr<Constraint> c) {
   MANIFESTS_CONSTRAINTS.insert({idx, ConstraintIdx});
   if (auto d = dyn_cast<Dependency>(c.get())) {
@@ -217,6 +220,8 @@ std::set<std::pair<manifest_idx_t, manifest_idx_t>> ProtectionGraph::computeDepe
 }
 
 std::set<std::set<manifest_idx_t>> ProtectionGraph::computeCycles() {
+  Profiler detectingProfiler{};
+
   if (lemon::dag(LG)) {
     return {};
   }
@@ -275,18 +280,20 @@ std::set<std::set<manifest_idx_t>> ProtectionGraph::computeCycles() {
       }
     }
   }
+  cStats.timeConflictDetection += detectingProfiler.stop();
 
   return cycles;
 }
 
 std::set<Manifest*> ProtectionGraph::conflictHandling(llvm::Module& M) {
-  Profiler resolvingProfiler{};
-
-  bool hasCycles = false;
+  Profiler detectingProfiler{};
   auto conflicts = vertexConflicts();
   auto dependencies = computeDependencies();
+  cStats.timeConflictDetection += detectingProfiler.stop();
   auto cycles = computeCycles();
 
+  Profiler resolvingProfiler{};
+  bool hasCycles = false;
   do {
     boost::bimaps::bimap<int, manifest_idx_t> colsToM{};
 
@@ -444,6 +451,8 @@ std::set<Manifest*> ProtectionGraph::conflictHandling(llvm::Module& M) {
         cycles.insert(c);
       }
     } else {
+      cStats.cycles = cycles.size();
+      cStats.conflicts = conflicts.size();
       cStats.timeConflictResolving += resolvingProfiler.stop();
       return accepted;
     }

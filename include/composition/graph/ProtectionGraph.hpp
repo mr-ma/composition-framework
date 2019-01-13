@@ -125,6 +125,9 @@ public:
    */
   void destroy();
 
+  size_t countVertices();
+  size_t countEdges();
+
   const ManifestDependencyMap getManifestDependencyMap() const { return DependencyUndo; }
 
   const ManifestProtectionMap getManifestProtectionMap() const { return ManifestProtection; }

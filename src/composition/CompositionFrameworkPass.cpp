@@ -124,7 +124,6 @@ bool CompositionFrameworkPass::doInitialization(Module& M) {
 std::unique_ptr<graph::ProtectionGraph> buildGraphFromManifests(const std::set<Manifest*>& manifests) {
   auto g = std::make_unique<graph::ProtectionGraph>();
 
-  cStats.proposedManifests = manifests.size();
   Profiler constructionProfiler{};
   g->addManifests(manifests);
   cStats.timeGraphConstruction += constructionProfiler.stop();
@@ -201,10 +200,13 @@ bool CompositionFrameworkPass::analysisPass(llvm::Module& M) {
   dbgs() << "AnalysisPass running\n";
 
   auto mSet = ManifestRegistry::GetAll();
+  cStats.proposedManifests = mSet.size();
   Graph = buildGraphFromManifests(mSet);
   addCallGraph(Graph, M);
   Graph->addHierarchy(M);
   Graph->connectShadowNodes();
+  cStats.vertices = Graph->countVertices();
+  cStats.edges = Graph->countEdges();
   printGraphs(Graph, "graph_raw");
 
   return false;
