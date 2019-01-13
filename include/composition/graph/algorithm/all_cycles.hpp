@@ -32,8 +32,8 @@ private:
       if (neighbor == startVertex) {
         // Cycle found
         std::set<lemon::ListDigraph::Node> cycle{};
-        for (auto it = stack.begin(), it_end = stack.end(); it != it_end; ++it) {
-          cycle.insert(*it);
+        for (auto &it : stack) {
+          cycle.insert(it);
         }
         size_t pre = allCycles.size();
         allCycles.insert(cycle);

@@ -14,7 +14,7 @@ void ManifestValueHandle::deleted() {
   this->clearValPtr();
 }
 
-void ManifestValueHandle::allUsesReplacedWith(llvm::Value* value) {
+void ManifestValueHandle::allUsesReplacedWith(llvm::Value*) {
   dbgs() << "Value RAUWED from: " << getPassName() << "\n";
 }
 

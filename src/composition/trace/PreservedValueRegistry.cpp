@@ -28,24 +28,25 @@ TraceableCallbackInfo PreservedValueRegistry::Register(const std::string& name, 
 TraceableCallbackInfo PreservedValueRegistry::Register(const std::string& name, llvm::Value* v,
                                                        const PresentCallback& presentCallback,
                                                        const PreservedCallback& preservedCallback) {
+
+  auto noSubInstruction = [](llvm::Instruction& I) {
+      LLVMContext& C = I.getContext();
+      MDNode* N = MDNode::get(C, MDString::get(C, "nosub"));
+      I.setMetadata("llvm.obfuscator.nosub", N);
+  };
+
   if (presentCallback) {
     if (auto* I = dyn_cast<Instruction>(v)) {
-      LLVMContext& C = I->getContext();
-      MDNode* N = MDNode::get(C, MDString::get(C, "nosub"));
-      I->setMetadata("llvm.obfuscator.nosub", N);
+      noSubInstruction(*I);
     }
   }
 
   if (preservedCallback) {
     if (auto* I = dyn_cast<Instruction>(v)) {
-      LLVMContext& C = I->getContext();
-      MDNode* N = MDNode::get(C, MDString::get(C, "nosub"));
-      I->setMetadata("llvm.obfuscator.nosub", N);
+      noSubInstruction(*I);
     } else if (auto* B = dyn_cast<BasicBlock>(v)) {
       for (auto& I : *B) {
-        LLVMContext& C = I.getContext();
-        MDNode* N = MDNode::get(C, MDString::get(C, "nosub"));
-        I.setMetadata("llvm.obfuscator.nosub", N);
+        noSubInstruction(I);
       }
     } else if (auto* F = dyn_cast<Function>(v)) {
       LLVMContext& C = F->getContext();

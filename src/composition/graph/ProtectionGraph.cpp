@@ -101,8 +101,8 @@ edge_idx_t ProtectionGraph::add_edge(
   return idx;
 }
 
-size_t ProtectionGraph::countVertices() { return lemon::countNodes(LG); }
-size_t ProtectionGraph::countEdges() { return lemon::countArcs(LG); }
+size_t ProtectionGraph::countVertices() { return static_cast<size_t>(lemon::countNodes(LG)); }
+size_t ProtectionGraph::countEdges() { return static_cast<size_t>(lemon::countArcs(LG)); }
 
 constraint_idx_t ProtectionGraph::addConstraint(manifest_idx_t idx, std::shared_ptr<Constraint> c) {
   MANIFESTS_CONSTRAINTS.insert({idx, ConstraintIdx});
@@ -153,12 +153,16 @@ std::set<std::pair<manifest_idx_t, manifest_idx_t>> ProtectionGraph::vertexConfl
     vertex_t& v = (*vertices)[n];
     addToConstraintsMaps(v, present, preserved, presentConstraints, preservedConstraints);
 
+    auto addVertexConstraint = [&, this](vertex_idx_t idx) {
+        vertex_t& v = (*vertices)[VERTICES_DESCRIPTORS.at(idx)];
+        addToConstraintsMaps(v, present, preserved, presentConstraints, preservedConstraints);
+    };
+
     auto addParentBB = [&, this](llvm::BasicBlock* BB) {
       if (BB->getParent() != nullptr) {
         llvm::Function* F = BB->getParent();
         if (auto vFound = vertexCache[false]->find(F); vFound != vertexCache[false]->end()) {
-          vertex_t& v = (*vertices)[VERTICES_DESCRIPTORS.at(vFound->second)];
-          addToConstraintsMaps(v, present, preserved, presentConstraints, preservedConstraints);
+          addVertexConstraint(vFound->second);
         }
       }
     };
@@ -167,8 +171,7 @@ std::set<std::pair<manifest_idx_t, manifest_idx_t>> ProtectionGraph::vertexConfl
       if (I->getParent() != nullptr) {
         llvm::BasicBlock* BB = I->getParent();
         if (auto vFound = vertexCache[false]->find(BB); vFound != vertexCache[false]->end()) {
-          vertex_t& v = (*vertices)[VERTICES_DESCRIPTORS.at(vFound->second)];
-          addToConstraintsMaps(v, present, preserved, presentConstraints, preservedConstraints);
+          addVertexConstraint(vFound->second);
           addParentBB(BB);
         }
       }
@@ -209,7 +212,7 @@ std::set<std::pair<manifest_idx_t, manifest_idx_t>> ProtectionGraph::vertexConfl
 std::set<std::pair<manifest_idx_t, manifest_idx_t>> ProtectionGraph::computeDependencies() {
   std::set<std::pair<manifest_idx_t, manifest_idx_t>> dependencies{};
 
-  for (auto& [mIdx, m] : MANIFESTS) {
+  for (auto& [mIdx, _] : MANIFESTS) {
     // Manifest dependencies
     for (auto [it, it_end] = DependencyUndo.right.equal_range(mIdx); it != it_end; ++it) {
       dependencies.insert({it->second, mIdx});
@@ -235,14 +238,13 @@ std::set<std::set<manifest_idx_t>> ProtectionGraph::computeCycles() {
   llvm::dbgs() << "End...\n";*/
 
   lemon::ListDigraph::NodeMap<int> components{LG};
-  const int numComponents = lemon::stronglyConnectedComponents(LG, components);
-
+  lemon::stronglyConnectedComponents(LG, components);
   std::map<int, std::set<lemon::ListDigraph::Node>> sccs{};
   for (lemon::ListDigraph::NodeIt scNode(LG); scNode != lemon::INVALID; ++scNode) {
     sccs[components[scNode]].insert(scNode);
   }
 
-  for (auto& [sccId, scc] : sccs) {
+  for (auto& [_, scc] : sccs) {
     if (scc.size() == 1) {
       continue;
     } else {
@@ -293,7 +295,6 @@ std::set<Manifest*> ProtectionGraph::conflictHandling(llvm::Module& M) {
   auto cycles = computeCycles();
 
   Profiler resolvingProfiler{};
-  bool hasCycles = false;
   do {
     boost::bimaps::bimap<int, manifest_idx_t> colsToM{};
 
@@ -412,7 +413,7 @@ std::set<Manifest*> ProtectionGraph::conflictHandling(llvm::Module& M) {
       cycle(lp, c);
     }
 
-    size_t dataSize = rows.size();
+    int dataSize = static_cast<int>(rows.size());
     // now prepend the required position zero placeholder (any value will do but zero is safe)
     // first create length one vectors using default member construction
     std::vector<int> iav(1, 0);
@@ -425,10 +426,10 @@ std::set<Manifest*> ProtectionGraph::conflictHandling(llvm::Module& M) {
     arv.insert(arv.end(), coeffs.begin(), coeffs.end());
 
     glp_load_matrix(lp, dataSize, &iav[0], &jav[0], &arv[0]); // calls the routine glp_load_matrix
-    glp_write_lp(lp, NULL, "prob.glp");
+    glp_write_lp(lp, nullptr, "prob.glp");
 
-    glp_simplex(lp, NULL); // calls the routine glp_simplex to solve LP problem
-    glp_intopt(lp, NULL);
+    glp_simplex(lp, nullptr); // calls the routine glp_simplex to solve LP problem
+    glp_intopt(lp, nullptr);
     auto total_cost = glp_mip_obj_val(lp);
     glp_print_mip(lp, "sol.glp");
 
@@ -446,7 +447,6 @@ std::set<Manifest*> ProtectionGraph::conflictHandling(llvm::Module& M) {
     pg.connectShadowNodes();
     auto newCycles = pg.computeCycles();
     if (!newCycles.empty()) {
-      hasCycles = true;
       for (auto& c : newCycles) {
         cycles.insert(c);
       }
@@ -456,9 +456,7 @@ std::set<Manifest*> ProtectionGraph::conflictHandling(llvm::Module& M) {
       cStats.timeConflictResolving += resolvingProfiler.stop();
       return accepted;
     }
-  } while (hasCycles);
-
-  llvm_unreachable("Reached end of conflict handling");
+  } while (true);
 }
 
 std::vector<Manifest*> ProtectionGraph::topologicalSortManifests(std::set<Manifest*> manifests) {
@@ -484,13 +482,13 @@ std::vector<Manifest*> ProtectionGraph::topologicalSortManifests(std::set<Manife
 
   seen.clear();
   lemon::ListDigraph::NodeMap<int> order{LG};
-  assert(lemon::checkedTopologicalSort(LG, order) == true);
+  assert(lemon::checkedTopologicalSort(LG, order));
 
   const auto nodes = static_cast<unsigned long>(lemon::countNodes(LG));
   std::vector<lemon::ListDigraph::Node> sorted(nodes);
 
   for (lemon::ListDigraph::NodeIt n(LG); n != lemon::INVALID; ++n) {
-    sorted[order[n]] = static_cast<lemon::ListDigraph::Node>(n);
+    sorted[order[n]] = n;
   }
 
   for (lemon::ListDigraph::Node& n : sorted) {

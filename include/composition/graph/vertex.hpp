@@ -46,10 +46,6 @@ struct vertex_t {
    */
   std::unordered_map<constraint::constraint_idx_t, std::shared_ptr<constraint::Constraint>> constraints;
 
-  uint64_t absoluteHotness = 0;
-  float hotness = 0;
-  float coverage = 0;
-
   /**
    * Creates a new vertex
    * @param index the index of the vertex
