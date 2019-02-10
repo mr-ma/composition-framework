@@ -46,6 +46,7 @@ public:
    * The value that receives protection
    */
   support::ManifestValueHandle protectee;
+  support::ManifestValueHandle blockProtectee;
   /**
    * The function that is called if the manifest stays in the program
    */
@@ -70,7 +71,7 @@ private:
   std::vector<support::ManifestValueHandle> undoValues{};
 
 public:
-  Manifest(std::string name, llvm::Value* protectee, PatchFunction patchFunction,
+  Manifest(std::string name, llvm::Value* protectee, llvm::Value* blockProtectee, PatchFunction patchFunction,
            std::vector<std::shared_ptr<graph::constraint::Constraint>> constraints = {}, bool postPatching = false,
            std::set<llvm::Value*> undoValues = {}, std::string patchInfo = {});
 
@@ -91,6 +92,8 @@ public:
   bool operator<(const Manifest& other) const;
 
   virtual std::set<llvm::Instruction*> Coverage();
+
+  virtual std::set<llvm::BasicBlock*> BlockCoverage();
 
   virtual std::set<llvm::Value*> UndoValues() const;
 

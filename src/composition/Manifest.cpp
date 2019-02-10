@@ -102,12 +102,17 @@ std::set<llvm::Instruction*> Manifest::Coverage() {
   return {};
 }
 
+std::set<llvm::BasicBlock*> Manifest::BlockCoverage() {
+  if (blockProtectee.pointsToAliveValue()) {
+    return Coverage::InstructionsToBasicBlocks(Coverage::ValueToInstructions(&*blockProtectee));
+  }
+  return {};
+}
+
 std::set<llvm::Value*> Manifest::UndoValues() const {
   std::set<llvm::Value*> undos{};
   for (const auto& g : undoValues) {
-    if (auto* I = llvm::dyn_cast<llvm::Instruction>(&*g)) {
-      undos.insert(I);
-    }
+    undos.insert(&*g);
   }
   return undos;
 }
@@ -116,13 +121,14 @@ bool Manifest::operator<(const Manifest& other) const { return (index < other.in
 
 bool Manifest::operator==(const Manifest& other) const { return (index == other.index); }
 
-Manifest::Manifest(std::string name, llvm::Value* protectee, PatchFunction patchFunction,
+Manifest::Manifest(std::string name, llvm::Value* protectee, llvm::Value* blockProtectee, PatchFunction patchFunction,
                    std::vector<std::shared_ptr<graph::constraint::Constraint>> constraints, bool postPatching,
                    std::set<llvm::Value*> undoValues, std::string patchInfo)
     : name(std::move(name)), patchFunction(std::move(patchFunction)), constraints(std::move(constraints)),
       postPatching(postPatching), patchInfo(std::move(patchInfo)) {
 
   this->protectee = support::ManifestValueHandle(protectee);
+  this->blockProtectee = support::ManifestValueHandle(blockProtectee);
   for (auto u : undoValues) {
     this->undoValues.emplace_back(u);
   }

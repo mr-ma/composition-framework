@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <composition/graph/ProtectionGraph.hpp>
 #include <composition/graph/algorithm/all_cycles.hpp>
 #include <composition/graph/constraint/dependency.hpp>
@@ -6,6 +7,8 @@
 #include <composition/metric/ManifestStats.hpp>
 #include <lemon/connectivity.h>
 #include <queue>
+#include <random>
+#include <vector>
 
 namespace composition::graph {
 using composition::graph::algorithm::AllCycles;
@@ -308,61 +311,44 @@ std::set<std::set<manifest_idx_t>> ProtectionGraph::computeConnectivity(llvm::Mo
   return result;
 }
 
+std::set<std::set<manifest_idx_t>> ProtectionGraph::computeBlockConnectivity(llvm::Module& M) {
+  std::map<llvm::BasicBlock*, std::set<manifest_idx_t>> mapping{};
+
+  for (auto& [mIdx, m] : MANIFESTS) {
+    auto blocks = m->BlockCoverage();
+    for (auto& BB : blocks) {
+      mapping[BB].insert(mIdx);
+    }
+  }
+
+  std::set<std::set<manifest_idx_t>> result{};
+  for (auto& [BB, mapped] : mapping) {
+    result.insert(mapped);
+  }
+
+  return result;
+}
+
 size_t maxHotnessOfInstructions(std::set<llvm::Instruction*> instr,
-                                const std::unordered_map<llvm::Function*, llvm::BlockFrequencyInfo*>& BFI) {
+                                const std::unordered_map<llvm::BasicBlock*, uint64_t>& BFI) {
   std::set<llvm::BasicBlock*> blocks = Coverage::InstructionsToBasicBlocks(instr);
 
   size_t maxHotness = 0;
   for (auto* B : blocks) {
-    llvm::Function* f = B->getParent();
-    if (f == nullptr) {
-      continue;
-    }
-    if (!f->hasProfileData()) {
-      continue;
-    }
-
-    const llvm::Function& F = f->getFunction();
-    auto bfiFound = BFI.find(const_cast<llvm::Function*>(&F));
-    if (bfiFound == BFI.end()) {
-      continue;
-    }
-
-    assert(bfiFound->second != nullptr);
-    // llvm::dbgs() << "Compute\n";
-
-    for (const llvm::BasicBlock& B : F) {
-      // dbgs() << bfiFound->second->getBlockProfileCount(&B).getValueOr(0) << "\n";
-    }
-    // llvm::dbgs() << "Done\n";
-
-    /*
-    if (&F.getEntryBlock() != B) {
-      continue;
-    }
-    B->printAsOperand(llvm::dbgs());
-    llvm::dbgs() << "\n";
-
-    bfiFound->second->print(llvm::dbgs());
-    dbgs() << bfiFound->second->getBlockFreq(B).getFrequency() << "\n";
-    dbgs() << bfiFound->second->getEntryFreq() << "\n";
-    dbgs() << bfiFound->second->getBlockProfileCount(B).getValueOr(0) << "\n";
-    size_t newHotness = Performance::getBlockFreq(B, bfiFound->second, false);
+    size_t newHotness = BFI.at(B);
     if (newHotness > maxHotness) {
       maxHotness = newHotness;
     }
-    */
   }
   return maxHotness;
 }
 
-size_t manifestHotness(Manifest* m, const std::unordered_map<llvm::Function*, llvm::BlockFrequencyInfo*>& BFI) {
+size_t manifestHotness(Manifest* m, const std::unordered_map<llvm::BasicBlock*, uint64_t>& BFI) {
   std::set<llvm::Instruction*> instr = Coverage::ValuesToInstructions(m->UndoValues());
   return maxHotnessOfInstructions(instr, BFI);
 }
 
-size_t manifestHotnessProtectee(Manifest* m,
-                                const std::unordered_map<llvm::Function*, llvm::BlockFrequencyInfo*>& BFI) {
+size_t manifestHotnessProtectee(Manifest* m, const std::unordered_map<llvm::BasicBlock*, uint64_t>& BFI) {
   std::set<llvm::Instruction*> instr = m->Coverage();
   return maxHotnessOfInstructions(instr, BFI);
 }
@@ -373,10 +359,125 @@ inline double round(double val) {
   return floor(val + 0.5);
 }
 
-std::set<Manifest*>
-ProtectionGraph::conflictHandling(llvm::Module& M,
-                                  const std::unordered_map<llvm::Function*, llvm::BlockFrequencyInfo*>& BFI) {
-  size_t DesiredConnectivity = 3;
+void ProtectionGraph::removeManifest(manifest_idx_t m) {
+  std::stack<manifest_idx_t> s{};
+  std::set<manifest_idx_t> processed{};
+  s.push(m);
+
+  while (!s.empty()) {
+    manifest_idx_t current = s.top();
+    s.pop();
+    if (processed.find(current) != processed.end()) {
+      continue;
+    }
+    processed.insert(current);
+    for (auto [it, it_end] = DependencyUndo.right.equal_range(current); it != it_end; ++it) {
+      s.push(it->second);
+    }
+    DependencyUndo.right.erase(current);
+    ManifestRegistry::Remove(MANIFESTS.at(current));
+    MANIFESTS.erase(current);
+  }
+}
+
+std::set<Manifest*> ProtectionGraph::randomConflictHandling(llvm::Module& M) {
+  std::set<Manifest*> accepted{};
+  int cycleCount = 0;
+  int conflictCount = 0;
+  Profiler resolvingProfiler{};
+
+  std::set<std::set<manifest_idx_t>> cycles;
+  std::set<std::pair<manifest_idx_t, manifest_idx_t>> conflicts;
+
+  auto RNG = std::mt19937{std::random_device{}()};
+  do {
+    accepted.clear();
+    for (auto& [mIdx, m] : MANIFESTS) {
+      accepted.insert(m);
+    }
+
+    ProtectionGraph pg{};
+    pg.addManifests(accepted);
+    pg.addHierarchy(M);
+    pg.connectShadowNodes();
+
+    cycles = pg.computeCycles();
+
+    Profiler detectingProfiler{};
+    conflicts = vertexConflicts();
+    cStats.timeConflictDetection += detectingProfiler.stop();
+
+    resolvingProfiler.reset();
+    std::set<manifest_idx_t> flatConflicts{};
+
+    for (auto& c : cycles) {
+      ++cycleCount;
+      for (auto& idx : c) {
+        flatConflicts.insert(idx);
+      }
+    }
+    for (auto& c : conflicts) {
+      flatConflicts.insert(c.first);
+      flatConflicts.insert(c.second);
+      ++conflictCount;
+    }
+    if (!flatConflicts.empty()) {
+      auto selected = *select_randomly(flatConflicts.begin(), flatConflicts.end());
+      removeManifest(selected);
+    }
+
+    cStats.timeConflictResolving += resolvingProfiler.stop();
+  } while (!cycles.empty() || !conflicts.empty());
+
+  cStats.cycles = cycleCount;
+  cStats.conflicts = conflictCount;
+
+  return accepted;
+}
+
+std::unordered_set<llvm::Instruction*>
+implictInstructions(manifest_idx_t idx, const ManifestProtectionMap& dep,
+                    const std::map<manifest_idx_t, std::set<llvm::Instruction*>>& coverageCache) {
+
+  std::unordered_set<manifest_idx_t> flatDeps{};
+
+  std::unordered_set<manifest_idx_t> seen{};
+  std::queue<manifest_idx_t> q{};
+
+  for (auto [it, it_end] = dep.left.equal_range(idx); it != it_end; ++it) {
+    if (it->second == idx) {
+      continue;
+    }
+    q.push(it->second);
+    seen.insert(it->second);
+  }
+  while (!q.empty()) {
+    manifest_idx_t nextIdx = q.front();
+    flatDeps.insert(nextIdx);
+    q.pop();
+
+    for (auto [it, it_end] = dep.left.equal_range(nextIdx); it != it_end; ++it) {
+      if (flatDeps.find(it->second) != flatDeps.end() || it->second == idx) {
+        continue;
+      }
+      flatDeps.insert(it->second);
+      q.push(it->second);
+    }
+  }
+
+  std::unordered_set<llvm::Instruction*> result{};
+  for (auto d : flatDeps) {
+    auto& cov = coverageCache.at(d);
+    result.insert(cov.begin(), cov.end());
+  }
+
+  return result;
+}
+
+std::set<Manifest*> ProtectionGraph::ilpConflictHandling(llvm::Module& M,
+                                                         const std::unordered_map<llvm::BasicBlock*, uint64_t>& BFI) {
+  size_t DesiredConnectivity = 2;
+  size_t DesiredBlockConnectivity = 1;
 
   Profiler detectingProfiler{};
   auto conflicts = vertexConflicts();
@@ -384,20 +485,23 @@ ProtectionGraph::conflictHandling(llvm::Module& M,
   cStats.timeConflictDetection += detectingProfiler.stop();
   auto cycles = computeCycles();
   auto connectivities = computeConnectivity(M);
+  auto blockConnectivities = computeBlockConnectivity(M);
 
   // Sanity check
   assert(Performance::hasProfiling(M));
 
   // Prepare manifest statistics
   std::map<manifest_idx_t, ManifestStats> mStats{};
+  std::map<manifest_idx_t, std::set<llvm::Instruction*>> coverageCache{};
   std::pair<size_t, size_t> explicitCBounds{SIZE_MAX, 0};
   std::pair<size_t, size_t> implicitCBounds{SIZE_MAX, 0};
   std::pair<size_t, size_t> hotnessBounds{SIZE_MAX, 0};
   std::pair<size_t, size_t> hotnessProtecteeBounds{SIZE_MAX, 0};
 
-  std::queue<manifest_idx_t> q{};
   for (auto& [mIdx, m] : MANIFESTS) {
-    mStats[mIdx].explicitC = m->Coverage().size();
+    auto cov = m->Coverage();
+    coverageCache.insert({mIdx, cov});
+    mStats[mIdx].explicitC = cov.size();
     mStats[mIdx].hotness = manifestHotness(m, BFI);
     mStats[mIdx].hotnessProtectee = manifestHotnessProtectee(m, BFI);
 
@@ -409,31 +513,18 @@ ProtectionGraph::conflictHandling(llvm::Module& M,
 
     hotnessProtecteeBounds.first = std::min(hotnessProtecteeBounds.first, mStats[mIdx].hotnessProtectee);
     hotnessProtecteeBounds.second = std::max(hotnessProtecteeBounds.second, mStats[mIdx].hotnessProtectee);
-
-    q.push(mIdx);
   }
 
-  std::set<manifest_idx_t> processed{};
-  while (!q.empty()) {
-    manifest_idx_t idx = q.front();
-    q.pop();
-    size_t implicit{};
+  metric::Stats s{};
+  auto implicitCov = s.implictInstructions(ManifestProtection, MANIFESTS);
 
-    for (auto [it, it_end] = DependencyUndo.left.equal_range(idx); it != it_end; ++it) {
-      if (processed.find(it->second) == processed.end()) {
-        q.push(idx);
-        goto label_queue;
-      }
-
-      implicit += mStats[it->second].explicitC + mStats[it->second].implicitC;
+  for (auto [m, cov] : implicitCov) {
+    {
+      auto mIdx = m->index;
+      mStats[mIdx].implicitC = cov.size();
+      implicitCBounds.first = std::min(implicitCBounds.first, mStats[mIdx].implicitC);
+      implicitCBounds.second = std::max(implicitCBounds.second, mStats[mIdx].implicitC);
     }
-
-    mStats[idx].implicitC = implicit;
-    implicitCBounds.first = std::min(implicitCBounds.first, mStats[idx].implicitC);
-    implicitCBounds.second = std::max(implicitCBounds.second, mStats[idx].implicitC);
-
-    processed.insert(idx);
-  label_queue:;
   }
 
   for (auto& [idx, s] : mStats) {
@@ -450,9 +541,7 @@ ProtectionGraph::conflictHandling(llvm::Module& M,
 
     // cost function
     auto cost = [](ManifestStats s) -> double {
-      auto value =
-          1.0 * (1.0 - s.normalizedExplicitC) + 2.0 * (1.0 - s.normalizedImplicitC) + 1.0 * s.normalizedHotness;
-      return round(value * 1000.0) / 1000.0;
+      return 1.0 * s.normalizedHotness + (1.0 - s.normalizedHotnessProtectee);
     };
     auto conflict = [&](glp_prob* lp, std::pair<manifest_idx_t, manifest_idx_t> pair) {
       // m1 and m2 conflict; m1 + m2 <= 1
@@ -518,10 +607,25 @@ ProtectionGraph::conflictHandling(llvm::Module& M,
         coeffs.push_back(1.0);
       }
     };
+    int blockConnectivityCount = 0;
+    auto blockConnectivity = [&](glp_prob* lp, std::set<manifest_idx_t> ms, size_t targetBlockConnectivity) {
+      // m1..mN protect a BasicBlock; m1+m2+..+mN >= min(N, targetBlockConnectivity)
+      auto row = glp_add_rows(lp, 1);
+      glp_set_row_bnds(lp, row, GLP_LO, std::min(ms.size(), targetBlockConnectivity), 0.0);
+      std::ostringstream os;
+      os << "block_connectivity_" << blockConnectivityCount++;
+      glp_set_row_name(lp, row, os.str().c_str());
+
+      for (auto& idx : ms) {
+        rows.push_back(row);
+        cols.push_back(colsToM.right.at(idx));
+        coeffs.push_back(1.0);
+      }
+    };
 
     auto lp = glp_create_prob();     // creates a problem object
     glp_set_prob_name(lp, "sample"); // assigns a symbolic name to the problem object
-    glp_set_obj_dir(lp, GLP_MAX);
+    glp_set_obj_dir(lp, GLP_MIN);
 
     // ROWS
     glp_add_rows(lp, 4); // adds three rows to the problem object
@@ -590,6 +694,11 @@ ProtectionGraph::conflictHandling(llvm::Module& M,
     // Add connectivity
     for (auto&& c : connectivities) {
       connectivity(lp, c, DesiredConnectivity);
+    }
+
+    // Add  blockConnectivity
+    for (auto&& c : blockConnectivities) {
+      blockConnectivity(lp, c, DesiredBlockConnectivity);
     }
 
     int dataSize = static_cast<int>(rows.size());

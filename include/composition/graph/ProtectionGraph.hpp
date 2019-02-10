@@ -15,9 +15,9 @@
 #include <composition/support/options.hpp>
 #include <cstdint>
 #include <glpk.h>
+#include <iterator>
 #include <lemon/graph_to_eps.h>
 #include <lemon/list_graph.h>
-#include <llvm/Analysis/BlockFrequencyInfo.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instruction.h>
@@ -192,14 +192,30 @@ public:
   std::set<std::pair<manifest_idx_t, manifest_idx_t>> computeDependencies();
   std::set<std::set<manifest_idx_t>> computeCycles();
   std::set<std::set<manifest_idx_t>> computeConnectivity(llvm::Module& M);
+  std::set<std::set<manifest_idx_t>> computeBlockConnectivity(llvm::Module& M);
+
   /**
    * Detects and handles the conflicts in the graph `g`
    * @tparam graph_t the type of the graph `g`
    * @param g the graph
    * @param strategy the strategy to use for handling conflicts
    */
-  std::set<Manifest*> conflictHandling(llvm::Module& M,
-                                       const std::unordered_map<llvm::Function*, llvm::BlockFrequencyInfo*>& BFI);
+  std::set<Manifest*> randomConflictHandling(llvm::Module& M);
+  std::set<Manifest*> ilpConflictHandling(llvm::Module& M, const std::unordered_map<llvm::BasicBlock*, uint64_t>& BFI);
+
+  template <typename Iter, typename RandomGenerator> Iter select_randomly(Iter start, Iter end, RandomGenerator& g) {
+    std::uniform_int_distribution<> dis(0, std::distance(start, end) - 1);
+    std::advance(start, dis(g));
+    return start;
+  }
+
+  template <typename Iter> Iter select_randomly(Iter start, Iter end) {
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    return select_randomly(start, end, gen);
+  }
+
+  void removeManifest(manifest_idx_t m);
 };
 } // namespace composition::graph
 #endif // COMPOSITION_FRAMEWORK_GRAPH_PROTECTIONGRAPH_HPP

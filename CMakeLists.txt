@@ -17,6 +17,7 @@ find_package(LLVM 7.0 REQUIRED CONFIG)
 find_package(nlohmann_json REQUIRED)
 find_package(LEMON REQUIRED)
 find_package(function-filter REQUIRED)
+find_package(OpenMP REQUIRED)
 
 ##
 ## CONFIGURATION
@@ -129,9 +130,9 @@ if ($ENV{CLION_IDE})
 endif ()
 
 
-target_compile_options(CompositionFramework PRIVATE -g -fno-rtti -fstandalone-debug)
+target_compile_options(CompositionFramework PRIVATE -g -fno-rtti)
 target_compile_features(CompositionFramework PUBLIC cxx_std_17)
-target_link_libraries(CompositionFramework PRIVATE glpk lemon nlohmann_json::nlohmann_json)
+target_link_libraries(CompositionFramework PRIVATE glpk lemon nlohmann_json::nlohmann_json OpenMP::OpenMP_CXX)
 
 target_compile_features(rtlib PUBLIC cxx_std_17)
 

@@ -24,6 +24,7 @@ using composition::graph::ManifestDependencyMap;
 using composition::graph::ManifestProtectionMap;
 using composition::graph::util::graph_to_dot;
 using composition::graph::util::graph_to_graphml;
+using composition::metric::Performance;
 using composition::support::AddCFG;
 using composition::support::cStats;
 using composition::support::DumpGraphs;
@@ -81,10 +82,10 @@ void test() {
   Value* One = ConstantInt::get(ty, 1);
   Value* ret = ReturnInst::Create(Context, One, bb2);
 
-  auto m1 = new Manifest("sc-1", f2, {}, {std::make_shared<composition::graph::constraint::Dependency>("sc-1", f1, f2)},
-                         true, {});
-  auto m2 = new Manifest("sc-2", f1, {}, {std::make_shared<composition::graph::constraint::Dependency>("sc-2", f2, f1)},
-                         true, {});
+  auto m1 = new Manifest("sc-1", f2, {}, {},
+                         {std::make_shared<composition::graph::constraint::Dependency>("sc-1", f1, f2)}, true, {});
+  auto m2 = new Manifest("sc-2", f1, {}, {},
+                         {std::make_shared<composition::graph::constraint::Dependency>("sc-2", f2, f1)}, true, {});
   std::set<Manifest*> manifests = {m1, m2};
   G.addManifests(manifests);
   G.Print("nohierarchy");
@@ -226,22 +227,16 @@ bool CompositionFrameworkPass::graphPass(llvm::Module& M) {
     w = metric::Weights(ifs);
   }
 
-  std::unordered_map<llvm::Function*, llvm::BlockFrequencyInfo*> BFI{};
+  std::unordered_map<llvm::BasicBlock*, uint64_t> BFI{};
   for (auto& F : M) {
     if (F.isDeclaration()) {
       continue;
     }
-    // dbgs() << F.getName() << "\n";
-    // BFI.insert({&F, bf});
 
-    for (const llvm::BasicBlock& B : F) {
-      const llvm::Function* par = B.getParent();
-      assert(par != nullptr);
-      llvm::Function* parf = const_cast<llvm::Function*>(par);
-      auto& bfiPass = getAnalysis<BlockFrequencyInfoWrapperPass>(*parf);
-      const llvm::BlockFrequencyInfo& bf = bfiPass.getBFI();
-
-      //  dbgs() << bf.getBlockProfileCount(&B).getValueOr(0) << "\n";
+    auto& bfiPass = getAnalysis<BlockFrequencyInfoWrapperPass>(F);
+    auto& bf = bfiPass.getBFI();
+    for (auto& BB : F) {
+      BFI.insert({&BB, Performance::getBlockFreq(&BB, &bf, false)});
     }
   }
 
@@ -249,7 +244,8 @@ bool CompositionFrameworkPass::graphPass(llvm::Module& M) {
   Graph->computeManifestDependencies();
 
   dbgs() << "Running ILP\n";
-  auto accepted = Graph->conflictHandling(M, BFI);
+  auto accepted = Graph->ilpConflictHandling(M, BFI);
+  //auto accepted = Graph->randomConflictHandling(M);
 
   dbgs() << "Removing unselected manifests\n";
   // Just keep accepted manifests

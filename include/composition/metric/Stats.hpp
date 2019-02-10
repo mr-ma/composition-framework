@@ -30,9 +30,12 @@ public:
   size_t numberOfProtectedDistinctInstructions{};
   size_t numberOfImplicitlyProtectedInstructions{};
   size_t numberOfDistinctImplicitlyProtectedInstructions{};
+  size_t numberOfBlocks{};
+  size_t numberOfProtectedBlocks{};
   std::unordered_map<std::string, size_t> numberOfProtectedInstructionsByType{};
   std::unordered_map<std::string, size_t> numberOfProtectedFunctionsByType{};
   Connectivity instructionConnectivity{};
+  Connectivity blockConnectivity{};
   Connectivity functionConnectivity{};
   std::unordered_map<std::string, std::pair<Connectivity, Connectivity>> protectionConnectivity{};
   std::unordered_map<manifest_idx_t, Manifest*> MANIFESTS{};
@@ -57,6 +60,9 @@ public:
   void collect(std::set<llvm::Instruction*> allInstructions, std::vector<Manifest*> manifests,
                const ManifestProtectionMap& dep);
 
+  std::unordered_map<Manifest*, std::set<llvm::Instruction*>>
+  implictInstructions(const ManifestProtectionMap& dep, std::unordered_map<manifest_idx_t, Manifest*> MANIFESTS);
+
 private:
   std::set<llvm::Instruction*> protectedInstructionsDistinct{};
   std::map<std::string, std::set<llvm::Instruction*>> protectedInstructions{};
@@ -64,6 +70,8 @@ private:
 
   std::pair<Connectivity, Connectivity>
   instructionFunctionConnectivity(const std::unordered_map<llvm::Instruction*, size_t>& instructionConnectivityMap);
+
+  Connectivity computeBlockConnectivity(std::set<llvm::BasicBlock*> blocks, std::vector<Manifest*> manifests);
 };
 
 /**
