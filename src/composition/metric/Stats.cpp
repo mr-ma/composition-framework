@@ -50,18 +50,21 @@ void Stats::collect(std::set<llvm::Function*> sensitiveFunctions, std::vector<Ma
   collect(instructions, std::move(manifests), dep);
 }
 
-std::unordered_map<Manifest*, std::set<llvm::Instruction*>>
+std::unordered_map<Manifest*, std::unordered_set<llvm::Instruction*>>
 Stats::implictInstructions(const ManifestProtectionMap& dep, std::unordered_map<manifest_idx_t, Manifest*> MANIFESTS) {
 
   lemon::ListDigraph G{};
-  lemon::ListDigraph::NodeMap<std::set<llvm::Instruction*>> coverage{G};
+  lemon::ListDigraph::NodeMap<std::unordered_set<llvm::Instruction*>> coverage{G};
   lemon::ListDigraph::NodeMap<manifest_idx_t> indices{G};
   std::unordered_map<manifest_idx_t, lemon::ListDigraph::Node> nodes{};
 
   llvm::dbgs() << "Graph Nodes\n";
   for (auto [idx, m] : MANIFESTS) {
     auto n = G.addNode();
-    coverage[n] = m->Coverage();
+
+    auto mCov = m->Coverage();
+    coverage[n] = std::unordered_set<llvm::Instruction*>(mCov.begin(), mCov.end());
+
     indices[n] = idx;
     nodes.insert({idx, n});
   }
@@ -97,7 +100,7 @@ Stats::implictInstructions(const ManifestProtectionMap& dep, std::unordered_map<
       continue;
     }
 
-    std::set<llvm::Instruction*> componentCoverage{};
+    std::unordered_set<llvm::Instruction*> componentCoverage{};
     for (auto n : c) {
       componentCoverage.insert(coverage[n].begin(), coverage[n].end());
     }
@@ -116,14 +119,16 @@ Stats::implictInstructions(const ManifestProtectionMap& dep, std::unordered_map<
   }
 
   llvm::dbgs() << "Map and correct data\n";
-  std::unordered_map<Manifest*, std::set<llvm::Instruction*>> result{};
+  std::unordered_map<Manifest*, std::unordered_set<llvm::Instruction*>> result{};
   for (lemon::ListDigraph::NodeIt n(G); n != lemon::INVALID; ++n) {
-    std::set<llvm::Instruction*> corrected{};
+    std::unordered_set<llvm::Instruction*> corrected{};
 
     // Assumption: A manifest cannot protect itself. Thus, remove the explicit manifest coverage
-    auto own = MANIFESTS.at(indices[n])->Coverage();
-    std::set_difference(coverage[n].begin(), coverage[n].end(), own.begin(), own.end(),
-                        std::inserter(corrected, corrected.begin()));
+    auto mCov = MANIFESTS.at(indices[n])->Coverage();
+    auto own = std::unordered_set<llvm::Instruction*>(mCov.begin(), mCov.end());
+
+    std::copy_if(coverage[n].begin(), coverage[n].end(), std::inserter(corrected, corrected.begin()),
+                 [&own](llvm::Instruction* needle) { return own.find(needle) == own.end(); });
 
     result.insert({MANIFESTS.at(indices[n]), corrected});
   }
@@ -167,7 +172,7 @@ void Stats::collect(std::set<llvm::Instruction*> allInstructions, std::vector<Ma
 
   llvm::dbgs() << "Getting Implicit Coverage\n";
   std::set<llvm::Instruction*> implicitlyCoveredInstructions{};
-  std::unordered_map<Manifest*, std::set<llvm::Instruction*>> manifestImplicitlyCoveredInstructions =
+  std::unordered_map<Manifest*, std::unordered_set<llvm::Instruction*>> manifestImplicitlyCoveredInstructions =
       implictInstructions(dep, MANIFESTS);
   llvm::dbgs() << "Done\n";
 

@@ -8,6 +8,7 @@
 #include <lemon/connectivity.h>
 #include <queue>
 #include <random>
+#include <unordered_set>
 #include <vector>
 
 namespace composition::graph {
@@ -519,12 +520,10 @@ std::set<Manifest*> ProtectionGraph::ilpConflictHandling(llvm::Module& M,
   auto implicitCov = s.implictInstructions(ManifestProtection, MANIFESTS);
 
   for (auto [m, cov] : implicitCov) {
-    {
-      auto mIdx = m->index;
-      mStats[mIdx].implicitC = cov.size();
-      implicitCBounds.first = std::min(implicitCBounds.first, mStats[mIdx].implicitC);
-      implicitCBounds.second = std::max(implicitCBounds.second, mStats[mIdx].implicitC);
-    }
+    auto mIdx = m->index;
+    mStats[mIdx].implicitC = cov.size();
+    implicitCBounds.first = std::min(implicitCBounds.first, mStats[mIdx].implicitC);
+    implicitCBounds.second = std::max(implicitCBounds.second, mStats[mIdx].implicitC);
   }
 
   for (auto& [idx, s] : mStats) {

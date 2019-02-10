@@ -12,6 +12,7 @@
 #include <nlohmann/json.hpp>
 #include <set>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace composition::metric {
 
@@ -60,7 +61,7 @@ public:
   void collect(std::set<llvm::Instruction*> allInstructions, std::vector<Manifest*> manifests,
                const ManifestProtectionMap& dep);
 
-  std::unordered_map<Manifest*, std::set<llvm::Instruction*>>
+  std::unordered_map<Manifest*, std::unordered_set<llvm::Instruction*>>
   implictInstructions(const ManifestProtectionMap& dep, std::unordered_map<manifest_idx_t, Manifest*> MANIFESTS);
 
 private:
