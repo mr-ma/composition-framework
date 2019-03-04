@@ -71,7 +71,10 @@ Stats::implictInstructions(const ManifestProtectionMap& dep, std::unordered_map<
 
   llvm::dbgs() << "Graph Edges\n";
   for (auto it = dep.left.begin(), it_end = dep.left.end(); it != it_end; ++it) {
-    G.addArc(nodes.at(it->first), nodes.at(it->second));
+    for (auto v : it->second) {
+      llvm::dbgs() << it->first << " - " << v << "\n";
+      G.addArc(nodes.at(it->first), nodes.at(v));
+    }
   }
 
   llvm::dbgs() << "Topological Sort\n";
@@ -112,8 +115,10 @@ Stats::implictInstructions(const ManifestProtectionMap& dep, std::unordered_map<
 
   llvm::dbgs() << "Calc\n";
   for (auto n : sorted) {
+    llvm::dbgs() << "Node:" << G.id(n) << '\n';
     for (lemon::ListDigraph::InArcIt e(G, n); e != lemon::INVALID; ++e) {
       auto other = G.source(e);
+      llvm::dbgs() << "Incoming Node:" << G.id(other) << '\n';
       coverage[n].insert(coverage[other].begin(), coverage[other].end());
     }
   }

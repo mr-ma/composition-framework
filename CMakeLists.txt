@@ -72,6 +72,7 @@ add_library(CompositionFramework SHARED
 
         include/composition/util/functions.hpp
         include/composition/util/strings.hpp
+        include/composition/util/bimap.hpp
 
         src/composition/graph/vertex.cpp
         src/composition/graph/edge.cpp

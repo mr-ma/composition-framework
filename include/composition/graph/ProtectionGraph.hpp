@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <array>
 #include <boost/bimap/bimap.hpp>
-#include <boost/bimap/multiset_of.hpp>
+#include <boost/bimap/unordered_set_of.hpp>
 #include <composition/ManifestRegistry.hpp>
 #include <composition/graph/constraint/constraint.hpp>
 #include <composition/graph/constraint/true.hpp>
@@ -13,6 +13,7 @@
 #include <composition/metric/Performance.hpp>
 #include <composition/profiler.hpp>
 #include <composition/support/options.hpp>
+#include <composition/util/bimap.hpp>
 #include <cstdint>
 #include <glpk.h>
 #include <iterator>
@@ -38,12 +39,8 @@ using composition::graph::util::graph_to_graphml;
 using composition::metric::Performance;
 using composition::support::cStats;
 
-using ManifestUndoMap =
-    boost::bimaps::bimap<boost::bimaps::multiset_of<manifest_idx_t>, boost::bimaps::multiset_of<llvm::Value*>>;
-using ManifestProtectionMap =
-    boost::bimaps::bimap<boost::bimaps::multiset_of<manifest_idx_t>, boost::bimaps::multiset_of<manifest_idx_t>>;
-using ManifestDependencyMap =
-    boost::bimaps::bimap<boost::bimaps::multiset_of<manifest_idx_t>, boost::bimaps::multiset_of<manifest_idx_t>>;
+using ManifestProtectionMap = composition::util::bimap<manifest_idx_t, manifest_idx_t>;
+using ManifestDependencyMap = composition::util::bimap<manifest_idx_t, manifest_idx_t>;
 
 /**
  * The core of the composition framework, the protection graph and its algorithms
@@ -88,7 +85,7 @@ private:
 
   constraint_idx_t ConstraintIdx{};
 
-  boost::bimaps::bimap<boost::bimaps::multiset_of<manifest_idx_t>, constraint_idx_t> MANIFESTS_CONSTRAINTS{};
+  boost::bimaps::bimap<boost::bimaps::unordered_set_of<manifest_idx_t>, constraint_idx_t> MANIFESTS_CONSTRAINTS{};
   std::unordered_map<constraint_idx_t, vertex_idx_t> CONSTRAINTS_VERTICES{};
   std::unordered_map<constraint_idx_t, edge_idx_t> CONSTRAINTS_EDGES{};
 

@@ -1,10 +1,9 @@
 #ifndef COMPOSITION_FRAMEWORK_METRIC_STATS_HPP
 #define COMPOSITION_FRAMEWORK_METRIC_STATS_HPP
 
-#include <boost/bimap/bimap.hpp>
-#include <boost/bimap/multiset_of.hpp>
 #include <composition/Manifest.hpp>
 #include <composition/metric/Connectivity.hpp>
+#include <composition/util/bimap.hpp>
 #include <cstddef>
 #include <istream>
 #include <llvm/IR/Module.h>
@@ -16,8 +15,7 @@
 
 namespace composition::metric {
 
-using ManifestProtectionMap =
-    boost::bimaps::bimap<boost::bimaps::multiset_of<manifest_idx_t>, boost::bimaps::multiset_of<manifest_idx_t>>;
+using ManifestProtectionMap = composition::util::bimap<manifest_idx_t, manifest_idx_t>;
 
 /**
  * A collection of Protection Graph related metrics

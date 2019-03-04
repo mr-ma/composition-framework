@@ -223,7 +223,9 @@ std::set<std::pair<manifest_idx_t, manifest_idx_t>> ProtectionGraph::computeDepe
   for (auto& [mIdx, _] : MANIFESTS) {
     // Manifest dependencies
     for (auto [it, it_end] = DependencyUndo.right.equal_range(mIdx); it != it_end; ++it) {
-      dependencies.insert({it->second, mIdx});
+      for (auto v : it->second) {
+        dependencies.insert({v, mIdx});
+      }
     }
   }
 
@@ -373,7 +375,9 @@ void ProtectionGraph::removeManifest(manifest_idx_t m) {
     }
     processed.insert(current);
     for (auto [it, it_end] = DependencyUndo.right.equal_range(current); it != it_end; ++it) {
-      s.push(it->second);
+      for (auto v : it->second) {
+        s.push(v);
+      }
     }
     DependencyUndo.right.erase(current);
     ManifestRegistry::Remove(MANIFESTS.at(current));
@@ -446,11 +450,13 @@ implictInstructions(manifest_idx_t idx, const ManifestProtectionMap& dep,
   std::queue<manifest_idx_t> q{};
 
   for (auto [it, it_end] = dep.left.equal_range(idx); it != it_end; ++it) {
-    if (it->second == idx) {
-      continue;
+    for (auto v : it->second) {
+      if (v == idx) {
+        continue;
+      }
+      q.push(v);
+      seen.insert(v);
     }
-    q.push(it->second);
-    seen.insert(it->second);
   }
   while (!q.empty()) {
     manifest_idx_t nextIdx = q.front();
@@ -458,11 +464,13 @@ implictInstructions(manifest_idx_t idx, const ManifestProtectionMap& dep,
     q.pop();
 
     for (auto [it, it_end] = dep.left.equal_range(nextIdx); it != it_end; ++it) {
-      if (flatDeps.find(it->second) != flatDeps.end() || it->second == idx) {
-        continue;
+      for (auto v : it->second) {
+        if (flatDeps.find(v) != flatDeps.end() || v == idx) {
+          continue;
+        }
+        flatDeps.insert(v);
+        q.push(v);
       }
-      flatDeps.insert(it->second);
-      q.push(it->second);
     }
   }
 
@@ -840,18 +848,19 @@ void ProtectionGraph::destroy() {
 }
 
 void ProtectionGraph::computeManifestDependencies() {
-  ManifestUndoMap undo{};
+  composition::util::bimap<manifest_idx_t, llvm::Value*> undo{};
   for (auto& [idx, m] : MANIFESTS) {
-    for (auto it : m->UndoValues()) {
-      auto worked = undo.insert({idx, it});
-      assert(worked.second && "undo");
+    for (llvm::Value* it : m->UndoValues()) {
+      undo.insert({idx, it});
     }
   }
-  std::unordered_map<manifest_idx_t, std::unordered_set<llvm::Value*>> manifestUsers{};
 
-  for (auto& [idx, u] : undo.left) {
-    for (auto it = u->user_begin(), it_end = u->user_end(); it != it_end; ++it) {
-      manifestUsers[idx].insert(*it);
+  std::unordered_map<manifest_idx_t, std::unordered_set<llvm::Value*>> manifestUsers{};
+  for (auto& [idx, values] : undo.left) {
+    for (auto u : values) {
+      for (auto it = u->user_begin(), it_end = u->user_end(); it != it_end; ++it) {
+        manifestUsers[idx].insert(*it);
+      }
     }
   }
 
@@ -861,7 +870,9 @@ void ProtectionGraph::computeManifestDependencies() {
 
     for (auto I : m->Coverage()) {
       for (auto [it, it_end] = undo.right.equal_range(I); it != it_end; ++it) {
-        manifests.insert(it->second);
+        for (auto v : it->second) {
+          manifests.insert(v);
+        }
       }
     }
     for (auto m2 : manifests) {
@@ -872,8 +883,10 @@ void ProtectionGraph::computeManifestDependencies() {
   for (auto& [m, users] : manifestUsers) {
     for (auto u : users) {
       for (auto [it, it_end] = undo.right.equal_range(u); it != it_end; ++it) {
-        if (m != it->second) {
-          DependencyUndo.insert({it->second, m});
+        for (auto v : it->second) {
+          if (m != v) {
+            DependencyUndo.insert({v, m});
+          }
         }
       }
     }
