@@ -848,6 +848,7 @@ void ProtectionGraph::destroy() {
 }
 
 void ProtectionGraph::computeManifestDependencies() {
+  // Find all the llvm::Values that where added by a manifest
   composition::util::bimap<manifest_idx_t, llvm::Value*> undo{};
   for (auto& [idx, m] : MANIFESTS) {
     for (llvm::Value* it : m->UndoValues()) {
@@ -855,6 +856,26 @@ void ProtectionGraph::computeManifestDependencies() {
     }
   }
 
+  // Construct the protection relationship between manifests
+  // Loop over the manifests
+  for (auto& [idx, m] : MANIFESTS) {
+    // Take the coverage of the manifests
+    for (auto I : m->Coverage()) {
+      // Check if the covered llvm::Value is a guard of a different manifest
+      for (auto [it, it_end] = undo.right.equal_range(I); it != it_end; ++it) {
+        for (auto v : it->second) {
+          if (v != idx) {
+            // Then add an edge between both manifests
+            ManifestProtection.insert({v, idx});
+          }
+        }
+      }
+    }
+  }
+
+  // For each manifest M find its dependent manifests.
+  // A dependent manifest must be removed if M is removed.
+  // First find the users
   std::unordered_map<manifest_idx_t, std::unordered_set<llvm::Value*>> manifestUsers{};
   for (auto& [idx, values] : undo.left) {
     for (auto u : values) {
@@ -864,22 +885,7 @@ void ProtectionGraph::computeManifestDependencies() {
     }
   }
 
-  for (auto& [idx, u] : undo.left) {
-    std::unordered_set<manifest_idx_t> manifests{};
-    Manifest* m = MANIFESTS.find(idx)->second;
-
-    for (auto I : m->Coverage()) {
-      for (auto [it, it_end] = undo.right.equal_range(I); it != it_end; ++it) {
-        for (auto v : it->second) {
-          manifests.insert(v);
-        }
-      }
-    }
-    for (auto m2 : manifests) {
-      ManifestProtection.insert({m2, idx});
-    }
-  }
-
+  // Then construct the dependency
   for (auto& [m, users] : manifestUsers) {
     for (auto u : users) {
       for (auto [it, it_end] = undo.right.equal_range(u); it != it_end; ++it) {
