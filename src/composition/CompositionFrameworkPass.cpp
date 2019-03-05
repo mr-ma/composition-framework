@@ -16,7 +16,7 @@
 #include <llvm/IR/Constants.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/Error.h>
-#include <llvm/Support/raw_os_ostream.h>
+//#include <llvm/Support/raw_os_ostream.h>
 #include <llvm/Support/raw_ostream.h>
 
 namespace composition {
@@ -47,7 +47,7 @@ using llvm::Function;
 using llvm::GlobalVariable;
 using llvm::LLVMContext;
 using llvm::Module;
-using llvm::raw_os_ostream;
+//using llvm::raw_os_ostream;
 using llvm::report_fatal_error;
 using llvm::ReturnInst;
 using llvm::Type;
@@ -312,14 +312,14 @@ bool CompositionFrameworkPass::protectionPass(llvm::Module& M) {
 
   dbgs() << "Collecting stats\n";
   cStats.stats.collect(sensitiveFunctions, manifests, Graph->getManifestProtectionMap());
-  cStats.dump(dbgs());
+  //cStats.dump(dbgs());
 
   if (!DumpStats.empty()) {
     auto fdStream = std::ofstream(DumpStats.getValue(), std::ofstream::out);
     if (fdStream.good()) {
       dbgs() << "Dumping stats to file: " << DumpStats.getValue() << "\n";
-      auto stream = raw_os_ostream(fdStream);
-      cStats.dump(stream);
+      //auto stream = raw_os_ostream(fdStream);
+      cStats.dump(fdStream);
     } else {
       dbgs() << "Could not dump stats\n";
     }

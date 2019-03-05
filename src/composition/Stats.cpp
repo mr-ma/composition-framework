@@ -7,12 +7,18 @@ Stats::Stats(std::istream& i) {
   from_json(j, *this);
 }
 
-void Stats::dump(llvm::raw_ostream& o) {
+void Stats::dump(std::ofstream& o){
   nlohmann::json j;
   to_json(j, *this);
 
   o << j.dump(4) << "\n";
 }
+/*void Stats::dump(llvm::raw_ostream& o) {
+  nlohmann::json j;
+  to_json(j, *this);
+
+  o << j.dump(4) << "\n";
+}*/
 
 void to_json(nlohmann::json& j, const Stats& s) {
   j = nlohmann::json{

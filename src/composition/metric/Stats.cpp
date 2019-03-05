@@ -112,8 +112,10 @@ Stats::implictInstructions(const ManifestProtectionMap& dep, std::unordered_map<
 
   llvm::dbgs() << "Calc\n";
   for (auto n : sorted) {
+    llvm::dbgs() <<"Node:"<< G.id(n) << '\n';
     for (lemon::ListDigraph::InArcIt e(G, n); e != lemon::INVALID; ++e) {
       auto other = G.source(e);
+      llvm::dbgs() <<"Incoming Node:"<< G.id(other) << '\n';
       coverage[n].insert(coverage[other].begin(), coverage[other].end());
     }
   }
