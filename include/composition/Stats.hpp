@@ -3,6 +3,8 @@
 
 #include <composition/metric/Stats.hpp>
 #include <istream>
+#include <iostream>
+#include <fstream>
 #include <llvm/Support/raw_ostream.h>
 #include <nlohmann/json.hpp>
 
@@ -24,8 +26,8 @@ public:
   Stats() = default;
 
   explicit Stats(std::istream& i);
-
-  void dump(llvm::raw_ostream& o);
+  void dump(std::ofstream& o);
+  //void dump(llvm::raw_ostream& o);
 };
 
 /**
