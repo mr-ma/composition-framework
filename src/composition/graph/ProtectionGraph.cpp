@@ -231,6 +231,21 @@ std::set<std::pair<manifest_idx_t, manifest_idx_t>> ProtectionGraph::computeDepe
 
   return dependencies;
 }
+/*std::set<std::pair<manifest_idx_t,std::pair<manifest_idx_t, manifest_idx_t>>> ProtectionGraph::computeImplicitEdges() {
+  std::set<std::pair<manifest_idx_t, manifest_idx_t>> dependencies{};
+
+  for (auto& [mIdx, _] : MANIFESTS) {
+    // Manifest dependencies
+    for (auto [it, it_end] = DependencyUndo.right.equal_range(mIdx); it != it_end; ++it) {
+      for (auto v : it->second) {
+        dependencies.insert({v, mIdx});
+      }
+    }
+  }
+
+  return dependencies;
+}*/
+
 
 std::set<std::set<manifest_idx_t>> ProtectionGraph::computeCycles() {
   Profiler detectingProfiler{};
@@ -487,6 +502,13 @@ std::set<Manifest*> ProtectionGraph::ilpConflictHandling(llvm::Module& M,
                                                          const std::unordered_map<llvm::BasicBlock*, uint64_t>& BFI) {
   size_t DesiredConnectivity = 2;
   size_t DesiredBlockConnectivity = 1;
+  //TODO: Desired Implicit Coverage should be set by the cmd args
+  double DesiredImplicitCoverage = 20;
+  //TODO: cStats.stats is not set at this point ----
+  size_t TotalInstructions = cStats.stats.numberOfAllInstructions;
+  llvm::dbgs() << "Total instruction:"<<cStats.stats.numberOfAllInstructions <<"\n";
+  double implicitCoverageToInstruction = TotalInstructions * (DesiredImplicitCoverage / 100); 
+  llvm::dbgs() << "Implicit coverage per instruction "<<implicitCoverageToInstruction<<"\n";
 
   Profiler detectingProfiler{};
   auto conflicts = vertexConflicts();
@@ -500,6 +522,8 @@ std::set<Manifest*> ProtectionGraph::ilpConflictHandling(llvm::Module& M,
   assert(Performance::hasProfiling(M));
 
   // Prepare manifest statistics
+  std::map<manifest_idx_t, ManifestStats> eStats{};
+
   std::map<manifest_idx_t, ManifestStats> mStats{};
   std::map<manifest_idx_t, std::set<llvm::Instruction*>> coverageCache{};
   std::pair<size_t, size_t> explicitCBounds{SIZE_MAX, 0};
@@ -525,13 +549,14 @@ std::set<Manifest*> ProtectionGraph::ilpConflictHandling(llvm::Module& M,
   }
 
   metric::Stats s{};
-  auto implicitCov = s.implictInstructions(ManifestProtection, MANIFESTS);
+  std::vector<std::tuple<manifest_idx_t /*edge_index*/,
+  std::pair<manifest_idx_t, manifest_idx_t> /*m1 -> m2*/,
+  unsigned long /*coverage*/>> implicitCov = s.implictInstructionsPerEdge(ManifestProtection, MANIFESTS);
 
-  for (auto [m, cov] : implicitCov) {
-    auto mIdx = m->index;
-    mStats[mIdx].implicitC = cov.size();
-    implicitCBounds.first = std::min(implicitCBounds.first, mStats[mIdx].implicitC);
-    implicitCBounds.second = std::max(implicitCBounds.second, mStats[mIdx].implicitC);
+  for (auto [edgeIndex, manifestPair, coverage] : implicitCov) {
+    eStats[edgeIndex].implicitC = coverage;
+    implicitCBounds.first = std::min(implicitCBounds.first, coverage);
+    implicitCBounds.second = std::max(implicitCBounds.second, coverage);
   }
 
   for (auto& [idx, s] : mStats) {
@@ -541,6 +566,7 @@ std::set<Manifest*> ProtectionGraph::ilpConflictHandling(llvm::Module& M,
   Profiler resolvingProfiler{};
   do {
     boost::bimaps::bimap<int, manifest_idx_t> colsToM{};
+    boost::bimaps::bimap<int, manifest_idx_t> colsToE{};
 
     std::vector<int> rows{};
     std::vector<int> cols{};
@@ -566,6 +592,29 @@ std::set<Manifest*> ProtectionGraph::ilpConflictHandling(llvm::Module& M,
       cols.push_back(colsToM.right.at(pair.second));
       coeffs.push_back(1.0);
     };
+    auto edgeConnection = [&](glp_prob* lp, manifest_idx_t edgeInx,
+		    std::pair<manifest_idx_t, manifest_idx_t> pair) {
+      // e0 depends on m1 and m2; 0 <= m1 + m2 -2 e0 <= 1 
+      auto row = glp_add_rows(lp, 1);
+      glp_set_row_bnds(lp, row, GLP_UP, 0.0, 1.0);
+      std::ostringstream os;
+      os << "edge_" << edgeInx <<"_"<< pair.first << "_" << pair.second;
+      glp_set_row_name(lp, row, os.str().c_str());
+
+      rows.push_back(row);
+      cols.push_back(colsToM.right.at(pair.first));
+      coeffs.push_back(1.0);
+
+      rows.push_back(row);
+      cols.push_back(colsToM.right.at(pair.second));
+      coeffs.push_back(1.0);
+
+      rows.push_back(row);
+      cols.push_back(colsToE.right.at(edgeInx));
+      coeffs.push_back(-2.0);
+    };
+
+
     auto dependency = [&](glp_prob* lp, std::pair<manifest_idx_t, manifest_idx_t> pair) {
       // m1 depends on m2; m1 <= m2; m1 - m2 <= 0
       auto row = glp_add_rows(lp, 1);
@@ -596,6 +645,20 @@ std::set<Manifest*> ProtectionGraph::ilpConflictHandling(llvm::Module& M,
         rows.push_back(row);
         cols.push_back(colsToM.right.at(idx));
         coeffs.push_back(1.0);
+      }
+    };
+    auto implicitCoverageConstraint = [&](glp_prob* lp, double targetCoverage) {
+      // e1..eN indicate implicit coverage edges
+      auto row = glp_add_rows(lp, 1);
+      glp_set_row_bnds(lp, row, GLP_LO, targetCoverage, 0.0);
+      std::ostringstream os;
+      os << "implicit_requirement_" << 0;
+      glp_set_row_name(lp, row, os.str().c_str());
+
+      for(auto [edgeIndex, _, coverage] : implicitCov){
+        rows.push_back(row);
+        cols.push_back(colsToE.right.at(edgeIndex));
+        coeffs.push_back(coverage);
       }
     };
 
@@ -649,6 +712,7 @@ std::set<Manifest*> ProtectionGraph::ilpConflictHandling(llvm::Module& M,
     glp_set_row_name(lp, 4, "hotnessProtectee"); // assigns name q to second row
     glp_set_row_bnds(lp, 4, GLP_LO, 0.0, 0.0);   // 0 < unique <= inf
 
+    
     // COLUMNS
     for (auto& [mIdx, m] : MANIFESTS) {
       // column N
@@ -670,7 +734,8 @@ std::set<Manifest*> ProtectionGraph::ilpConflictHandling(llvm::Module& M,
       // implicit
       rows.push_back(2);
       cols.push_back(col);
-      coeffs.push_back(mStats[mIdx].implicitC);
+      //coeffs.push_back(mStats[mIdx].implicitC);
+      coeffs.push_back(0);
 
       // hotness
       rows.push_back(3);
@@ -682,7 +747,46 @@ std::set<Manifest*> ProtectionGraph::ilpConflictHandling(llvm::Module& M,
       cols.push_back(col);
       coeffs.push_back(mStats[mIdx].hotnessProtectee);
     }
+    //TODO: ensure setting the cost column to zero does not negatively affect the optimization
+    for(auto& [eIdx,pair,coverage] : implicitCov){
+      llvm::dbgs() << "edge"<<eIdx<<"_"<<pair.first<<"_"<<pair.second<<"\n";
+      std::ostringstream os;
+      os << "e"<<eIdx;
+      auto col = glp_add_cols(lp,1);
+      llvm::dbgs() << os.str() << "\n";
+      glp_set_col_name(lp, col, os.str().c_str());   // assigns name m_n to nth column
 
+      glp_set_col_kind(lp, col, GLP_BV);             // values are binary
+      glp_set_col_bnds(lp, col, GLP_DB, 0.0, 1.0);   // values are binary
+      glp_set_obj_coef(lp, col, 0); // TODO: edges do not impose any costs
+
+      colsToE.insert({col, eIdx});
+
+      // explicit
+      rows.push_back(1);
+      cols.push_back(col);
+      coeffs.push_back(0); //Edges have no explicit coverage
+
+      // implicit
+      rows.push_back(2);
+      cols.push_back(col);
+      coeffs.push_back(coverage);
+
+      // hotness
+      rows.push_back(3);
+      cols.push_back(col);
+      coeffs.push_back(0); //edges have no hotness
+
+      // hotnessProtectee
+      rows.push_back(4);
+      cols.push_back(col);
+      coeffs.push_back(0); //edges have no protectee hotness
+    }
+
+    // Add implicit coverage edges
+    for (auto& [eIdx, pair,_] : implicitCov){
+      edgeConnection(lp,eIdx, pair);  
+    }
     // Add dependencies
     for (auto&& pair : dependencies) {
       dependency(lp, pair);
@@ -708,6 +812,10 @@ std::set<Manifest*> ProtectionGraph::ilpConflictHandling(llvm::Module& M,
       blockConnectivity(lp, c, DesiredBlockConnectivity);
     }
 
+    // Add desired implicit coverage
+    implicitCoverageConstraint(lp, implicitCoverageToInstruction);
+
+
     int dataSize = static_cast<int>(rows.size());
     // now prepend the required position zero placeholder (any value will do but zero is safe)
     // first create length one vectors using default member construction
@@ -721,6 +829,7 @@ std::set<Manifest*> ProtectionGraph::ilpConflictHandling(llvm::Module& M,
     arv.insert(arv.end(), coeffs.begin(), coeffs.end());
 
     glp_load_matrix(lp, dataSize, &iav[0], &jav[0], &arv[0]); // calls the routine glp_load_matrix
+    llvm::dbgs()<< "Writing prob.glp\n";
     glp_write_lp(lp, nullptr, "prob.glp");
 
     glp_simplex(lp, nullptr); // calls the routine glp_simplex to solve LP problem
@@ -732,6 +841,14 @@ std::set<Manifest*> ProtectionGraph::ilpConflictHandling(llvm::Module& M,
     for (auto& [col, mIdx] : colsToM) {
       if (glp_mip_col_val(lp, col) == 1) {
         accepted.insert(MANIFESTS.at(mIdx));
+	//TODO: calculate implicit coverage based on the accepted edges
+      }
+    }
+    for (auto& [col, eIdx] : colsToE) {
+      if (glp_mip_col_val(lp, col) == 1) {
+        //accepted.insert(MANIFESTS.at(mIdx));
+	//TODO: calculate implicit coverage based on the accepted edges
+	llvm::dbgs()<<"accepted edge"<<eIdx<<"\n";
       }
     }
     glp_delete_prob(lp);

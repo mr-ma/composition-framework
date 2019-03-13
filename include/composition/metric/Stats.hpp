@@ -61,7 +61,9 @@ public:
 
   std::unordered_map<Manifest*, std::unordered_set<llvm::Instruction*>>
   implictInstructions(const ManifestProtectionMap& dep, std::unordered_map<manifest_idx_t, Manifest*> MANIFESTS);
-
+  std::vector<std::tuple<manifest_idx_t /*edge_index*/, std::pair<manifest_idx_t, manifest_idx_t> /*m1 -> m2*/,
+                         unsigned long /*coverage*/>>
+  implictInstructionsPerEdge(const ManifestProtectionMap& dep, std::unordered_map<manifest_idx_t, Manifest*> MANIFESTS);
 private:
   std::set<llvm::Instruction*> protectedInstructionsDistinct{};
   std::map<std::string, std::set<llvm::Instruction*>> protectedInstructions{};
