@@ -198,7 +198,7 @@ public:
    * @param strategy the strategy to use for handling conflicts
    */
   std::set<Manifest*> randomConflictHandling(llvm::Module& M);
-  std::set<Manifest*> ilpConflictHandling(llvm::Module& M, const std::unordered_map<llvm::BasicBlock*, uint64_t>& BFI);
+  std::set<Manifest*> ilpConflictHandling(llvm::Module& M, const std::unordered_map<llvm::BasicBlock*, uint64_t>& BFI, size_t totalInstructions);
 
   template <typename Iter, typename RandomGenerator> Iter select_randomly(Iter start, Iter end, RandomGenerator& g) {
     std::uniform_int_distribution<> dis(0, std::distance(start, end) - 1);

@@ -6,6 +6,7 @@
 #include <composition/graph/util/graphml.hpp>
 #include <composition/metric/Performance.hpp>
 #include <composition/metric/Weights.hpp>
+#include <composition/metric/Coverage.hpp>
 #include <composition/support/Pass.hpp>
 #include <composition/support/options.hpp>
 #include <composition/trace/PreservedValueRegistry.hpp>
@@ -25,6 +26,7 @@ using composition::graph::ManifestProtectionMap;
 using composition::graph::util::graph_to_dot;
 using composition::graph::util::graph_to_graphml;
 using composition::metric::Performance;
+using composition::metric::Coverage;
 using composition::support::AddCFG;
 using composition::support::cStats;
 using composition::support::DumpGraphs;
@@ -242,9 +244,11 @@ bool CompositionFrameworkPass::graphPass(llvm::Module& M) {
 
   dbgs() << "Calculating Manifest dependencies\n";
   Graph->computeManifestDependencies();
-
-  dbgs() << "Running ILP\n";
-  auto accepted = Graph->ilpConflictHandling(M, BFI);
+  size_t totalInstructions = 0;
+  for (auto &F: sensitiveFunctions)
+    totalInstructions += Coverage::ValueToInstructions(F).size();
+  dbgs() << "Running ILP\n on "<<totalInstructions<<"\n";
+  auto accepted = Graph->ilpConflictHandling(M, BFI, totalInstructions);
   //auto accepted = Graph->randomConflictHandling(M);
 
   dbgs() << "Removing unselected manifests\n";

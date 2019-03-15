@@ -46,13 +46,16 @@ void Stats::collect(std::set<llvm::Function*> sensitiveFunctions, std::vector<Ma
     auto result = Coverage::ValueToInstructions(F);
     instructions.insert(result.begin(), result.end());
   }
+  llvm::dbgs() << "Collected instruction size:"<< instructions.size()<<"\n";
 
   collect(instructions, std::move(manifests), dep);
 }
 std::vector<std::tuple<manifest_idx_t /*edge_index*/, std::pair<manifest_idx_t, manifest_idx_t> /*m1 -> m2*/,
                        unsigned long /*coverage*/>>
 Stats::implictInstructionsPerEdge(const ManifestProtectionMap& dep,
-                                  std::unordered_map<manifest_idx_t, Manifest*> MANIFESTS) {
+                                  std::unordered_map<manifest_idx_t, Manifest*> MANIFESTS,
+				  std::map<manifest_idx_t/*protected manifest*/,
+				  std::set<manifest_idx_t>/*edges*/> *duplicateEdgesOnManifest) {
 
   lemon::ListDigraph G{};
   lemon::ListDigraph::NodeMap<std::unordered_set<llvm::Instruction*>> coverage{G};
@@ -65,7 +68,7 @@ Stats::implictInstructionsPerEdge(const ManifestProtectionMap& dep,
 
     auto mCov = m->Coverage();
     coverage[n] = std::unordered_set<llvm::Instruction*>(mCov.begin(), mCov.end());
-
+    llvm::dbgs() << "Node:"<< idx <<" Coverage:"<<coverage[n].size()<<"\n";
     indices[n] = idx;
     nodes.insert({idx, n});
   }
@@ -116,20 +119,26 @@ Stats::implictInstructionsPerEdge(const ManifestProtectionMap& dep,
 
   llvm::dbgs() << "Calc\n";
   manifest_idx_t edgeIndex = manifest_idx_t(0);
+
+  //std::map<manifest_idx_t/*protected manifest*/,std::set<manifest_idx_t>/*edges*/> duplicateEdgesOnManifest {};
   std::vector<std::tuple<manifest_idx_t /*edge_index*/, std::pair<manifest_idx_t, manifest_idx_t> /*m1 -> m2*/,
                          unsigned long /*coverage*/>>
       implicitEdges{};
   for (auto n : sorted) {
-    llvm::dbgs() << "Node:" << G.id(n) << '\n';
+    llvm::dbgs() << "Node:" << indices[n] << '\n';
     for (lemon::ListDigraph::InArcIt e(G, n); e != lemon::INVALID; ++e) {
       auto other = G.source(e);
-      llvm::dbgs() << "Incoming Node:" << G.id(other) << '\n';
+      llvm::dbgs() << "Incoming Node:" << indices[other] << '\n';
       coverage[n].insert(coverage[other].begin(), coverage[other].end());
       implicitEdges.push_back(std::make_tuple(
 			      edgeIndex,
 			      std::make_pair(indices[n],indices[other]),
 			      coverage[other].size()));
+      (*duplicateEdgesOnManifest)[indices[other]].insert(edgeIndex);
       llvm::dbgs() << coverage[other].size() <<"\n";
+      if((*duplicateEdgesOnManifest)[indices[other]].size()>1){
+	llvm::dbgs() <<"Found one!"<<indices[other]<<" "<<(*duplicateEdgesOnManifest)[indices[other]].size()<<"\n";
+      }
       edgeIndex++;
     }
   }
