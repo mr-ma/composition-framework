@@ -46,16 +46,15 @@ void Stats::collect(std::set<llvm::Function*> sensitiveFunctions, std::vector<Ma
     auto result = Coverage::ValueToInstructions(F);
     instructions.insert(result.begin(), result.end());
   }
-  llvm::dbgs() << "Collected instruction size:"<< instructions.size()<<"\n";
+  llvm::dbgs() << "Collected instruction size:" << instructions.size() << "\n";
 
   collect(instructions, std::move(manifests), dep);
 }
 std::vector<std::tuple<manifest_idx_t /*edge_index*/, std::pair<manifest_idx_t, manifest_idx_t> /*m1 -> m2*/,
                        unsigned long /*coverage*/>>
-Stats::implictInstructionsPerEdge(const ManifestProtectionMap& dep,
-                                  std::unordered_map<manifest_idx_t, Manifest*> MANIFESTS,
-				  std::map<manifest_idx_t/*protected manifest*/,
-				  std::set<manifest_idx_t>/*edges*/> *duplicateEdgesOnManifest) {
+Stats::implictInstructionsPerEdge(
+    const ManifestProtectionMap& dep, std::unordered_map<manifest_idx_t, Manifest*> MANIFESTS,
+    std::map<manifest_idx_t /*protected manifest*/, std::set<manifest_idx_t> /*edges*/>* duplicateEdgesOnManifest) {
 
   lemon::ListDigraph G{};
   lemon::ListDigraph::NodeMap<std::unordered_set<llvm::Instruction*>> coverage{G};
@@ -68,7 +67,7 @@ Stats::implictInstructionsPerEdge(const ManifestProtectionMap& dep,
 
     auto mCov = m->Coverage();
     coverage[n] = std::unordered_set<llvm::Instruction*>(mCov.begin(), mCov.end());
-    llvm::dbgs() << "Node:"<< idx <<" Coverage:"<<coverage[n].size()<<"\n";
+    llvm::dbgs() << "Node:" << idx << " Coverage:" << coverage[n].size() << "\n";
     indices[n] = idx;
     nodes.insert({idx, n});
   }
@@ -120,7 +119,7 @@ Stats::implictInstructionsPerEdge(const ManifestProtectionMap& dep,
   llvm::dbgs() << "Calc\n";
   manifest_idx_t edgeIndex = manifest_idx_t(0);
 
-  //std::map<manifest_idx_t/*protected manifest*/,std::set<manifest_idx_t>/*edges*/> duplicateEdgesOnManifest {};
+  // std::map<manifest_idx_t/*protected manifest*/,std::set<manifest_idx_t>/*edges*/> duplicateEdgesOnManifest {};
   std::vector<std::tuple<manifest_idx_t /*edge_index*/, std::pair<manifest_idx_t, manifest_idx_t> /*m1 -> m2*/,
                          unsigned long /*coverage*/>>
       implicitEdges{};
@@ -130,14 +129,13 @@ Stats::implictInstructionsPerEdge(const ManifestProtectionMap& dep,
       auto other = G.source(e);
       llvm::dbgs() << "Incoming Node:" << indices[other] << '\n';
       coverage[n].insert(coverage[other].begin(), coverage[other].end());
-      implicitEdges.push_back(std::make_tuple(
-			      edgeIndex,
-			      std::make_pair(indices[n],indices[other]),
-			      coverage[other].size()));
+      implicitEdges.push_back(
+          std::make_tuple(edgeIndex, std::make_pair(indices[n], indices[other]), coverage[other].size()));
       (*duplicateEdgesOnManifest)[indices[other]].insert(edgeIndex);
-      llvm::dbgs() << coverage[other].size() <<"\n";
-      if((*duplicateEdgesOnManifest)[indices[other]].size()>1){
-	llvm::dbgs() <<"Found one!"<<indices[other]<<" "<<(*duplicateEdgesOnManifest)[indices[other]].size()<<"\n";
+      llvm::dbgs() << coverage[other].size() << "\n";
+      if ((*duplicateEdgesOnManifest)[indices[other]].size() > 1) {
+        llvm::dbgs() << "Found one!" << indices[other] << " " << (*duplicateEdgesOnManifest)[indices[other]].size()
+                     << "\n";
       }
       edgeIndex++;
     }
@@ -360,6 +358,7 @@ Connectivity Stats::computeBlockConnectivity(std::set<llvm::BasicBlock*> blocks,
     auto blocks = m->BlockCoverage();
     for (auto& BB : blocks) {
       mapping[BB].insert(m);
+      this->protectedBlocks[m->name].insert(BB);
     }
   }
 
@@ -368,6 +367,10 @@ Connectivity Stats::computeBlockConnectivity(std::set<llvm::BasicBlock*> blocks,
     result.push_back(mapped.size());
   }
   this->numberOfProtectedBlocks = result.size();
+
+  for (auto [protection, blocks] : this->protectedBlocks) {
+    this->numberOfProtectedBlocksByType.insert({protection, blocks.size()});
+  }
 
   return Connectivity{result};
 }
@@ -384,6 +387,7 @@ void to_json(nlohmann::json& j, const Stats& s) {
       {"numberOfProtectedFunctionsByType", s.numberOfProtectedFunctionsByType},
       {"numberOfBlocks", s.numberOfBlocks},
       {"numberOfProtectedBlocks", s.numberOfProtectedBlocks},
+      {"numberOfProtectedBlocksByType", s.numberOfProtectedBlocksByType},
       {"instructionConnectivity", s.instructionConnectivity},
       {"blockConnectivity", s.blockConnectivity},
       {"functionConnectivity", s.functionConnectivity},
@@ -406,6 +410,8 @@ void from_json(const nlohmann::json& j, Stats& s) {
       j.at("numberOfProtectedFunctionsByType").get<std::unordered_map<std::string, size_t>>();
   s.numberOfBlocks = j.at("numberOfBlocks").get<size_t>();
   s.numberOfProtectedBlocks = j.at("numberOfProtectedBlocks").get<size_t>();
+  s.numberOfProtectedBlocksByType =
+      j.at("numberOfProtectedBlocksByType").get<std::unordered_map<std::string, size_t>>();
   s.instructionConnectivity = j.at("instructionConnectivity").get<Connectivity>();
   s.blockConnectivity = j.at("blockConnectivity").get<Connectivity>();
   s.functionConnectivity = j.at("functionConnectivity").get<Connectivity>();

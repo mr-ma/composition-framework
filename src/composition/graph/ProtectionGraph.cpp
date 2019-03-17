@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <composition/graph/ILPSolver.hpp>
 #include <composition/graph/ProtectionGraph.hpp>
 #include <composition/graph/algorithm/all_cycles.hpp>
 #include <composition/graph/constraint/dependency.hpp>
@@ -12,6 +13,7 @@
 #include <vector>
 
 namespace composition::graph {
+using composition::graph::ILPSolver;
 using composition::graph::algorithm::AllCycles;
 using composition::graph::constraint::Dependency;
 using composition::graph::constraint::Present;
@@ -231,8 +233,8 @@ std::set<std::pair<manifest_idx_t, manifest_idx_t>> ProtectionGraph::computeDepe
 
   return dependencies;
 }
-/*std::set<std::pair<manifest_idx_t,std::pair<manifest_idx_t, manifest_idx_t>>> ProtectionGraph::computeImplicitEdges() {
-  std::set<std::pair<manifest_idx_t, manifest_idx_t>> dependencies{};
+/*std::set<std::pair<manifest_idx_t,std::pair<manifest_idx_t, manifest_idx_t>>> ProtectionGraph::computeImplicitEdges()
+{ std::set<std::pair<manifest_idx_t, manifest_idx_t>> dependencies{};
 
   for (auto& [mIdx, _] : MANIFESTS) {
     // Manifest dependencies
@@ -245,7 +247,6 @@ std::set<std::pair<manifest_idx_t, manifest_idx_t>> ProtectionGraph::computeDepe
 
   return dependencies;
 }*/
-
 
 std::set<std::set<manifest_idx_t>> ProtectionGraph::computeCycles() {
   Profiler detectingProfiler{};
@@ -389,9 +390,11 @@ void ProtectionGraph::removeManifest(manifest_idx_t m) {
       continue;
     }
     processed.insert(current);
-    for (auto [it, it_end] = DependencyUndo.right.equal_range(current); it != it_end; ++it) {
-      for (auto v : it->second) {
-        s.push(v);
+    if (DependencyUndo.right.find(current) != DependencyUndo.right.end()) {
+      for (auto [it, it_end] = DependencyUndo.right.equal_range(current); it != it_end; ++it) {
+        for (auto v : it->second) {
+          s.push(v);
+        }
       }
     }
     DependencyUndo.right.erase(current);
@@ -499,16 +502,17 @@ implictInstructions(manifest_idx_t idx, const ManifestProtectionMap& dep,
 }
 
 std::set<Manifest*> ProtectionGraph::ilpConflictHandling(llvm::Module& M,
-                                                         const std::unordered_map<llvm::BasicBlock*, uint64_t>& BFI, size_t totalInstructions) {
+                                                         const std::unordered_map<llvm::BasicBlock*, uint64_t>& BFI,
+                                                         size_t totalInstructions) {
   size_t DesiredConnectivity = 2;
   size_t DesiredBlockConnectivity = 1;
-  //TODO: Desired Implicit Coverage should be set by the cmd args
+  // TODO: Desired Implicit Coverage should be set by the cmd args
   double DesiredImplicitCoverage = 20;
-  //TODO: cStats.stats is not set at this point ----
+  // TODO: cStats.stats is not set at this point ----
   size_t TotalInstructions = cStats.stats.numberOfAllInstructions;
-  llvm::dbgs() << "Total instruction:"<< totalInstructions <<"\n";
-  size_t implicitCoverageToInstruction = totalInstructions * (DesiredImplicitCoverage / 100); 
-  llvm::dbgs() << "Implicit coverage per instruction "<<implicitCoverageToInstruction<<"\n";
+  llvm::dbgs() << "Total instruction:" << totalInstructions << "\n";
+  size_t implicitCoverageToInstruction = totalInstructions * (DesiredImplicitCoverage / 100);
+  llvm::dbgs() << "Implicit coverage per instruction " << implicitCoverageToInstruction << "\n";
 
   Profiler detectingProfiler{};
   auto conflicts = vertexConflicts();
@@ -547,11 +551,11 @@ std::set<Manifest*> ProtectionGraph::ilpConflictHandling(llvm::Module& M,
     hotnessProtecteeBounds.first = std::min(hotnessProtecteeBounds.first, mStats[mIdx].hotnessProtectee);
     hotnessProtecteeBounds.second = std::max(hotnessProtecteeBounds.second, mStats[mIdx].hotnessProtectee);
   }
-  std::map<manifest_idx_t/*protected manifest*/,std::set<manifest_idx_t>/*edges*/> duplicateEdgesOnManifest {};
+  std::map<manifest_idx_t /*protected manifest*/, std::set<manifest_idx_t> /*edges*/> duplicateEdgesOnManifest{};
   metric::Stats s{};
-  std::vector<std::tuple<manifest_idx_t /*edge_index*/,
-  std::pair<manifest_idx_t, manifest_idx_t> /*m1 -> m2*/,
-  unsigned long /*coverage*/>> implicitCov = s.implictInstructionsPerEdge(ManifestProtection, MANIFESTS, &duplicateEdgesOnManifest);
+  std::vector<std::tuple<manifest_idx_t /*edge_index*/, std::pair<manifest_idx_t, manifest_idx_t> /*m1 -> m2*/,
+                         unsigned long /*coverage*/>>
+      implicitCov = s.implictInstructionsPerEdge(ManifestProtection, MANIFESTS, &duplicateEdgesOnManifest);
 
   for (auto [edgeIndex, manifestPair, coverage] : implicitCov) {
     eStats[edgeIndex].implicitC = coverage;
@@ -564,350 +568,36 @@ std::set<Manifest*> ProtectionGraph::ilpConflictHandling(llvm::Module& M,
   }
 
   Profiler resolvingProfiler{};
+
+  auto costFunction = [](ManifestStats s) -> double {
+    return 1.0 * s.normalizedHotness + (1.0 - s.normalizedHotnessProtectee);
+  };
   do {
-    boost::bimaps::bimap<int, manifest_idx_t> colsToM{};
-    boost::bimaps::bimap<int, manifest_idx_t> colsToE{};
-    boost::bimaps::bimap<int, manifest_idx_t> colsToF{};
-
-    std::vector<int> rows{};
-    std::vector<int> cols{};
-    std::vector<double> coeffs{};
-
-    // cost function
-    auto cost = [](ManifestStats s) -> double {
-      return 1.0 * s.normalizedHotness + (1.0 - s.normalizedHotnessProtectee);
-    };
-    auto conflict = [&](glp_prob* lp, std::pair<manifest_idx_t, manifest_idx_t> pair) {
-      // m1 and m2 conflict; m1 + m2 <= 1
-      auto row = glp_add_rows(lp, 1);
-      glp_set_row_bnds(lp, row, GLP_UP, 0.0, 1.0);
-      std::ostringstream os;
-      os << "conflict_" << pair.first << "_" << pair.second;
-      glp_set_row_name(lp, row, os.str().c_str());
-
-      rows.push_back(row);
-      cols.push_back(colsToM.right.at(pair.first));
-      coeffs.push_back(1.0);
-
-      rows.push_back(row);
-      cols.push_back(colsToM.right.at(pair.second));
-      coeffs.push_back(1.0);
-    };
-    auto edgeConnection = [&](glp_prob* lp, manifest_idx_t edgeInx,
-		    std::pair<manifest_idx_t, manifest_idx_t> pair) {
-      // e0 depends on m1 and m2; 0 <= m1 + m2 -2 e0 <= 1 
-      auto row = glp_add_rows(lp, 1);
-      glp_set_row_bnds(lp, row, GLP_UP, 0.0, 1.0);
-      std::ostringstream os;
-      os << "edge_" << edgeInx <<"_"<< pair.first << "_" << pair.second;
-      glp_set_row_name(lp, row, os.str().c_str());
-
-      rows.push_back(row);
-      cols.push_back(colsToM.right.at(pair.first));
-      coeffs.push_back(1.0);
-
-      rows.push_back(row);
-      cols.push_back(colsToM.right.at(pair.second));
-      coeffs.push_back(1.0);
-
-      rows.push_back(row);
-      cols.push_back(colsToE.right.at(edgeInx));
-      coeffs.push_back(-2.0);
-    };
-    auto duplicateImplicitEdges = [&](glp_prob* lp, manifest_idx_t fInx, std::set<manifest_idx_t> edgeDuplicates){
-      //f0 is set if any of the duplicate edges are set (i.e. OR): 0 <= 2f0 - e1 - e2 <=1
-      auto row = glp_add_rows(lp, 1);
-      glp_set_row_bnds(lp, row, GLP_DB, 0.0, 1.0);
-      std::ostringstream os;
-      os << "f" << fInx <<"_"<<edgeDuplicates.size();
-      glp_set_row_name(lp, row, os.str().c_str());
-
-      rows.push_back(row);
-      cols.push_back(colsToF.right.at(fInx));
-      coeffs.push_back(edgeDuplicates.size());
-
-      for (auto edgeIndex: edgeDuplicates){
-        rows.push_back(row);
-        cols.push_back(colsToE.right.at(edgeIndex));
-        coeffs.push_back(-1.0);
-      }
-	
-    }; 
-
-    auto dependency = [&](glp_prob* lp, std::pair<manifest_idx_t, manifest_idx_t> pair) {
-      // m1 depends on m2; m1 <= m2; m1 - m2 <= 0
-      auto row = glp_add_rows(lp, 1);
-      glp_set_row_bnds(lp, row, GLP_UP, 0.0, 0.0);
-      std::ostringstream os;
-      os << "dependency_" << pair.first << "_" << pair.second;
-      glp_set_row_name(lp, row, os.str().c_str());
-
-      rows.push_back(row);
-      cols.push_back(colsToM.right.at(pair.first));
-      coeffs.push_back(1.0);
-
-      rows.push_back(row);
-      cols.push_back(colsToM.right.at(pair.second));
-      coeffs.push_back(-1.0);
-    };
-
-    int cycleCount = 0;
-    auto cycle = [&](glp_prob* lp, std::set<manifest_idx_t> ms) {
-      // m1..mN form a cycle; m1+m2+..+mN <= N-1
-      auto row = glp_add_rows(lp, 1);
-      glp_set_row_bnds(lp, row, GLP_UP, 0.0, ms.size() - 1);
-      std::ostringstream os;
-      os << "cycle_" << cycleCount++;
-      glp_set_row_name(lp, row, os.str().c_str());
-
-      for (auto& idx : ms) {
-        rows.push_back(row);
-        cols.push_back(colsToM.right.at(idx));
-        coeffs.push_back(1.0);
-      }
-    };
-    /*auto implicitCoverageConstraint = [&](glp_prob* lp, manifest_idx_t fIndex) {
-      // e1..eN indicate implicit coverage edges
-      auto row = glp_add_rows(lp, 1);
-      glp_set_row_bnds(lp, row, GLP_LO, targetCoverage, 0.0);
-      std::ostringstream os;
-      os << "implicit_requirement_" << 0;
-      glp_set_row_name(lp, row, os.str().c_str());
-
-      for(auto [fIndex, _, coverage] : implicitCov){
-        rows.push_back(row);
-        cols.push_back(colsToF.right.at(fIndex));
-        coeffs.push_back(coverage);
-      }
-    };*/
-
-    int connectivityCount = 0;
-    auto connectivity = [&](glp_prob* lp, std::set<manifest_idx_t> ms, size_t targetConnectivity) {
-      // m1..mN protect an Instruction; m1+m2+..+mN >= min(N, targetConnectivity)
-      auto row = glp_add_rows(lp, 1);
-      glp_set_row_bnds(lp, row, GLP_LO, std::min(ms.size(), targetConnectivity), 0.0);
-      std::ostringstream os;
-      os << "connectivity_" << connectivityCount++;
-      glp_set_row_name(lp, row, os.str().c_str());
-
-      for (auto& idx : ms) {
-        rows.push_back(row);
-        cols.push_back(colsToM.right.at(idx));
-        coeffs.push_back(1.0);
-      }
-    };
-    int blockConnectivityCount = 0;
-    auto blockConnectivity = [&](glp_prob* lp, std::set<manifest_idx_t> ms, size_t targetBlockConnectivity) {
-      // m1..mN protect a BasicBlock; m1+m2+..+mN >= min(N, targetBlockConnectivity)
-      auto row = glp_add_rows(lp, 1);
-      glp_set_row_bnds(lp, row, GLP_LO, std::min(ms.size(), targetBlockConnectivity), 0.0);
-      std::ostringstream os;
-      os << "block_connectivity_" << blockConnectivityCount++;
-      glp_set_row_name(lp, row, os.str().c_str());
-
-      for (auto& idx : ms) {
-        rows.push_back(row);
-        cols.push_back(colsToM.right.at(idx));
-        coeffs.push_back(1.0);
-      }
-    };
-
-    auto lp = glp_create_prob();     // creates a problem object
-    glp_set_prob_name(lp, "sample"); // assigns a symbolic name to the problem object
-    glp_set_obj_dir(lp, GLP_MIN);
-
-    // ROWS
-    glp_add_rows(lp, 4); // adds three rows to the problem object
-    // row 1
-    glp_set_row_name(lp, 1, "explicit");       // assigns name p to first row
-    glp_set_row_bnds(lp, 1, GLP_LO, 0.0, 0.0); // 0 < explicit <= inf
-    // row 2
-    glp_set_row_name(lp, 2, "implicit");       // assigns name q to second row
-    glp_set_row_bnds(lp, 2, GLP_LO, implicitCoverageToInstruction, 0.0); // 0 < implicit <= inf
-    // row 3
-    glp_set_row_name(lp, 3, "hotness");        // assigns name q to second row
-    glp_set_row_bnds(lp, 3, GLP_LO, 0.0, 0.0); // 0 < unique <= inf
-    // row 4
-    glp_set_row_name(lp, 4, "hotnessProtectee"); // assigns name q to second row
-    glp_set_row_bnds(lp, 4, GLP_LO, 0.0, 0.0);   // 0 < unique <= inf
-
-    
-    // COLUMNS
-    for (auto& [mIdx, m] : MANIFESTS) {
-      // column N
-      std::ostringstream os;
-      os << "m" << m->index;
-      auto col = glp_add_cols(lp, 1);
-      glp_set_col_name(lp, col, os.str().c_str());   // assigns name m_n to nth column
-      glp_set_col_kind(lp, col, GLP_BV);             // values are binary
-      glp_set_col_bnds(lp, col, GLP_DB, 0.0, 1.0);   // values are binary
-      glp_set_obj_coef(lp, col, cost(mStats[mIdx])); // costs
-
-      colsToM.insert({col, m->index});
-
-      // explicit
-      rows.push_back(1);
-      cols.push_back(col);
-      coeffs.push_back(mStats[mIdx].explicitC);
-
-      // implicit
-      rows.push_back(2);
-      cols.push_back(col);
-      //coeffs.push_back(mStats[mIdx].implicitC);
-      coeffs.push_back(0);
-
-      // hotness
-      rows.push_back(3);
-      cols.push_back(col);
-      coeffs.push_back(mStats[mIdx].hotness);
-
-      // hotnessProtectee
-      rows.push_back(4);
-      cols.push_back(col);
-      coeffs.push_back(mStats[mIdx].hotnessProtectee);
-    }
-    //TODO: ensure setting the cost column to zero does not negatively affect the optimization
-    for(auto& [eIdx,pair,coverage] : implicitCov){
-      llvm::dbgs() << "edge"<<eIdx<<"_"<<pair.first<<"_"<<pair.second<<"\n";
-      std::ostringstream os;
-      os << "e"<<eIdx;
-      auto col = glp_add_cols(lp,1);
-      glp_set_col_name(lp, col, os.str().c_str());   // assigns name m_n to nth column
-
-      glp_set_col_kind(lp, col, GLP_BV);             // values are binary
-      glp_set_col_bnds(lp, col, GLP_DB, 0.0, 1.0);   // values are binary
-      glp_set_obj_coef(lp, col, 0); // TODO: edges do not impose any costs
-
-      colsToE.insert({col, eIdx});
-
-      // explicit
-      rows.push_back(1);
-      cols.push_back(col);
-      coeffs.push_back(0); //Edges have no explicit coverage
-
-      // implicit
-      rows.push_back(2);
-      cols.push_back(col);
-      coeffs.push_back(coverage);
-
-      // hotness
-      rows.push_back(3);
-      cols.push_back(col);
-      coeffs.push_back(0); //edges have no hotness
-
-      // hotnessProtectee
-      rows.push_back(4);
-      cols.push_back(col);
-      coeffs.push_back(0); //edges have no protectee hotness
-    }
-    // Rows for duplicate edges with f variables
-    for (auto& [mIdx, edges]: duplicateEdgesOnManifest){
-      llvm::dbgs() << "f"<<mIdx<<"_"<<edges.size()<<"\n";
-      std::ostringstream os;
-      os << "f"<<mIdx;
-      auto col = glp_add_cols(lp,1);
-      glp_set_col_name(lp, col, os.str().c_str());   // assigns name m_n to nth column
-
-      glp_set_col_kind(lp, col, GLP_BV);             // values are binary
-      glp_set_col_bnds(lp, col, GLP_DB, 0.0, 1.0);   // values are binary
-      glp_set_obj_coef(lp, col, 0); // TODO: f (edge duplicates) do not impose any costs
-
-      colsToF.insert({col, mIdx});
-
-      // explicit
-      rows.push_back(1);
-      cols.push_back(col);
-      coeffs.push_back(0); //Edges have no explicit coverage
-
-      // implicit
-      rows.push_back(2);
-      cols.push_back(col);
-      coeffs.push_back(277777);
-
-      // hotness
-      rows.push_back(3);
-      cols.push_back(col);
-      coeffs.push_back(0); //edges have no hotness
-
-      // hotnessProtectee
-      rows.push_back(4);
-      cols.push_back(col);
-      coeffs.push_back(0); //edges have no protectee hotness
-    }
-    
-    for(auto& [mIdx, edges]: duplicateEdgesOnManifest){
-      duplicateImplicitEdges(lp, mIdx, edges);
-    }
-    
-    // Add implicit coverage edges
-    for (auto& [eIdx, pair,_] : implicitCov){
-      edgeConnection(lp,eIdx, pair);  
-    }
-    // Add dependencies
-    for (auto&& pair : dependencies) {
-      dependency(lp, pair);
-    }
-
-    // Add conflicts
-    for (auto&& pair : conflicts) {
-      conflict(lp, pair);
-    }
-
-    // Add cycles
-    for (auto&& c : cycles) {
-      cycle(lp, c);
-    }
-
-    // Add connectivity
-    for (auto&& c : connectivities) {
-      connectivity(lp, c, DesiredConnectivity);
-    }
-
-    // Add  blockConnectivity
-    for (auto&& c : blockConnectivities) {
-      blockConnectivity(lp, c, DesiredBlockConnectivity);
-    }
-
-    // Add desired implicit coverage
-    //implicitCoverageConstraint(lp, implicitCoverageToInstruction);
-
-
-    int dataSize = static_cast<int>(rows.size());
-    // now prepend the required position zero placeholder (any value will do but zero is safe)
-    // first create length one vectors using default member construction
-    std::vector<int> iav(1, 0);
-    std::vector<int> jav(1, 0);
-    std::vector<double> arv(1, 0);
-
-    // then concatenate these with the original data vectors
-    iav.insert(iav.end(), rows.begin(), rows.end());
-    jav.insert(jav.end(), cols.begin(), cols.end());
-    arv.insert(arv.end(), coeffs.begin(), coeffs.end());
-
-    glp_load_matrix(lp, dataSize, &iav[0], &jav[0], &arv[0]); // calls the routine glp_load_matrix
-    llvm::dbgs()<< "Writing prob.glp\n";
-    glp_write_lp(lp, nullptr, "prob.glp");
-
-    glp_simplex(lp, nullptr); // calls the routine glp_simplex to solve LP problem
-    glp_intopt(lp, nullptr);
-    auto total_cost = glp_mip_obj_val(lp);
-    glp_print_mip(lp, "sol.glp");
+    ILPSolver solver{};
+    solver.init(0, implicitCoverageToInstruction, 0, 0);
+    solver.DesiredConnectivity = DesiredConnectivity;
+    solver.DesiredBlockConnectivity = DesiredBlockConnectivity;
+    solver.setCostFunction(costFunction);
+    solver.addManifests(MANIFESTS, mStats);
+    solver.addDependencies(dependencies);
+    solver.addConflicts(conflicts);
+    solver.addCycles(cycles);
+    solver.addConnectivity(connectivities);
+    solver.addBlockConnectivity(blockConnectivities);
+    solver.addImplicitCoverage(implicitCov, duplicateEdgesOnManifest);
+    auto [acceptedIndices, acceptedEdges] = solver.run();
+    solver.destroy();
 
     std::set<Manifest*> accepted{};
-    for (auto& [col, mIdx] : colsToM) {
-      if (glp_mip_col_val(lp, col) == 1) {
-        accepted.insert(MANIFESTS.at(mIdx));
-	//TODO: calculate implicit coverage based on the accepted edges
-      }
+    for (auto& mIdx : acceptedIndices) {
+      accepted.insert(MANIFESTS.at(mIdx));
+      // TODO: calculate implicit coverage based on the accepted edges
     }
-    for (auto& [col, eIdx] : colsToE) {
-      if (glp_mip_col_val(lp, col) == 1) {
-        //accepted.insert(MANIFESTS.at(mIdx));
-	//TODO: calculate implicit coverage based on the accepted edges
-	llvm::dbgs()<<"accepted edge"<<eIdx<<"\n";
-      }
+    for (auto& eIdx : acceptedEdges) {
+      // accepted.insert(MANIFESTS.at(mIdx));
+      // TODO: calculate implicit coverage based on the accepted edges
+      llvm::dbgs() << "accepted edge" << eIdx << "\n";
     }
-    glp_delete_prob(lp);
 
     ProtectionGraph pg{};
     pg.addManifests(accepted);
