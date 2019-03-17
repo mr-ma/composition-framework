@@ -36,6 +36,7 @@ add_library(CompositionFramework SHARED
         include/composition/graph/ProtectionGraph.hpp
         include/composition/graph/edge.hpp
         include/composition/graph/vertex.hpp
+        include/composition/graph/ILPSolver.hpp
 
         include/composition/graph/algorithm/all_cycles.hpp
 
@@ -78,6 +79,7 @@ add_library(CompositionFramework SHARED
         src/composition/graph/vertex.cpp
         src/composition/graph/edge.cpp
         src/composition/graph/ProtectionGraph.cpp
+        src/composition/graph/ILPSolver.cpp
 
         src/composition/graph/constraint/constraint.cpp
         src/composition/graph/constraint/dependency.cpp
