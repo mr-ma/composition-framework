@@ -33,6 +33,7 @@ public:
   size_t numberOfProtectedBlocks{};
   std::unordered_map<std::string, size_t> numberOfProtectedInstructionsByType{};
   std::unordered_map<std::string, size_t> numberOfProtectedFunctionsByType{};
+  std::unordered_map<std::string, size_t> numberOfProtectedBlocksByType{};
   Connectivity instructionConnectivity{};
   Connectivity blockConnectivity{};
   Connectivity functionConnectivity{};
@@ -63,12 +64,15 @@ public:
   implictInstructions(const ManifestProtectionMap& dep, std::unordered_map<manifest_idx_t, Manifest*> MANIFESTS);
   std::vector<std::tuple<manifest_idx_t /*edge_index*/, std::pair<manifest_idx_t, manifest_idx_t> /*m1 -> m2*/,
                          unsigned long /*coverage*/>>
-  implictInstructionsPerEdge(const ManifestProtectionMap& dep, std::unordered_map<manifest_idx_t, Manifest*> MANIFESTS, std::map<manifest_idx_t/*protected manifest*/,
-                                  std::set<manifest_idx_t>/*edges*/> *duplicateEdgesOnManifest);
+  implictInstructionsPerEdge(
+      const ManifestProtectionMap& dep, std::unordered_map<manifest_idx_t, Manifest*> MANIFESTS,
+      std::map<manifest_idx_t /*protected manifest*/, std::set<manifest_idx_t> /*edges*/>* duplicateEdgesOnManifest);
+
 private:
   std::set<llvm::Instruction*> protectedInstructionsDistinct{};
   std::map<std::string, std::set<llvm::Instruction*>> protectedInstructions{};
   std::map<std::string, std::set<llvm::Function*>> protectedFunctions{};
+  std::map<std::string, std::set<llvm::BasicBlock*>> protectedBlocks{};
 
   std::pair<Connectivity, Connectivity>
   instructionFunctionConnectivity(const std::unordered_map<llvm::Instruction*, size_t>& instructionConnectivityMap);
