@@ -390,9 +390,11 @@ void ProtectionGraph::removeManifest(manifest_idx_t m) {
       continue;
     }
     processed.insert(current);
-    for (auto [it, it_end] = DependencyUndo.right.equal_range(current); it != it_end; ++it) {
-      for (auto v : it->second) {
-        s.push(v);
+    if (DependencyUndo.right.find(current) != DependencyUndo.right.end()) {
+      for (auto [it, it_end] = DependencyUndo.right.equal_range(current); it != it_end; ++it) {
+        for (auto v : it->second) {
+          s.push(v);
+        }
       }
     }
     DependencyUndo.right.erase(current);
