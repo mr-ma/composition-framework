@@ -54,8 +54,8 @@ std::vector<std::tuple<manifest_idx_t /*edge_index*/, std::pair<manifest_idx_t, 
                        unsigned long /*coverage*/>>
 Stats::implictInstructionsPerEdge(
     const ManifestProtectionMap& dep, std::unordered_map<manifest_idx_t, Manifest*> MANIFESTS,
-    std::map<manifest_idx_t /*protected manifest*/, std::set<manifest_idx_t> /*edges*/>* duplicateEdgesOnManifest) {
-
+    std::map<manifest_idx_t /*protectee manifest*/,
+             std::pair<std::set<manifest_idx_t> /*protector edges*/, unsigned long /*coverage*/>>* duplicateEdgesOnManifest) {
   lemon::ListDigraph G{};
   lemon::ListDigraph::NodeMap<std::unordered_set<llvm::Instruction*>> coverage{G};
   lemon::ListDigraph::NodeMap<manifest_idx_t> indices{G};
@@ -64,10 +64,10 @@ Stats::implictInstructionsPerEdge(
   llvm::dbgs() << "Graph Nodes\n";
   for (auto [idx, m] : MANIFESTS) {
     auto n = G.addNode();
-
+    m->dump();
     auto mCov = m->Coverage();
     coverage[n] = std::unordered_set<llvm::Instruction*>(mCov.begin(), mCov.end());
-    llvm::dbgs() << "Node:" << idx << " Coverage:" << coverage[n].size() << "\n";
+
     indices[n] = idx;
     nodes.insert({idx, n});
   }
@@ -115,51 +115,39 @@ Stats::implictInstructionsPerEdge(
       coverage[n] = componentCoverage;
     }
   }
-
-  llvm::dbgs() << "Calc\n";
   manifest_idx_t edgeIndex = manifest_idx_t(0);
-
-  // std::map<manifest_idx_t/*protected manifest*/,std::set<manifest_idx_t>/*edges*/> duplicateEdgesOnManifest {};
   std::vector<std::tuple<manifest_idx_t /*edge_index*/, std::pair<manifest_idx_t, manifest_idx_t> /*m1 -> m2*/,
                          unsigned long /*coverage*/>>
       implicitEdges{};
+
+  llvm::dbgs() << "Calc\n";
   for (auto n : sorted) {
     llvm::dbgs() << "Node:" << indices[n] << '\n';
     for (lemon::ListDigraph::InArcIt e(G, n); e != lemon::INVALID; ++e) {
       auto other = G.source(e);
-      llvm::dbgs() << "Incoming Node:" << indices[other] << '\n';
-      coverage[n].insert(coverage[other].begin(), coverage[other].end());
+      llvm::dbgs() << "Edge to Node:" << indices[other] << " coverage: " << coverage[other].size() << '\n';
+      if (indices[other]==indices[n]) {
+        llvm::dbgs() << "FOUND A SELF-EDGE " <<  "\n";
+        exit(1);
+      }
       implicitEdges.push_back(
           std::make_tuple(edgeIndex, std::make_pair(indices[n], indices[other]), coverage[other].size()));
-      (*duplicateEdgesOnManifest)[indices[other]].insert(edgeIndex);
-      llvm::dbgs() << coverage[other].size() << "\n";
-      if ((*duplicateEdgesOnManifest)[indices[other]].size() > 1) {
-        llvm::dbgs() << "Found one!" << indices[other] << " " << (*duplicateEdgesOnManifest)[indices[other]].size()
-                     << "\n";
+      auto &[edges, cov] = (*duplicateEdgesOnManifest)[indices[other]];
+      if(edges.size()!=0 && cov != coverage[other].size()){
+          llvm::dbgs()<<"What's going on here, different coverage for the same manifest?\n";
+          llvm::dbgs()<<"Coverage protectee:"<<coverage[other].size()<<" previously captured:"<<cov<<"\n";
       }
+      cov = coverage[other].size();
+      //////START HERE THE EDGES DOES NOT MAINTAIN THE VALUES AFTER EACH INSERT? POINTER ISSUE??
+      edges.insert(edgeIndex);
+      llvm::dbgs() << "Count of protecting edges for node " << indices[other] << " is " << edges.size() << "\n";
       edgeIndex++;
+
+      // coverage[n].insert(coverage[other].begin(), coverage[other].end());
     }
   }
-
-  /*  llvm::dbgs() << "Map and correct data\n";
-    std::unordered_map<Manifest*, std::unordered_set<llvm::Instruction*>> result{};
-    for (lemon::ListDigraph::NodeIt n(G); n != lemon::INVALID; ++n) {
-      std::unordered_set<llvm::Instruction*> corrected{};
-
-      // Assumption: A manifest cannot protect itself. Thus, remove the explicit manifest coverage
-      auto mCov = MANIFESTS.at(indices[n])->Coverage();
-      auto own = std::unordered_set<llvm::Instruction*>(mCov.begin(), mCov.end());
-
-      std::copy_if(coverage[n].begin(), coverage[n].end(), std::inserter(corrected, corrected.begin()),
-                   [&own](llvm::Instruction* needle) { return own.find(needle) == own.end(); });
-
-      result.insert({MANIFESTS.at(indices[n]), corrected});
-    }
-
-    return result;*/
   return implicitEdges;
 }
-
 std::unordered_map<Manifest*, std::unordered_set<llvm::Instruction*>>
 Stats::implictInstructions(const ManifestProtectionMap& dep, std::unordered_map<manifest_idx_t, Manifest*> MANIFESTS) {
 
@@ -228,7 +216,7 @@ Stats::implictInstructions(const ManifestProtectionMap& dep, std::unordered_map<
     llvm::dbgs() << "Node:" << G.id(n) << '\n';
     for (lemon::ListDigraph::InArcIt e(G, n); e != lemon::INVALID; ++e) {
       auto other = G.source(e);
-      llvm::dbgs() << "Incoming Node:" << G.id(other) << '\n';
+      llvm::dbgs() << "Incoming Node:" << G.id(other) << " coverage: " << coverage[other].size() << '\n';
       coverage[n].insert(coverage[other].begin(), coverage[other].end());
     }
   }
@@ -244,7 +232,7 @@ Stats::implictInstructions(const ManifestProtectionMap& dep, std::unordered_map<
 
     std::copy_if(coverage[n].begin(), coverage[n].end(), std::inserter(corrected, corrected.begin()),
                  [&own](llvm::Instruction* needle) { return own.find(needle) == own.end(); });
-
+    llvm::dbgs() << "coverage after copy_if:" << corrected.size() << "\n";
     result.insert({MANIFESTS.at(indices[n]), corrected});
   }
 
@@ -287,14 +275,19 @@ void Stats::collect(std::set<llvm::Instruction*> allInstructions, std::vector<Ma
 
   llvm::dbgs() << "Getting Implicit Coverage\n";
   std::set<llvm::Instruction*> implicitlyCoveredInstructions{};
-  /*std::unordered_map<Manifest*, std::unordered_set<llvm::Instruction*>> manifestImplicitlyCoveredInstructions =
+  std::unordered_map<Manifest*, std::unordered_set<llvm::Instruction*>> manifestImplicitlyCoveredInstructions =
       implictInstructions(dep, MANIFESTS);
   llvm::dbgs() << "Done\n";
 
   for (auto& [m, instr] : manifestImplicitlyCoveredInstructions) {
+    llvm::dbgs() << "implicitly covered instructions by manifest:" << instr.size() << "\n";
+    if (instr.size() > 0) {
+      llvm::dbgs() << "FOUND IMPLICIT\n";
+    }
+
     implicitlyCoveredInstructions.insert(instr.begin(), instr.end());
     this->numberOfImplicitlyProtectedInstructions += instr.size();
-  }*/
+  }
   this->numberOfDistinctImplicitlyProtectedInstructions = implicitlyCoveredInstructions.size();
 
   llvm::dbgs() << "Getting Protection Coverage and Connectivity\n";

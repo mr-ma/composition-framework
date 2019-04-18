@@ -512,7 +512,7 @@ std::set<Manifest*> ProtectionGraph::ilpConflictHandling(llvm::Module& M,
   size_t TotalInstructions = cStats.stats.numberOfAllInstructions;
   llvm::dbgs() << "Total instruction:" << totalInstructions << "\n";
   size_t implicitCoverageToInstruction = totalInstructions * (DesiredImplicitCoverage / 100);
-  llvm::dbgs() << "Implicit coverage per instruction " << implicitCoverageToInstruction << "\n";
+  llvm::dbgs() << "Requested Implicit coverage of (instruction) " << implicitCoverageToInstruction << "\n";
 
   Profiler detectingProfiler{};
   auto conflicts = vertexConflicts();
@@ -551,11 +551,12 @@ std::set<Manifest*> ProtectionGraph::ilpConflictHandling(llvm::Module& M,
     hotnessProtecteeBounds.first = std::min(hotnessProtecteeBounds.first, mStats[mIdx].hotnessProtectee);
     hotnessProtecteeBounds.second = std::max(hotnessProtecteeBounds.second, mStats[mIdx].hotnessProtectee);
   }
-  std::map<manifest_idx_t /*protected manifest*/, std::set<manifest_idx_t> /*edges*/> duplicateEdgesOnManifest{};
+  std::map<manifest_idx_t /*protected manifest*/, std::pair<std::set<manifest_idx_t> /*edges*/, unsigned long>>
+      duplicateEdgesOnManifest{};
   metric::Stats s{};
-  std::vector<std::tuple<manifest_idx_t /*edge_index*/, std::pair<manifest_idx_t, manifest_idx_t> /*m1 -> m2*/,
-                         unsigned long /*coverage*/>>
-      implicitCov = s.implictInstructionsPerEdge(ManifestProtection, MANIFESTS, &duplicateEdgesOnManifest);
+  //std::vector<std::tuple<manifest_idx_t /*edge_index*/, std::pair<manifest_idx_t, manifest_idx_t> /*m1 -> m2*/,
+  //                       unsigned long /*coverage*/>>
+  auto implicitCov = s.implictInstructionsPerEdge(ManifestProtection, MANIFESTS, &duplicateEdgesOnManifest);
 
   for (auto [edgeIndex, manifestPair, coverage] : implicitCov) {
     eStats[edgeIndex].implicitC = coverage;

@@ -170,6 +170,13 @@ void Manifest::dump() {
     }
     dbgs() << "\n";
   }
+  dbgs() <<"\tCovered Instructions:  \n";
+  auto coverage = this->Coverage();
+  for(auto inst: coverage){
+      dbgs()<<"\t\t";
+      inst->dump();
+  }
+  dbgs()<<"\n";
 }
 
 void Manifest::Clean() {

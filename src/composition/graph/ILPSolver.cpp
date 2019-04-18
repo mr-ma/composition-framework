@@ -54,7 +54,7 @@ void ILPSolver::addManifests(std::unordered_map<manifest_idx_t, Manifest*> manif
     cols.push_back(col);
     coeffs.push_back(stats[mIdx].explicitC);
 
-    // implicit
+    // manifest has no implicit coverage but edges do
     rows.push_back(2);
     cols.push_back(col);
     // coeffs.push_back(stats[mIdx].implicitC);
@@ -144,6 +144,10 @@ std::pair<std::set<manifest_idx_t>, std::set<manifest_idx_t>> ILPSolver::run() {
     }
   }
 
+
+  uint64_t explicitInstructionCoverage = glp_mip_row_val(lp,1);
+  uint64_t implicitInstructionCoverage = glp_mip_row_val(lp,2); 
+  llvm::dbgs()<<"explicit instruction coverage:"<<explicitInstructionCoverage<<" implicit instruction coverage:"<<implicitInstructionCoverage<<"\n";
   return {acceptedManifests, acceptedEdges};
 }
 
