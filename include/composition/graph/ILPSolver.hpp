@@ -10,12 +10,15 @@
 #include <map>
 #include <set>
 #include <vector>
+#include <composition/support/options.hpp>
 
 namespace composition::graph {
 using composition::Manifest;
 using composition::manifest_idx_t;
 using composition::metric::ManifestStats;
 using llvm::dbgs;
+using composition::support::DesiredConnectivity;
+using composition::support::DesiredBlockConnectivity;
 
 class ILPSolver {
 private:
@@ -36,11 +39,6 @@ private:
   boost::bimaps::bimap<int, manifest_idx_t> colsToM{};
   boost::bimaps::bimap<int, manifest_idx_t> colsToE{};
   boost::bimaps::bimap<int, manifest_idx_t> colsToF{};
-
-public:
-  size_t DesiredConnectivity = 1;
-  size_t DesiredBlockConnectivity = 1;
-
 public:
   ILPSolver();
 

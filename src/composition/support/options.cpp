@@ -17,4 +17,15 @@ llvm::cl::opt<std::string> PatchInfo("cf-patchinfo", llvm::cl::init("cf-patchinf
 llvm::cl::opt<std::string> ILPProblem("cf-ilp-prob", llvm::cl::Hidden);
 llvm::cl::opt<std::string> ILPSolution("cf-ilp-sol", llvm::cl::Hidden);
 llvm::cl::opt<std::string> ILPSolutionReadable("cf-ilp-sol-readable", llvm::cl::Hidden);
+
+/*
+ * List of ILP options
+ */
+
+llvm::cl::opt<int>
+    DesiredConnectivity("cf-ilp-connectivity", llvm::cl::init(2), llvm::cl::desc("Instruction Connectivity"));
+llvm::cl::opt<int>
+    DesiredBlockConnectivity("cf-ilp-blockconnectivity", llvm::cl::init(1), llvm::cl::desc("Block Connectivity"));
+llvm::cl::opt<int>
+    DesiredImplicitCoverage("cf-ilp-implicitcoverage", llvm::cl::init(1), llvm::cl::desc("Implicit Coverage"));
 } // namespace composition::support

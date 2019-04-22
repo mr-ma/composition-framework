@@ -25,6 +25,8 @@ using composition::metric::ManifestStats;
 using llvm::dbgs;
 using llvm::dyn_cast;
 
+using composition::support::DesiredImplicitCoverage;
+
 ProtectionGraph::ProtectionGraph() {
   vertices = std::make_unique<lemon::ListDigraph::NodeMap<vertex_t>>(LG);
   edges = std::make_unique<lemon::ListDigraph::ArcMap<edge_t>>(LG);
@@ -350,7 +352,7 @@ std::set<std::set<manifest_idx_t>> ProtectionGraph::computeBlockConnectivity(llv
   return result;
 }
 
-size_t maxHotnessOfInstructions(const std::set<llvm::Instruction *>& instr,
+size_t maxHotnessOfInstructions(const std::set<llvm::Instruction *> &instr,
                                 const std::unordered_map<llvm::BasicBlock *, uint64_t> &BFI) {
   std::set<llvm::BasicBlock *> blocks = Coverage::InstructionsToBasicBlocks(instr);
 
@@ -506,10 +508,6 @@ implictInstructions(manifest_idx_t idx, const ManifestProtectionMap &dep,
 std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
                                                           const std::unordered_map<llvm::BasicBlock *, uint64_t> &BFI,
                                                           size_t totalInstructions) {
-  size_t DesiredConnectivity = 2;
-  size_t DesiredBlockConnectivity = 1;
-  // TODO: Desired Implicit Coverage should be set by the cmd args
-  double DesiredImplicitCoverage = 20;
   // TODO: cStats.stats is not set at this point ----
   size_t TotalInstructions = cStats.stats.numberOfAllInstructions;
   llvm::dbgs() << "Total instruction:" << totalInstructions << "\n";
@@ -578,8 +576,6 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
   do {
     ILPSolver solver{};
     solver.init(0, implicitCoverageToInstruction, 0, 0);
-    solver.DesiredConnectivity = DesiredConnectivity;
-    solver.DesiredBlockConnectivity = DesiredBlockConnectivity;
     solver.setCostFunction(costFunction);
     solver.addManifests(MANIFESTS, mStats);
     solver.addDependencies(dependencies);
