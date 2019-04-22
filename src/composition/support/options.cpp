@@ -16,4 +16,5 @@ llvm::cl::opt<std::string> PatchInfo("cf-patchinfo", llvm::cl::init("cf-patchinf
 
 llvm::cl::opt<std::string> ILPProblem("cf-ilp-prob", llvm::cl::Hidden);
 llvm::cl::opt<std::string> ILPSolution("cf-ilp-sol", llvm::cl::Hidden);
+llvm::cl::opt<std::string> ILPSolutionReadable("cf-ilp-sol-readable", llvm::cl::Hidden);
 } // namespace composition::support

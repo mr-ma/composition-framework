@@ -17,5 +17,6 @@ extern llvm::cl::opt<std::string> UseStrategy;
 extern llvm::cl::opt<std::string> PatchInfo;
 extern llvm::cl::opt<std::string> ILPProblem;
 extern llvm::cl::opt<std::string> ILPSolution;
+extern llvm::cl::opt<std::string> ILPSolutionReadable;
 } // namespace composition::support
 #endif // COMPOSITION_FRAMEWORK_SUPPORT_OPTIONS_HPP

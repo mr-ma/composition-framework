@@ -125,6 +125,7 @@ std::pair<std::set<manifest_idx_t>, std::set<manifest_idx_t>> ILPSolver::run() {
 
   glp_load_matrix(lp, dataSize, &iav[0], &jav[0], &arv[0]); // calls the routine glp_load_matrix
 
+  // Write problem definition
   if (!composition::support::ILPProblem.empty()) {
     glp_write_lp(lp, nullptr, composition::support::ILPProblem.getValue().c_str());
   }
@@ -133,8 +134,14 @@ std::pair<std::set<manifest_idx_t>, std::set<manifest_idx_t>> ILPSolver::run() {
   glp_intopt(lp, nullptr);
   auto total_cost = glp_mip_obj_val(lp);
 
+  // Write machine readable solution
   if (!composition::support::ILPSolution.empty()) {
-    glp_print_mip(lp, composition::support::ILPSolution.getValue().c_str());
+    glp_write_sol(lp, composition::support::ILPSolution.getValue().c_str());
+  }
+
+  // Write human readable solution
+  if (!composition::support::ILPSolutionReadable.empty()) {
+    glp_print_mip(lp, composition::support::ILPSolutionReadable.getValue().c_str());
   }
 
   std::set<manifest_idx_t> acceptedManifests{};
