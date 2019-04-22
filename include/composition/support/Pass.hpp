@@ -10,7 +10,7 @@ namespace composition::support {
  */
 class Pass : public llvm::ModulePass {
 public:
-  explicit Pass(char& pid, bool isRegistered);
+  explicit Pass(char &pid, bool isRegistered);
 
   ~Pass() override = default;
 
@@ -24,7 +24,7 @@ public:
    * This function is called shortly before the composition framework terminates.
    * It allows to run cleanup/finalize tasks in the registered analyses.
    */
-  virtual void finalizeComposition(){};
+  virtual void finalizeComposition() {};
 
 private:
   const bool IsRegistered_;

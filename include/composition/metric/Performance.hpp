@@ -19,7 +19,7 @@ public:
    * @param M the Module
    * @return true if profiling information exist, false otherwise.
    */
-  static bool hasProfiling(llvm::Module& M);
+  static bool hasProfiling(llvm::Module &M);
 
   /**
    * Returns the block frequency
@@ -28,7 +28,7 @@ public:
    * @param useHeuristic if false, then the exact values from the profile are used.
    * @return the block frequency
    */
-  static uint64_t getBlockFreq(const llvm::BasicBlock* BB, llvm::BlockFrequencyInfo* BFI, bool useHeuristic = true);
+  static uint64_t getBlockFreq(const llvm::BasicBlock *BB, llvm::BlockFrequencyInfo *BFI, bool useHeuristic = true);
 
   /**
    * Returns the maximum block frequency for the function `F`.
@@ -37,7 +37,7 @@ public:
    * @param useHeuristic if false, then the exact values from the profile are used.
    * @return the maximum block frequency for the function `F`.
    */
-  static uint64_t getMaxFreq(llvm::Function& F, llvm::BlockFrequencyInfo* BFI, bool useHeuristic = true);
+  static uint64_t getMaxFreq(llvm::Function &F, llvm::BlockFrequencyInfo *BFI, bool useHeuristic = true);
 
   /**
    * Returns the maximum block frequency for the module `M`.
@@ -46,7 +46,8 @@ public:
    * @param useHeuristic if false, then the exact values from the profile are used.
    * @return the maximum block frequency for the module `M`.
    */
-  static uint64_t getMaxFreq(llvm::Module& M, llvm::function_ref<llvm::BlockFrequencyInfo*(llvm::Function&)> LookupBFI,
+  static uint64_t getMaxFreq(llvm::Module &M,
+                             llvm::function_ref<llvm::BlockFrequencyInfo *(llvm::Function &)> LookupBFI,
                              bool useHeuristic = true);
 };
 } // namespace composition::metric

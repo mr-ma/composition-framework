@@ -25,8 +25,8 @@ public:
 
   Stats() = default;
 
-  explicit Stats(std::istream& i);
-  void dump(std::ofstream& o);
+  explicit Stats(std::istream &i);
+  void dump(std::ofstream &o);
   //void dump(llvm::raw_ostream& o);
 };
 
@@ -35,13 +35,13 @@ public:
  * @param j IN/OUT the resulting JSON
  * @param w IN the stats
  */
-void to_json(nlohmann::json& j, const Stats& s);
+void to_json(nlohmann::json &j, const Stats &s);
 
 /**
  * Converts JSON into `Stats` representation
  * @param j IN the JSON source
  * @param w IN/OUT the resulting stats
  */
-void from_json(const nlohmann::json& j, Stats& s);
+void from_json(const nlohmann::json &j, Stats &s);
 } // namespace composition
 #endif // COMPOSITION_FRAMEWORK_STATS_HPP

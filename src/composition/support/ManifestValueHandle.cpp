@@ -14,11 +14,11 @@ void ManifestValueHandle::deleted() {
   this->clearValPtr();
 }
 
-void ManifestValueHandle::allUsesReplacedWith(llvm::Value*) {
+void ManifestValueHandle::allUsesReplacedWith(llvm::Value *) {
   dbgs() << "Value RAUWED from: " << getPassName() << "\n";
 }
 
-ManifestValueHandle::operator llvm::Value*() const { return getValPtr(); }
+ManifestValueHandle::operator llvm::Value *() const { return getValPtr(); }
 
 bool ManifestValueHandle::pointsToAliveValue() const { return llvm::ValueHandleBase::isValid(getValPtr()); }
 

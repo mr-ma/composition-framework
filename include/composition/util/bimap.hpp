@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include <unordered_set>
 namespace composition::util {
-template <typename T, typename U> class bimap {
+template<typename T, typename U> class bimap {
 public:
   std::unordered_map<T, std::unordered_set<U>> left{};
   std::unordered_map<U, std::unordered_set<T>> right{};

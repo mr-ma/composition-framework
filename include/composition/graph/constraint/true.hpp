@@ -10,14 +10,14 @@ namespace composition::graph::constraint {
  */
 class True : public Constraint {
 private:
-  llvm::Value* target;
+  llvm::Value *target;
 
 public:
-  True(std::string info, llvm::Value* target);
+  True(std::string info, llvm::Value *target);
 
-  static bool classof(const Constraint* S);
+  static bool classof(const Constraint *S);
 
-  llvm::Value* getTarget() const;
+  llvm::Value *getTarget() const;
 
   bool isValid() override;
 };

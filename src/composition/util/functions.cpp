@@ -9,9 +9,9 @@ namespace composition::util {
 std::string getPassName() {
   std::string passName;
 
-  const void* val = llvm::SavePrettyStackState();
+  const void *val = llvm::SavePrettyStackState();
   if (val != nullptr) {
-    auto* entry = static_cast<const llvm::PrettyStackTraceEntry*>(val);
+    auto *entry = static_cast<const llvm::PrettyStackTraceEntry *>(val);
 
     std::string out;
     auto stream = llvm::raw_string_ostream(out);

@@ -15,7 +15,7 @@ enum class PresentConstraint : unsigned long {
   NOT_PRESENT = 0x02,
   CONFLICT = static_cast<unsigned long>(PRESENT | NOT_PRESENT),
 };
-ENABLE_BITMASK_OPERATORS(PresentConstraint);
+ENABLE_BITMASK_OPERATORS(PresentConstraint)
 
 /**
  * Present constraint which signals that `target` is present/not present
@@ -26,13 +26,13 @@ private:
   bool inverse;
 
 public:
-  Present(std::string info, llvm::Value* target, bool inverse = false);
+  Present(std::string info, llvm::Value *target, bool inverse = false);
 
-  llvm::Value* getTarget() const;
+  llvm::Value *getTarget() const;
 
   bool isInverse() const;
 
-  static bool classof(const Constraint* S);
+  static bool classof(const Constraint *S);
 
   bool isValid() override;
 };

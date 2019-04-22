@@ -1,18 +1,19 @@
 #include <composition/Stats.hpp>
 
 namespace composition {
-Stats::Stats(std::istream& i) {
+Stats::Stats(std::istream &i) {
   nlohmann::json j;
   i >> j;
   from_json(j, *this);
 }
 
-void Stats::dump(std::ofstream& o){
+void Stats::dump(std::ofstream &o) {
   nlohmann::json j;
   to_json(j, *this);
 
   o << j.dump(4) << "\n";
 }
+
 /*void Stats::dump(llvm::raw_ostream& o) {
   nlohmann::json j;
   to_json(j, *this);
@@ -20,7 +21,7 @@ void Stats::dump(std::ofstream& o){
   o << j.dump(4) << "\n";
 }*/
 
-void to_json(nlohmann::json& j, const Stats& s) {
+void to_json(nlohmann::json &j, const Stats &s) {
   j = nlohmann::json{
       {"stats", s.stats},
       {"proposedManifests", s.proposedManifests},
@@ -35,7 +36,7 @@ void to_json(nlohmann::json& j, const Stats& s) {
   };
 }
 
-void from_json(const nlohmann::json& j, Stats& s) {
+void from_json(const nlohmann::json &j, Stats &s) {
   s.stats = j.at("stats").get<metric::Stats>();
   s.proposedManifests = j.at("proposedManifests").get<size_t>();
   s.actualManifests = j.at("actualManifests").get<size_t>();

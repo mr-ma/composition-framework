@@ -15,13 +15,13 @@ namespace composition::support {
  * CRTP class to register a Pass with the composition framework
  * @tparam T class to register
  */
-template <typename T> class ComposableAnalysis : public Pass {
+template<typename T> class ComposableAnalysis : public Pass {
 public:
   /**
    * Adds a manifest
    * @param m the manifest
    */
-  void addProtection(Manifest* m) { ManifestRegistry::Add(m); }
+  void addProtection(Manifest *m) { ManifestRegistry::Add(m); }
 
   /**
    * Marks `value` as preserved. The callback allows to define a custom function call.
@@ -29,7 +29,7 @@ public:
    * @param value marked as preserved
    * @param callback called if preserved is violated (`value` is changed in the program).
    */
-  void addPreserved(const std::string& name, llvm::Value* value, const trace::PreservedCallback& callback) {
+  void addPreserved(const std::string &name, llvm::Value *value, const trace::PreservedCallback &callback) {
     trace::PreservedValueRegistry::Register(name, value, callback);
   }
 
@@ -39,7 +39,7 @@ public:
    * @param value marked as present
    * @param callback called if present is violated (`value` is removed from the program).
    */
-  void addPresent(const std::string& name, llvm::Value* value, const trace::PresentCallback& callback) {
+  void addPresent(const std::string &name, llvm::Value *value, const trace::PresentCallback &callback) {
     trace::PreservedValueRegistry::Register(name, value, callback);
   }
 
@@ -54,6 +54,6 @@ protected:
  * attempt to initialise the IsRegistered variable of derived classes whilst registering them to the factory
  * @tparam T class to register
  */
-template <typename T> const bool ComposableAnalysis<T>::IsRegistered_ = AnalysisRegistry::Register({&T::ID});
+template<typename T> const bool ComposableAnalysis<T>::IsRegistered_ = AnalysisRegistry::Register({&T::ID});
 } // namespace composition::support
 #endif // COMPOSITION_FRAMEWORK_SUPPORT_ANALYSIS_HPP

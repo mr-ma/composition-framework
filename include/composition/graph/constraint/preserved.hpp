@@ -15,7 +15,7 @@ enum class PreservedConstraint : unsigned long {
   NOT_PRESERVED = 0x02,
   CONFLICT = static_cast<unsigned long>(PRESERVED | NOT_PRESERVED),
 };
-ENABLE_BITMASK_OPERATORS(PreservedConstraint);
+ENABLE_BITMASK_OPERATORS(PreservedConstraint)
 
 /**
  * Preserved constraint which signals that `target` is preserved/not preserved
@@ -26,13 +26,13 @@ private:
   bool inverse;
 
 public:
-  Preserved(std::string info, llvm::Value* target, bool inverse = false);
+  Preserved(std::string info, llvm::Value *target, bool inverse = false);
 
-  llvm::Value* getTarget() const;
+  llvm::Value *getTarget() const;
 
   bool isInverse() const;
 
-  static bool classof(const Constraint* S);
+  static bool classof(const Constraint *S);
 
   bool isValid() override;
 };

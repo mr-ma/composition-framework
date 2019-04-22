@@ -14,13 +14,13 @@ private:
   llvm::WeakTrackingVH to;
 
 public:
-  Dependency(std::string info, llvm::Value* from, llvm::Value* to);
+  Dependency(std::string info, llvm::Value *from, llvm::Value *to);
 
-  llvm::Value* getFrom() const;
+  llvm::Value *getFrom() const;
 
-  llvm::Value* getTo() const;
+  llvm::Value *getTo() const;
 
-  static bool classof(const Constraint* S);
+  static bool classof(const Constraint *S);
 
   bool isValid() override;
 };

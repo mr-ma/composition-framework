@@ -5,8 +5,8 @@
 namespace composition::graph::constraint {
 // ConstraintIndex type.
 enum class constraint_idx_t : uint64_t;
-constraint_idx_t& operator++(constraint_idx_t& i);
-const constraint_idx_t operator++(constraint_idx_t& i, int);
+constraint_idx_t &operator++(constraint_idx_t &i);
+const constraint_idx_t operator++(constraint_idx_t &i, int);
 
 /**
  * Abstract class Constraint
@@ -31,7 +31,7 @@ private:
 public:
   Constraint(ConstraintType constraintType, std::string info);
 
-  Constraint(const Constraint&) = delete;
+  Constraint(const Constraint &) = delete;
 
   ConstraintType getConstraintType() const;
 

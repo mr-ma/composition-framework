@@ -11,9 +11,9 @@
 namespace composition::graph {
 // edge_idx_t type.
 enum class edge_idx_t : uintptr_t;
-edge_idx_t& operator++(edge_idx_t& i);
-const edge_idx_t operator++(edge_idx_t& i, int);
-std::ostream& operator<<(std::ostream& out, const edge_idx_t& i);
+edge_idx_t &operator++(edge_idx_t &i);
+const edge_idx_t operator++(edge_idx_t &i, int);
+std::ostream &operator<<(std::ostream &out, const edge_idx_t &i);
 bool operator<(edge_idx_t lhs, edge_idx_t rhs);
 
 /**
@@ -37,13 +37,13 @@ struct edge_t {
    */
   explicit edge_t(edge_idx_t index = edge_idx_t(0),
                   std::unordered_map<constraint::constraint_idx_t, std::shared_ptr<constraint::Constraint>>
-                      constraints = {}) noexcept;
+                  constraints = {}) noexcept;
 
-  std::ostream& operator<<(std::ostream& os) noexcept;
+  std::ostream &operator<<(std::ostream &os) noexcept;
 
-  bool operator==(const edge_t& rhs) noexcept;
+  bool operator==(const edge_t &rhs) noexcept;
 
-  bool operator!=(const edge_t& rhs) noexcept;
+  bool operator!=(const edge_t &rhs) noexcept;
 };
 
 } // namespace composition::graph

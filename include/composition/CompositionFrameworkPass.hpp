@@ -26,7 +26,7 @@ private:
   /**
    * A list of sensitive functions
    */
-  std::set<llvm::Function*> sensitiveFunctions{};
+  std::set<llvm::Function *> sensitiveFunctions{};
 
 public:
   CompositionFrameworkPass() : ModulePass(ID) {}
@@ -35,19 +35,19 @@ public:
    * Sorts and retrieves manifest in reverse topological order
    * @return
    */
-  std::vector<Manifest*> SortedManifests();
+  std::vector<Manifest *> SortedManifests();
 
   /*
    * LLVM standard functions
    */
-  void getAnalysisUsage(llvm::AnalysisUsage& AU) const override;
-  bool doInitialization(llvm::Module& M) override;
-  bool runOnModule(llvm::Module& M) override;
-  bool doFinalization(llvm::Module& M) override;
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override;
+  bool doInitialization(llvm::Module &M) override;
+  bool runOnModule(llvm::Module &M) override;
+  bool doFinalization(llvm::Module &M) override;
 
-  bool analysisPass(llvm::Module& M);
-  bool graphPass(llvm::Module& M);
-  bool protectionPass(llvm::Module& M);
+  bool analysisPass(llvm::Module &M);
+  bool graphPass(llvm::Module &M);
+  bool protectionPass(llvm::Module &M);
 
   /**
    * Writes the patch information to a file

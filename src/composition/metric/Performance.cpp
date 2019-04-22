@@ -11,10 +11,10 @@ using llvm::function_ref;
 using llvm::LLVMContext;
 using llvm::Module;
 
-bool Performance::hasProfiling(Module& M) {
-  for (auto& F : M) {
-    for (auto& BB : F) {
-      auto* TI = BB.getTerminator();
+bool Performance::hasProfiling(Module &M) {
+  for (auto &F : M) {
+    for (auto &BB : F) {
+      auto *TI = BB.getTerminator();
       if (TI == nullptr) {
         continue;
       }
@@ -26,7 +26,7 @@ bool Performance::hasProfiling(Module& M) {
   return false;
 }
 
-uint64_t Performance::getBlockFreq(const BasicBlock* BB, BlockFrequencyInfo* BFI, bool useHeuristic) {
+uint64_t Performance::getBlockFreq(const BasicBlock *BB, BlockFrequencyInfo *BFI, bool useHeuristic) {
   uint64_t freqVal = 0;
   if (!useHeuristic) {
     auto freq = BFI->getBlockProfileCount(BB);
@@ -39,13 +39,13 @@ uint64_t Performance::getBlockFreq(const BasicBlock* BB, BlockFrequencyInfo* BFI
   return freqVal;
 }
 
-uint64_t Performance::getMaxFreq(Function& F, BlockFrequencyInfo* BFI, bool useHeuristic) {
+uint64_t Performance::getMaxFreq(Function &F, BlockFrequencyInfo *BFI, bool useHeuristic) {
   if (F.isDeclaration()) {
     return 0;
   }
 
   uint64_t maxFreq = 0;
-  for (auto& BB : F) {
+  for (auto &BB : F) {
     uint64_t freqVal = getBlockFreq(&BB, BFI, useHeuristic);
     if (freqVal >= maxFreq) {
       maxFreq = freqVal;
@@ -54,9 +54,11 @@ uint64_t Performance::getMaxFreq(Function& F, BlockFrequencyInfo* BFI, bool useH
   return maxFreq;
 }
 
-uint64_t Performance::getMaxFreq(Module& M, function_ref<BlockFrequencyInfo*(Function&)> LookupBFI, bool useHeuristic) {
+uint64_t Performance::getMaxFreq(Module &M,
+                                 function_ref<BlockFrequencyInfo *(Function &)> LookupBFI,
+                                 bool useHeuristic) {
   uint64_t maxFreq = 0;
-  for (auto& F : M) {
+  for (auto &F : M) {
     uint64_t localMaxFreq = getMaxFreq(F, LookupBFI(F), useHeuristic);
     if (localMaxFreq >= maxFreq) {
       maxFreq = localMaxFreq;

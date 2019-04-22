@@ -17,7 +17,6 @@
 #include <llvm/IR/Constants.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/Error.h>
-//#include <llvm/Support/raw_os_ostream.h>
 #include <llvm/Support/raw_ostream.h>
 
 namespace composition {
@@ -60,7 +59,7 @@ static llvm::RegisterPass<CompositionFrameworkPass> X("composition-framework", "
 
 char CompositionFrameworkPass::ID = 0;
 
-void CompositionFrameworkPass::getAnalysisUsage(llvm::AnalysisUsage& AU) const {
+void CompositionFrameworkPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
   AU.addRequired<BlockFrequencyInfoWrapperPass>();
   AU.addRequired<BranchProbabilityInfoWrapperPass>();
   AU.addRequiredTransitive<FunctionFilterPass>();
@@ -77,18 +76,18 @@ void test() {
   LLVMContext Context;
   std::unique_ptr<llvm::Module> M(new Module("test", Context));
 
-  Type* ty = Type::getInt64Ty(Context);
-  llvm::Function* f1 = cast<Function>(M->getOrInsertFunction("f1", ty, ty, nullptr));
-  llvm::Function* f2 = cast<Function>(M->getOrInsertFunction("f2", ty, ty, nullptr));
-  BasicBlock* bb2 = BasicBlock::Create(Context, "EntryBlock", f2);
-  Value* One = ConstantInt::get(ty, 1);
-  Value* ret = ReturnInst::Create(Context, One, bb2);
+  Type *ty = Type::getInt64Ty(Context);
+  auto *f1 = cast<Function>(M->getOrInsertFunction("f1", ty, ty, nullptr));
+  auto *f2 = cast<Function>(M->getOrInsertFunction("f2", ty, ty, nullptr));
+  BasicBlock *bb2 = BasicBlock::Create(Context, "EntryBlock", f2);
+  Value *One = ConstantInt::get(ty, 1);
+  Value *ret = ReturnInst::Create(Context, One, bb2);
 
   auto m1 = new Manifest("sc-1", f2, {}, {},
                          {std::make_shared<composition::graph::constraint::Dependency>("sc-1", f1, f2)}, true, {});
   auto m2 = new Manifest("sc-2", f1, {}, {},
                          {std::make_shared<composition::graph::constraint::Dependency>("sc-2", f2, f1)}, true, {});
-  std::set<Manifest*> manifests = {m1, m2};
+  std::set<Manifest *> manifests = {m1, m2};
   G.addManifests(manifests);
   G.Print("nohierarchy");
   G.addHierarchy(*M);
@@ -99,7 +98,7 @@ void test() {
   dbgs() << "Working?\n";
 }
 
-bool CompositionFrameworkPass::doInitialization(Module& M) {
+bool CompositionFrameworkPass::doInitialization(Module &M) {
   dbgs() << "AnalysisPass loaded...\n";
   // test();
   // The following code loads all the tags from the source code.
@@ -115,7 +114,7 @@ bool CompositionFrameworkPass::doInitialization(Module& M) {
 
       if (auto fn = dyn_cast<Function>(e->getOperand(0)->getOperand(0))) {
         auto anno = cast<ConstantDataArray>(cast<GlobalVariable>(e->getOperand(1)->getOperand(0))->getOperand(0))
-                        ->getAsCString();
+            ->getAsCString();
         fn->addFnAttr(anno); // <-- add function annotation here
         dbgs() << "Sensitive function: " << fn->getName().str() << "\n";
       }
@@ -125,7 +124,7 @@ bool CompositionFrameworkPass::doInitialization(Module& M) {
   return true;
 }
 
-std::unique_ptr<graph::ProtectionGraph> buildGraphFromManifests(const std::set<Manifest*>& manifests) {
+std::unique_ptr<graph::ProtectionGraph> buildGraphFromManifests(const std::set<Manifest *> &manifests) {
   auto g = std::make_unique<graph::ProtectionGraph>();
 
   Profiler constructionProfiler{};
@@ -134,7 +133,7 @@ std::unique_ptr<graph::ProtectionGraph> buildGraphFromManifests(const std::set<M
   return g;
 }
 
-void addCallGraph(std::unique_ptr<graph::ProtectionGraph>& g, llvm::Module& M) {
+void addCallGraph(std::unique_ptr<graph::ProtectionGraph> &g, llvm::Module &M) {
   if (AddCFG) {
     dbgs() << "Building CallGraph\n";
     Profiler constructionProfiler{};
@@ -143,17 +142,17 @@ void addCallGraph(std::unique_ptr<graph::ProtectionGraph>& g, llvm::Module& M) {
     // callgraph works, but as soon as accessing it is tried the program behaves
     // unexpectedly. Therefore, for now, only add direct call edges as CFG part
     // to the graph.
-    for (auto& F : M) {
+    for (auto &F : M) {
       // Look for calls by this function.
-      for (auto& BB : F) {
-        for (auto& I : BB) {
-          Value* v = &cast<Value>(I);
+      for (auto &BB : F) {
+        for (auto &I : BB) {
+          Value *v = &cast<Value>(I);
           CallSite CS(v);
           if (!CS) {
             continue;
           }
 
-          Function* Callee = CS.getCalledFunction();
+          Function *Callee = CS.getCalledFunction();
           if (!Callee) {
             continue;
           }
@@ -168,39 +167,39 @@ void addCallGraph(std::unique_ptr<graph::ProtectionGraph>& g, llvm::Module& M) {
   }
 }
 
-void printGraphs(std::unique_ptr<graph::ProtectionGraph>& g, std::string name) {
+void printGraphs(std::unique_ptr<graph::ProtectionGraph> &g, const std::string &name) {
   if (DumpGraphs) {
     dbgs() << "Writing graphs\n";
     g->Print(name);
   }
 }
 
-bool CompositionFrameworkPass::runOnModule(llvm::Module& M) {
+bool CompositionFrameworkPass::runOnModule(llvm::Module &M) {
   analysisPass(M);
   graphPass(M);
   return protectionPass(M);
 }
 
-std::vector<Manifest*> CompositionFrameworkPass::SortedManifests() {
+std::vector<Manifest *> CompositionFrameworkPass::SortedManifests() {
   auto manifestSet = ManifestRegistry::GetAll();
 
-  for (auto* m : manifestSet) {
+  for (auto *m : manifestSet) {
     if (m->postPatching) {
       return Graph->topologicalSortManifests(manifestSet);
     }
   }
-  std::vector<Manifest*> result{manifestSet.begin(), manifestSet.end()};
+  std::vector<Manifest *> result{manifestSet.begin(), manifestSet.end()};
 
   return result;
 }
 
-bool CompositionFrameworkPass::doFinalization(llvm::Module& M) {
+bool CompositionFrameworkPass::doFinalization(llvm::Module &M) {
   Graph->destroy();
   ManifestRegistry::destroy();
   return Pass::doFinalization(M);
 }
 
-bool CompositionFrameworkPass::analysisPass(llvm::Module& M) {
+bool CompositionFrameworkPass::analysisPass(llvm::Module &M) {
   dbgs() << "AnalysisPass running\n";
 
   auto mSet = ManifestRegistry::GetAll();
@@ -216,10 +215,10 @@ bool CompositionFrameworkPass::analysisPass(llvm::Module& M) {
   return false;
 }
 
-bool CompositionFrameworkPass::graphPass(llvm::Module& M) {
+bool CompositionFrameworkPass::graphPass(llvm::Module &M) {
   dbgs() << "GraphPass running\n";
 
-  auto& filterPass = getAnalysis<FunctionFilterPass>();
+  auto &filterPass = getAnalysis<FunctionFilterPass>();
   auto sFunc = filterPass.get_functions_info()->get_functions();
   sensitiveFunctions = {sFunc.begin(), sFunc.end()};
 
@@ -229,15 +228,15 @@ bool CompositionFrameworkPass::graphPass(llvm::Module& M) {
     w = metric::Weights(ifs);
   }
 
-  std::unordered_map<llvm::BasicBlock*, uint64_t> BFI{};
-  for (auto& F : M) {
+  std::unordered_map<llvm::BasicBlock *, uint64_t> BFI{};
+  for (auto &F : M) {
     if (F.isDeclaration()) {
       continue;
     }
 
-    auto& bfiPass = getAnalysis<BlockFrequencyInfoWrapperPass>(F);
-    auto& bf = bfiPass.getBFI();
-    for (auto& BB : F) {
+    auto &bfiPass = getAnalysis<BlockFrequencyInfoWrapperPass>(F);
+    auto &bf = bfiPass.getBFI();
+    for (auto &BB : F) {
       BFI.insert({&BB, Performance::getBlockFreq(&BB, &bf, false)});
     }
   }
@@ -247,14 +246,14 @@ bool CompositionFrameworkPass::graphPass(llvm::Module& M) {
   size_t totalInstructions = 0;
   for (auto &F: sensitiveFunctions)
     totalInstructions += Coverage::ValueToInstructions(F).size();
-  dbgs() << "Running ILP\n on "<<totalInstructions<<"\n";
+  dbgs() << "Running ILP\n on " << totalInstructions << "\n";
   auto accepted = Graph->ilpConflictHandling(M, BFI, totalInstructions);
   //auto accepted = Graph->randomConflictHandling(M);
 
   dbgs() << "Removing unselected manifests\n";
   // Just keep accepted manifests
-  std::set<Manifest*> registered = ManifestRegistry::GetAll();
-  for (auto& m : registered) {
+  std::set<Manifest *> registered = ManifestRegistry::GetAll();
+  for (auto &m : registered) {
     if (accepted.find(m) == accepted.end()) {
       ManifestRegistry::Remove(m);
     }
@@ -270,7 +269,7 @@ bool CompositionFrameworkPass::graphPass(llvm::Module& M) {
   return false;
 }
 
-bool CompositionFrameworkPass::protectionPass(llvm::Module& M) {
+bool CompositionFrameworkPass::protectionPass(llvm::Module &M) {
   dbgs() << "ProtectionPass running\n";
 
   auto manifests = SortedManifests();
@@ -282,7 +281,7 @@ bool CompositionFrameworkPass::protectionPass(llvm::Module& M) {
   std::vector<std::pair<std::string, std::string>> patchInfos{};
   size_t i = 0;
   size_t total = manifests.size();
-  for (auto* m : manifests) {
+  for (auto *m : manifests) {
     m->Clean();
     dbgs() << "#" << std::to_string(i++) << "/" << std::to_string(total) << "\r";
 
@@ -302,12 +301,12 @@ bool CompositionFrameworkPass::protectionPass(llvm::Module& M) {
    */
   auto registered = AnalysisRegistry::GetAll();
   for (auto a : registered) {
-    auto* p = getResolver()->findImplPass(a.ID);
+    auto *p = getResolver()->findImplPass(a.ID);
 
     if (p == nullptr) {
       llvm_unreachable("Pass no longer available...");
     }
-    auto* c = static_cast<composition::support::Pass*>(p); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
+    auto *c = static_cast<composition::support::Pass *>(p); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
     c->finalizeComposition();
   }
 

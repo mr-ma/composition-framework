@@ -75,7 +75,7 @@ private:
   }
 
 public:
-  std::set<std::set<lemon::ListDigraph::Node>> simpleCycles(lemon::ListDigraph& g) {
+  std::set<std::set<lemon::ListDigraph::Node>> simpleCycles(lemon::ListDigraph &g) {
     lemon::ListDigraph::NodeMap<bool> node_filter{g, true};
     lemon::ListDigraph::ArcMap<bool> arc_filter{g, true};
     lemon::SubDigraph<lemon::ListDigraph> subGraph(g, node_filter, arc_filter);

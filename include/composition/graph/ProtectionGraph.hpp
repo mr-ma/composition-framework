@@ -67,10 +67,10 @@ private:
   /**
    * Cache of vertices for faster lookup
    */
-  using vertex_cache_t = std::unordered_map<llvm::Value*, vertex_idx_t>;
+  using vertex_cache_t = std::unordered_map<llvm::Value *, vertex_idx_t>;
   vertex_cache_t vertexRealCache{};
   vertex_cache_t vertexShadowCache{};
-  std::array<vertex_cache_t*, 2> vertexCache = {{&vertexRealCache, &vertexShadowCache}};
+  std::array<vertex_cache_t *, 2> vertexCache = {{&vertexRealCache, &vertexShadowCache}};
 
   /**
    * Map which captures the undo relationship between manifests.
@@ -81,7 +81,7 @@ private:
    */
   ManifestProtectionMap ManifestProtection{};
 
-  std::unordered_map<manifest_idx_t, Manifest*> MANIFESTS;
+  std::unordered_map<manifest_idx_t, Manifest *> MANIFESTS;
 
   constraint_idx_t ConstraintIdx{};
 
@@ -95,10 +95,10 @@ private:
    * @param v the llvm value
    * @return a vertex descriptor for the added/existing vertex
    */
-  vertex_idx_t add_vertex(llvm::Value* value, bool shadow);
+  vertex_idx_t add_vertex(llvm::Value *value, bool shadow);
   vertex_idx_t add_vertex(
-      llvm::Value* value,
-      const std::unordered_map<constraint::constraint_idx_t, std::shared_ptr<constraint::Constraint>>& constraints);
+      llvm::Value *value,
+      const std::unordered_map<constraint::constraint_idx_t, std::shared_ptr<constraint::Constraint>> &constraints);
 
   /**
    * Adds an edge to the graph.
@@ -110,7 +110,7 @@ private:
   edge_idx_t add_edge(vertex_idx_t s, vertex_idx_t d);
   edge_idx_t add_edge(
       vertex_idx_t s, vertex_idx_t d,
-      const std::unordered_map<constraint::constraint_idx_t, std::shared_ptr<constraint::Constraint>>& constraints);
+      const std::unordered_map<constraint::constraint_idx_t, std::shared_ptr<constraint::Constraint>> &constraints);
 
 public:
   ProtectionGraph();
@@ -127,10 +127,10 @@ public:
 
   const ManifestProtectionMap getManifestProtectionMap() const { return ManifestProtection; }
 
-  void addManifests(std::set<Manifest*> manifests);
-  void addManifest(Manifest* m);
+  void addManifests(const std::set<Manifest *>& manifests);
+  void addManifest(Manifest *m);
 
-  void Print(std::string name) {
+  void Print(const std::string &name) {
     auto texts = lemon::ListDigraph::NodeMap<std::string>(LG);
     auto coords = lemon::ListDigraph::NodeMap<lemon::dim2::Point<int>>(LG);
     auto sizes = lemon::ListDigraph::NodeMap<int>(LG);
@@ -150,7 +150,7 @@ public:
     lemon::graphToEps(LG, name + ".eps")
         .nodeSizes(sizes)
         .negateY()
-        //.absoluteNodeSizes()
+            //.absoluteNodeSizes()
         .coords(coords)
         .nodeTexts(texts)
         .nodeTextSize(0.05)
@@ -169,7 +169,7 @@ public:
    */
   constraint_idx_t addConstraint(manifest_idx_t idx, std::shared_ptr<Constraint> c);
 
-  void addHierarchy(llvm::Module& M);
+  void addHierarchy(llvm::Module &M);
 
   void connectShadowNodes();
 
@@ -178,7 +178,7 @@ public:
    * @param manifests to sort
    * @return the sorted manifests
    */
-  std::vector<Manifest*> topologicalSortManifests(std::set<Manifest*> manifests);
+  std::vector<Manifest *> topologicalSortManifests(const std::set<Manifest *>& manifests);
 
   /**
    * Computes the dependency relationship of the manifests.
@@ -188,8 +188,8 @@ public:
   std::set<std::pair<manifest_idx_t, manifest_idx_t>> vertexConflicts();
   std::set<std::pair<manifest_idx_t, manifest_idx_t>> computeDependencies();
   std::set<std::set<manifest_idx_t>> computeCycles();
-  std::set<std::set<manifest_idx_t>> computeConnectivity(llvm::Module& M);
-  std::set<std::set<manifest_idx_t>> computeBlockConnectivity(llvm::Module& M);
+  std::set<std::set<manifest_idx_t>> computeConnectivity(llvm::Module &M);
+  std::set<std::set<manifest_idx_t>> computeBlockConnectivity(llvm::Module &M);
 
   /**
    * Detects and handles the conflicts in the graph `g`
@@ -197,16 +197,18 @@ public:
    * @param g the graph
    * @param strategy the strategy to use for handling conflicts
    */
-  std::set<Manifest*> randomConflictHandling(llvm::Module& M);
-  std::set<Manifest*> ilpConflictHandling(llvm::Module& M, const std::unordered_map<llvm::BasicBlock*, uint64_t>& BFI, size_t totalInstructions);
+  std::set<Manifest *> randomConflictHandling(llvm::Module &M);
+  std::set<Manifest *> ilpConflictHandling(llvm::Module &M,
+                                           const std::unordered_map<llvm::BasicBlock *, uint64_t> &BFI,
+                                           size_t totalInstructions);
 
-  template <typename Iter, typename RandomGenerator> Iter select_randomly(Iter start, Iter end, RandomGenerator& g) {
+  template<typename Iter, typename RandomGenerator> Iter select_randomly(Iter start, Iter end, RandomGenerator &g) {
     std::uniform_int_distribution<> dis(0, std::distance(start, end) - 1);
     std::advance(start, dis(g));
     return start;
   }
 
-  template <typename Iter> Iter select_randomly(Iter start, Iter end) {
+  template<typename Iter> Iter select_randomly(Iter start, Iter end) {
     static std::random_device rd;
     static std::mt19937 gen(rd());
     return select_randomly(start, end, gen);

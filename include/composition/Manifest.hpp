@@ -19,14 +19,14 @@ class Manifest;
 /**
  * PatchFunction is the "Redo" function. Called if the manifest stays in the program.
  */
-using PatchFunction = std::function<void(const Manifest&)>;
+using PatchFunction = std::function<void(const Manifest &)>;
 
 // ManifestIndex type.
 enum class manifest_idx_t : uint64_t;
-manifest_idx_t& operator++(manifest_idx_t& i);
-const manifest_idx_t operator++(manifest_idx_t& i, int);
-std::ostream& operator<<(std::ostream& out, const manifest_idx_t& i);
-llvm::raw_ostream& operator<<(llvm::raw_ostream& out, const manifest_idx_t& i);
+manifest_idx_t &operator++(manifest_idx_t &i);
+const manifest_idx_t operator++(manifest_idx_t &i, int);
+std::ostream &operator<<(std::ostream &out, const manifest_idx_t &i);
+llvm::raw_ostream &operator<<(llvm::raw_ostream &out, const manifest_idx_t &i);
 
 /**
  * The class `Manifest` describes one instance of a protection and groups all relevant information to apply (redo) and
@@ -71,31 +71,31 @@ private:
   std::vector<support::ManifestValueHandle> undoValues{};
 
 public:
-  Manifest(std::string name, llvm::Value* protectee, llvm::Value* blockProtectee, PatchFunction patchFunction,
+  Manifest(std::string name, llvm::Value *protectee, llvm::Value *blockProtectee, PatchFunction patchFunction,
            std::vector<std::shared_ptr<graph::constraint::Constraint>> constraints = {}, bool postPatching = false,
-           std::set<llvm::Value*> undoValues = {}, std::string patchInfo = {});
+           const std::set<llvm::Value *> &undoValues = {}, std::string patchInfo = {});
 
   Manifest() = delete;
 
-  Manifest(Manifest const&) = delete;
+  Manifest(Manifest const &) = delete;
 
-  Manifest(Manifest&&) = default;
+  Manifest(Manifest &&) = default;
 
   virtual ~Manifest() = default;
 
-  Manifest& operator=(Manifest const&) = delete;
+  Manifest &operator=(Manifest const &) = delete;
 
-  Manifest& operator=(Manifest&&) = default;
+  Manifest &operator=(Manifest &&) = default;
 
-  bool operator==(const Manifest& other) const;
+  bool operator==(const Manifest &other) const;
 
-  bool operator<(const Manifest& other) const;
+  bool operator<(const Manifest &other) const;
 
-  virtual std::set<llvm::Instruction*> Coverage();
+  virtual std::set<llvm::Instruction *> Coverage();
 
-  virtual std::set<llvm::BasicBlock*> BlockCoverage();
+  virtual std::set<llvm::BasicBlock *> BlockCoverage();
 
-  virtual std::set<llvm::Value*> UndoValues() const;
+  virtual std::set<llvm::Value *> UndoValues() const;
 
   /**
    * Called if the manifest stays in the program
@@ -121,13 +121,13 @@ public:
 
 namespace std {
 // Hash definition such that Manifest can be used with sets and maps.
-template <> struct hash<composition::Manifest> {
+template<> struct hash<composition::Manifest> {
   /**
    * The actual hash function for a manifest
    * @param m the manifest
    * @return the `index` of the manifest
    */
-  size_t operator()(const composition::Manifest& m) const {
+  size_t operator()(const composition::Manifest &m) const {
     using T = typename std::underlying_type<composition::manifest_idx_t>::type;
     return std::hash<T>()(static_cast<T>(m.index));
   }

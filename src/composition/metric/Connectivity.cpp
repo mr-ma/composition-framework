@@ -16,11 +16,11 @@ void Connectivity::updateConnectivity(std::vector<size_t> v) {
   this->std = std::sqrt(this->variance);
 }
 
-void to_json(nlohmann::json& j, const Connectivity& c) {
+void to_json(nlohmann::json &j, const Connectivity &c) {
   j = nlohmann::json{{"avg", c.avg}, {"std", c.std}, {"variance", c.variance}};
 }
 
-void from_json(const nlohmann::json& j, Connectivity& c) {
+void from_json(const nlohmann::json &j, Connectivity &c) {
   c.avg = j.at("avg").get<double>();
   c.std = j.at("std").get<double>();
   c.variance = j.at("variance").get<double>();

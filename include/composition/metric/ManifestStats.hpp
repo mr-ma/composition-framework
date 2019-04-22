@@ -49,7 +49,7 @@ struct ManifestStats {
 
   void normalizeHotnessProtectee(size_t minHotnessProtectee, size_t maxHotnessProtectee) {
     normalizedHotnessProtectee = static_cast<double>(hotnessProtectee - minHotnessProtectee) /
-                                 static_cast<double>(maxHotnessProtectee - minHotnessProtectee);
+        static_cast<double>(maxHotnessProtectee - minHotnessProtectee);
     if (std::isnan(normalizedHotnessProtectee)) {
       normalizedHotnessProtectee = 0;
     }

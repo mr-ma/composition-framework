@@ -6,8 +6,8 @@ list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_SOURCE_DIR}/cmake)
 ##
 ## Config
 ##
-set(CompositionFramework_BuildTests "OFF" CACHE BOOLEAN "")
-set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
+option(CompositionFramework_BuildTests "Builds Tests" OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 ##
@@ -128,15 +128,9 @@ target_include_directories(CompositionFramework
         ${LEMON_INCLUDE_DIRS}
         )
 
-if ($ENV{CLION_IDE})
-    include_directories("/usr/include/llvm-7.0/")
-    include_directories("/usr/include/llvm-c-7.0/")
-endif ()
-
-
 target_compile_options(CompositionFramework PRIVATE -g -fno-rtti)
 target_compile_features(CompositionFramework PUBLIC cxx_std_17)
-target_link_libraries(CompositionFramework PRIVATE glpk emon nlohmann_json::nlohmann_json OpenMP::OpenMP_CXX)
+target_link_libraries(CompositionFramework PRIVATE glpk lemon nlohmann_json::nlohmann_json OpenMP::OpenMP_CXX)
 
 target_compile_features(rtlib PUBLIC cxx_std_17)
 

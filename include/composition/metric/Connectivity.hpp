@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <nlohmann/json.hpp>
 
-namespace composition::metric { 
+namespace composition::metric {
 /**
  * Helper class to calculate the connectivity of something
  */

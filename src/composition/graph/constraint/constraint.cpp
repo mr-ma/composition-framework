@@ -2,13 +2,13 @@
 
 namespace composition::graph::constraint {
 
-constraint_idx_t& operator++(constraint_idx_t& i) {
+constraint_idx_t &operator++(constraint_idx_t &i) {
   auto val = static_cast<typename std::underlying_type<constraint_idx_t>::type>(i);
   i = constraint_idx_t(++val);
   return i;
 }
 
-const constraint_idx_t operator++(constraint_idx_t& i, int) {
+const constraint_idx_t operator++(constraint_idx_t &i, int) {
   constraint_idx_t res(i);
   ++i;
   return res;

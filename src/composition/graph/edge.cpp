@@ -5,19 +5,19 @@
 
 namespace composition::graph {
 
-edge_idx_t& operator++(edge_idx_t& i) {
+edge_idx_t &operator++(edge_idx_t &i) {
   auto val = static_cast<typename std::underlying_type<edge_idx_t>::type>(i);
   i = edge_idx_t(++val);
   return i;
 }
 
-const edge_idx_t operator++(edge_idx_t& i, int) {
+const edge_idx_t operator++(edge_idx_t &i, int) {
   edge_idx_t res(i);
   ++i;
   return res;
 }
 
-std::ostream& operator<<(std::ostream& out, const edge_idx_t& i) {
+std::ostream &operator<<(std::ostream &out, const edge_idx_t &i) {
   out << static_cast<typename std::underlying_type<edge_idx_t>::type>(i);
   return out;
 }
@@ -27,14 +27,14 @@ bool operator<(edge_idx_t lhs, edge_idx_t rhs) {
   return static_cast<T>(lhs) < static_cast<T>(rhs);
 }
 
-std::ostream& edge_t::operator<<(std::ostream& os) noexcept {
+std::ostream &edge_t::operator<<(std::ostream &os) noexcept {
   os << this->index;
   return os;
 }
 
-bool edge_t::operator==(const edge_t& rhs) noexcept { return this->index == rhs.index; }
+bool edge_t::operator==(const edge_t &rhs) noexcept { return this->index == rhs.index; }
 
-bool edge_t::operator!=(const edge_t& rhs) noexcept { return !(*this == rhs); }
+bool edge_t::operator!=(const edge_t &rhs) noexcept { return !(*this == rhs); }
 
 edge_t::edge_t(
     edge_idx_t index,

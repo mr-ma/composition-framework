@@ -20,7 +20,7 @@ public:
    * @param callback the callback
    * @return a struct which defines the necessary information to trigger a callback if a constraint is violated.
    */
-  static TraceableCallbackInfo Register(const std::string& name, llvm::Value* v, const PreservedCallback& callback);
+  static TraceableCallbackInfo Register(const std::string &name, llvm::Value *v, const PreservedCallback &callback);
 
   /**
    * Registers a present callback function for the value v
@@ -29,7 +29,7 @@ public:
    * @param callback the callback
    * @return a struct which defines the necessary information to trigger a callback if a constraint is violated.
    */
-  static TraceableCallbackInfo Register(const std::string& name, llvm::Value* v, const PresentCallback& callback);
+  static TraceableCallbackInfo Register(const std::string &name, llvm::Value *v, const PresentCallback &callback);
 
   /**
    * Registers a present and preserved callback function for the value v
@@ -39,8 +39,8 @@ public:
    * @param preservedCallback the preserved callback
    * @return a struct which defines the necessary information to trigger a callback if a constraint is violated.
    */
-  static TraceableCallbackInfo Register(const std::string& name, llvm::Value* v, const PresentCallback& presentCallback,
-                                        const PreservedCallback& preservedCallback);
+  static TraceableCallbackInfo Register(const std::string &name, llvm::Value *v, const PresentCallback &presentCallback,
+                                        const PreservedCallback &preservedCallback);
 
   /**
    * Clears the registered values from the registry.
@@ -48,7 +48,7 @@ public:
   static void Clear();
 
 protected:
-  static TraceableValueState& TraceableValues();
+  static TraceableValueState &TraceableValues();
 };
 } // namespace composition::trace
 

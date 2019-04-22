@@ -14,9 +14,9 @@ namespace composition::graph::util {
  * @param g the graph
  * @param filename the file to write to
  */
-template <typename graph_t>
-void graph_to_dot(graph_t& g, const std::string& filename, const std::unordered_map<vertex_idx_t, size_t>& isPresent,
-                  const std::unordered_map<vertex_idx_t, size_t>& isPreserved) {
+template<typename graph_t>
+void graph_to_dot(graph_t &g, const std::string &filename, const std::unordered_map<vertex_idx_t, size_t> &isPresent,
+                  const std::unordered_map<vertex_idx_t, size_t> &isPreserved) {
   std::ofstream f;
   f.exceptions(std::ios::failbit | std::ios::badbit);
   f.open(filename);
@@ -29,9 +29,9 @@ void graph_to_dot(graph_t& g, const std::string& filename, const std::unordered_
  * @param g the graph
  * @param out the ostream to write to
  */
-template <typename graph_t>
-void graph_to_dot(graph_t& g, std::ostream& out, const std::unordered_map<vertex_idx_t, size_t>& isPresent,
-                  const std::unordered_map<vertex_idx_t, size_t>& isPreserved) {}
+template<typename graph_t>
+void graph_to_dot(graph_t &g, std::ostream &out, const std::unordered_map<vertex_idx_t, size_t> &isPresent,
+                  const std::unordered_map<vertex_idx_t, size_t> &isPreserved) {}
 } // namespace composition::graph::util
 
 #endif // COMPOSITION_FRAMEWORK_GRAPH_UTIL_DOT_HPP

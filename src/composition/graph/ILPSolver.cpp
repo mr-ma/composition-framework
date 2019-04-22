@@ -18,26 +18,28 @@ void ILPSolver::destroy() {
 }
 
 void ILPSolver::init(int explicitCov, int implicitCov, double hotness, double hotnessProtectee) {
-  // ROWS
-  glp_add_rows(lp, 4); // adds three rows to the problem object
   // row 1
-  glp_set_row_name(lp, 1, "explicit");               // assigns name p to first row
-  glp_set_row_bnds(lp, 1, GLP_LO, explicitCov, 0.0); // 0 < explicit <= inf
+  EXPLICIT = glp_add_rows(lp, 1);
+  glp_set_row_name(lp, EXPLICIT, "explicit");               // assigns name p to first row
+  glp_set_row_bnds(lp, EXPLICIT, GLP_LO, explicitCov, 0.0); // 0 < explicit <= inf
   // row 2
-  glp_set_row_name(lp, 2, "implicit");               // assigns name q to second row
-  glp_set_row_bnds(lp, 2, GLP_LO, implicitCov, 0.0); // 0 < implicit <= inf
+  IMPLICIT = glp_add_rows(lp, 1);
+  glp_set_row_name(lp, IMPLICIT, "implicit");               // assigns name q to second row
+  glp_set_row_bnds(lp, IMPLICIT, GLP_LO, implicitCov, 0.0); // 0 < implicit <= inf
   // row 3
-  glp_set_row_name(lp, 3, "hotness");            // assigns name q to second row
-  glp_set_row_bnds(lp, 3, GLP_LO, hotness, 0.0); // 0 < unique <= inf
+  HOTNESS = glp_add_rows(lp, 1);
+  glp_set_row_name(lp, HOTNESS, "hotness");            // assigns name q to second row
+  glp_set_row_bnds(lp, HOTNESS, GLP_LO, hotness, 0.0); // 0 < unique <= inf
   // row 4
-  glp_set_row_name(lp, 4, "hotnessProtectee");            // assigns name q to second row
-  glp_set_row_bnds(lp, 4, GLP_LO, hotnessProtectee, 0.0); // 0 < unique <= inf
+  HOTNESS_PROTECTEE = glp_add_rows(lp, 1);
+  glp_set_row_name(lp, HOTNESS_PROTECTEE, "hotnessProtectee");            // assigns name q to second row
+  glp_set_row_bnds(lp, HOTNESS_PROTECTEE, GLP_LO, hotnessProtectee, 0.0); // 0 < unique <= inf
 }
 
-void ILPSolver::addManifests(std::unordered_map<manifest_idx_t, Manifest*> manifests,
+void ILPSolver::addManifests(const std::unordered_map<manifest_idx_t, Manifest *> &manifests,
                              std::map<manifest_idx_t, ManifestStats> stats) {
   // COLUMNS
-  for (auto& [mIdx, m] : manifests) {
+  for (auto&[mIdx, m] : manifests) {
     // column N
     std::ostringstream os;
     os << "m" << m->index;
@@ -50,59 +52,59 @@ void ILPSolver::addManifests(std::unordered_map<manifest_idx_t, Manifest*> manif
     colsToM.insert({col, m->index});
 
     // explicit
-    rows.push_back(1);
+    rows.push_back(EXPLICIT);
     cols.push_back(col);
     coeffs.push_back(stats[mIdx].explicitC);
 
     // manifest has no implicit coverage but edges do
-    rows.push_back(2);
+    rows.push_back(IMPLICIT);
     cols.push_back(col);
     // coeffs.push_back(stats[mIdx].implicitC);
     coeffs.push_back(0);
 
     // hotness
-    rows.push_back(3);
+    rows.push_back(HOTNESS);
     cols.push_back(col);
     coeffs.push_back(stats[mIdx].hotness);
 
     // hotnessProtectee
-    rows.push_back(4);
+    rows.push_back(HOTNESS_PROTECTEE);
     cols.push_back(col);
     coeffs.push_back(stats[mIdx].hotnessProtectee);
   }
 }
 
-void ILPSolver::addDependencies(std::set<std::pair<manifest_idx_t, manifest_idx_t>> dependencies) {
+void ILPSolver::addDependencies(const std::set<std::pair<manifest_idx_t, manifest_idx_t>> &dependencies) {
   // Add dependencies
-  for (auto&& pair : dependencies) {
+  for (auto &&pair : dependencies) {
     dependency(pair);
   }
 }
 
-void ILPSolver::addConflicts(std::set<std::pair<manifest_idx_t, manifest_idx_t>> conflicts) {
+void ILPSolver::addConflicts(const std::set<std::pair<manifest_idx_t, manifest_idx_t>> &conflicts) {
   // Add conflicts
-  for (auto&& pair : conflicts) {
+  for (auto &&pair : conflicts) {
     conflict(pair);
   }
 }
 
-void ILPSolver::addCycles(std::set<std::set<manifest_idx_t>> cycles) {
+void ILPSolver::addCycles(const std::set<std::set<manifest_idx_t>> &cycles) {
   // Add cycles
-  for (auto&& c : cycles) {
+  for (auto &&c : cycles) {
     cycle(c);
   }
 }
 
-void ILPSolver::addConnectivity(std::set<std::set<manifest_idx_t>> connectivities) {
+void ILPSolver::addConnectivity(const std::set<std::set<manifest_idx_t>> &connectivities) {
   // Add connectivity
-  for (auto&& c : connectivities) {
+  for (auto &&c : connectivities) {
     connectivity(c, DesiredConnectivity);
   }
 }
 
-void ILPSolver::addBlockConnectivity(std::set<std::set<manifest_idx_t>> blockConnectivities) {
+void ILPSolver::addBlockConnectivity(const std::set<std::set<manifest_idx_t>> &blockConnectivities) {
   // Add  blockConnectivity
-  for (auto&& c : blockConnectivities) {
+  for (auto &&c : blockConnectivities) {
     blockConnectivity(c, DesiredBlockConnectivity);
   }
 }
@@ -130,7 +132,7 @@ std::pair<std::set<manifest_idx_t>, std::set<manifest_idx_t>> ILPSolver::run() {
   glp_print_mip(lp, "sol.glp");
 
   std::set<manifest_idx_t> acceptedManifests{};
-  for (auto& [col, mIdx] : colsToM) {
+  for (auto&[col, mIdx] : colsToM) {
     if (glp_mip_col_val(lp, col) == 1) {
       acceptedManifests.insert(mIdx);
       // TODO: calculate implicit coverage based on the accepted edges
@@ -138,16 +140,16 @@ std::pair<std::set<manifest_idx_t>, std::set<manifest_idx_t>> ILPSolver::run() {
   }
 
   std::set<manifest_idx_t> acceptedEdges{};
-  for (auto& [col, eIdx] : colsToE) {
+  for (auto&[col, eIdx] : colsToE) {
     if (glp_mip_col_val(lp, col) == 1) {
       acceptedEdges.insert(eIdx);
     }
   }
 
-
-  uint64_t explicitInstructionCoverage = glp_mip_row_val(lp,1);
-  uint64_t implicitInstructionCoverage = glp_mip_row_val(lp,2); 
-  llvm::dbgs()<<"explicit instruction coverage:"<<explicitInstructionCoverage<<" implicit instruction coverage:"<<implicitInstructionCoverage<<"\n";
+  uint64_t explicitInstructionCoverage = (uint64_t) glp_mip_row_val(lp, EXPLICIT);
+  uint64_t implicitInstructionCoverage = (uint64_t) glp_mip_row_val(lp, IMPLICIT);
+  llvm::dbgs() << "explicit instruction coverage:" << explicitInstructionCoverage << " implicit instruction coverage:"
+               << implicitInstructionCoverage << "\n";
   return {acceptedManifests, acceptedEdges};
 }
 
@@ -185,7 +187,7 @@ void ILPSolver::dependency(std::pair<manifest_idx_t, manifest_idx_t> pair) {
   coeffs.push_back(-1.0);
 }
 
-void ILPSolver::cycle(std::set<manifest_idx_t> ms) {
+void ILPSolver::cycle(const std::set<manifest_idx_t> &ms) {
   // m1..mN form a cycle; m1+m2+..+mN <= N-1
   auto row = glp_add_rows(lp, 1);
   glp_set_row_bnds(lp, row, GLP_UP, 0.0, ms.size() - 1);
@@ -193,14 +195,14 @@ void ILPSolver::cycle(std::set<manifest_idx_t> ms) {
   os << "cycle_" << cycleCount++;
   glp_set_row_name(lp, row, os.str().c_str());
 
-  for (auto& idx : ms) {
+  for (auto &idx : ms) {
     rows.push_back(row);
     cols.push_back(colsToM.right.at(idx));
     coeffs.push_back(1.0);
   }
 }
 
-void ILPSolver::connectivity(std::set<manifest_idx_t> ms, size_t targetConnectivity) {
+void ILPSolver::connectivity(const std::set<manifest_idx_t> &ms, size_t targetConnectivity) {
   // m1..mN protect an Instruction; m1+m2+..+mN >= min(N, targetConnectivity)
   auto row = glp_add_rows(lp, 1);
   glp_set_row_bnds(lp, row, GLP_LO, std::min(ms.size(), targetConnectivity), 0.0);
@@ -208,14 +210,14 @@ void ILPSolver::connectivity(std::set<manifest_idx_t> ms, size_t targetConnectiv
   os << "connectivity_" << connectivityCount++;
   glp_set_row_name(lp, row, os.str().c_str());
 
-  for (auto& idx : ms) {
+  for (auto &idx : ms) {
     rows.push_back(row);
     cols.push_back(colsToM.right.at(idx));
     coeffs.push_back(1.0);
   }
 }
 
-void ILPSolver::blockConnectivity(std::set<manifest_idx_t> ms, size_t targetBlockConnectivity) {
+void ILPSolver::blockConnectivity(const std::set<manifest_idx_t> &ms, size_t targetBlockConnectivity) {
   // m1..mN protect a BasicBlock; m1+m2+..+mN >= min(N, targetBlockConnectivity)
   auto row = glp_add_rows(lp, 1);
   glp_set_row_bnds(lp, row, GLP_LO, std::min(ms.size(), targetBlockConnectivity), 0.0);
@@ -223,7 +225,7 @@ void ILPSolver::blockConnectivity(std::set<manifest_idx_t> ms, size_t targetBloc
   os << "block_connectivity_" << blockConnectivityCount++;
   glp_set_row_name(lp, row, os.str().c_str());
 
-  for (auto& idx : ms) {
+  for (auto &idx : ms) {
     rows.push_back(row);
     cols.push_back(colsToM.right.at(idx));
     coeffs.push_back(1.0);

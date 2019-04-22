@@ -38,46 +38,47 @@ public:
   Connectivity blockConnectivity{};
   Connectivity functionConnectivity{};
   std::unordered_map<std::string, std::pair<Connectivity, Connectivity>> protectionConnectivity{};
-  std::unordered_map<manifest_idx_t, Manifest*> MANIFESTS{};
+  std::unordered_map<manifest_idx_t, Manifest *> MANIFESTS{};
 
   Stats() = default;
 
-  explicit Stats(std::set<Manifest*> manifests);
+  explicit Stats(std::set<Manifest *> manifests);
 
-  explicit Stats(std::istream& i);
+  explicit Stats(std::istream &i);
 
-  void dump(llvm::raw_ostream& o);
+  void dump(llvm::raw_ostream &o);
 
-  void setManifests(std::set<Manifest*> manifests);
+  void setManifests(const std::set<Manifest *>& manifests);
 
-  void collect(std::set<llvm::Function*> sensitiveFunctions, std::vector<Manifest*> manifests,
-               const ManifestProtectionMap& dep);
+  void collect(const std::set<llvm::Function *>& sensitiveFunctions, std::vector<Manifest *> manifests,
+               const ManifestProtectionMap &dep);
 
-  void collect(llvm::Module* M, std::vector<Manifest*> manifests, const ManifestProtectionMap& dep);
+  void collect(llvm::Module *M, std::vector<Manifest *> manifests, const ManifestProtectionMap &dep);
 
-  void collect(llvm::Value* V, std::vector<Manifest*> manifests, const ManifestProtectionMap& dep);
+  void collect(llvm::Value *V, std::vector<Manifest *> manifests, const ManifestProtectionMap &dep);
 
-  void collect(std::set<llvm::Instruction*> allInstructions, std::vector<Manifest*> manifests,
-               const ManifestProtectionMap& dep);
+  void collect(const std::set<llvm::Instruction *>& allInstructions, std::vector<Manifest *> manifests,
+               const ManifestProtectionMap &dep);
 
-  std::unordered_map<Manifest*, std::unordered_set<llvm::Instruction*>>
-  implictInstructions(const ManifestProtectionMap& dep, std::unordered_map<manifest_idx_t, Manifest*> MANIFESTS);
-std::vector<std::tuple<manifest_idx_t /*edge_index*/, std::pair<manifest_idx_t, manifest_idx_t> /*m1 -> m2*/,
-                       unsigned long /*coverage*/>>
+  std::unordered_map<Manifest *, std::unordered_set<llvm::Instruction *>>
+  implictInstructions(const ManifestProtectionMap &dep, std::unordered_map<manifest_idx_t, Manifest *> MANIFESTS);
+  std::vector<std::tuple<manifest_idx_t /*edge_index*/, std::pair<manifest_idx_t, manifest_idx_t> /*m1 -> m2*/,
+                         unsigned long /*coverage*/>>
   implictInstructionsPerEdge(
-      const ManifestProtectionMap& dep, std::unordered_map<manifest_idx_t, Manifest*> MANIFESTS,
-      std::map<manifest_idx_t /*protected manifest*/, std::pair<std::set<manifest_idx_t> /*edges*/,unsigned long /*coverage*/>>* duplicateEdgesOnManifest);
+      const ManifestProtectionMap &dep, const std::unordered_map<manifest_idx_t, Manifest *>& MANIFESTS,
+      std::map<manifest_idx_t /*protected manifest*/,
+               std::pair<std::set<manifest_idx_t> /*edges*/, unsigned long /*coverage*/>> *duplicateEdgesOnManifest);
 
 private:
-  std::set<llvm::Instruction*> protectedInstructionsDistinct{};
-  std::map<std::string, std::set<llvm::Instruction*>> protectedInstructions{};
-  std::map<std::string, std::set<llvm::Function*>> protectedFunctions{};
-  std::map<std::string, std::set<llvm::BasicBlock*>> protectedBlocks{};
+  std::set<llvm::Instruction *> protectedInstructionsDistinct{};
+  std::map<std::string, std::set<llvm::Instruction *>> protectedInstructions{};
+  std::map<std::string, std::set<llvm::Function *>> protectedFunctions{};
+  std::map<std::string, std::set<llvm::BasicBlock *>> protectedBlocks{};
 
   std::pair<Connectivity, Connectivity>
-  instructionFunctionConnectivity(const std::unordered_map<llvm::Instruction*, size_t>& instructionConnectivityMap);
+  instructionFunctionConnectivity(const std::unordered_map<llvm::Instruction *, size_t> &instructionConnectivityMap);
 
-  Connectivity computeBlockConnectivity(std::set<llvm::BasicBlock*> blocks, std::vector<Manifest*> manifests);
+  Connectivity computeBlockConnectivity(const std::set<llvm::BasicBlock *>& blocks, std::vector<Manifest *> manifests);
 };
 
 /**
@@ -85,14 +86,14 @@ private:
  * @param j IN/OUT the resulting JSON
  * @param w IN the stats
  */
-void to_json(nlohmann::json& j, const Stats& s);
+void to_json(nlohmann::json &j, const Stats &s);
 
 /**
  * Converts JSON into `Stats` representation
  * @param j IN the JSON source
  * @param w IN/OUT the resulting stats
  */
-void from_json(const nlohmann::json& j, Stats& s);
+void from_json(const nlohmann::json &j, Stats &s);
 
 } // namespace composition::metric
 

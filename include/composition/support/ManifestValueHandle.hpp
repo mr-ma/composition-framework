@@ -15,11 +15,11 @@ public:
   using llvm::CallbackVH::CallbackVH;
   void deleted() override;
 
-  void allUsesReplacedWith(llvm::Value* value) override;
+  void allUsesReplacedWith(llvm::Value *value) override;
 
   bool pointsToAliveValue() const;
 
-  explicit operator llvm::Value*() const;
+  explicit operator llvm::Value *() const;
 };
 #else
 class ManifestValueHandle : public llvm::WeakTrackingVH {

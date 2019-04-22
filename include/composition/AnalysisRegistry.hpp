@@ -12,7 +12,7 @@ namespace composition {
  * `PassRegistrationInfo` stores the unique `ID` of a pass.
  */
 struct PassRegistrationInfo {
-  char* ID;
+  char *ID;
 };
 
 /**
@@ -31,11 +31,11 @@ public:
    * Retrieves all registered passes and returns them.
    * @return a vector of
    */
-  static std::vector<PassRegistrationInfo>& GetAll();
+  static std::vector<PassRegistrationInfo> &GetAll();
 
 protected:
   // TODO: This currently initializes a static vector in the function. Possibly there's a better way to do this.
-  static std::vector<PassRegistrationInfo>& RegisteredAnalysis();
+  static std::vector<PassRegistrationInfo> &RegisteredAnalysis();
 };
 } // namespace composition
 #endif // COMPOSITION_FRAMEWORK_ANALYSISREGISTRY_HPP

@@ -19,7 +19,12 @@ using llvm::dbgs;
 
 class ILPSolver {
 private:
-  glp_prob* lp;
+  int EXPLICIT;
+  int IMPLICIT;
+  int HOTNESS;
+  int HOTNESS_PROTECTEE;
+
+  glp_prob *lp;
   int cycleCount = 0;
   int connectivityCount = 0;
   int blockConnectivityCount = 0;
@@ -45,20 +50,20 @@ public:
 
   void init(int explicitCov, int implicitCov, double hotness, double hotnessProtectee);
 
-  void addManifests(std::unordered_map<manifest_idx_t, Manifest*> manifests,
+  void addManifests(const std::unordered_map<manifest_idx_t, Manifest *> &manifests,
                     std::map<manifest_idx_t, ManifestStats> stats);
 
-  void addDependencies(std::set<std::pair<manifest_idx_t, manifest_idx_t>> dependencies);
+  void addDependencies(const std::set<std::pair<manifest_idx_t, manifest_idx_t>> &dependencies);
 
-  void addConflicts(std::set<std::pair<manifest_idx_t, manifest_idx_t>> conflicts);
+  void addConflicts(const std::set<std::pair<manifest_idx_t, manifest_idx_t>> &conflicts);
 
-  void addCycles(std::set<std::set<manifest_idx_t>> cycles);
+  void addCycles(const std::set<std::set<manifest_idx_t>> &cycles);
 
-  void addConnectivity(std::set<std::set<manifest_idx_t>> connectivities);
+  void addConnectivity(const std::set<std::set<manifest_idx_t>> &connectivities);
 
-  void addBlockConnectivity(std::set<std::set<manifest_idx_t>> blockConnectivities);
+  void addBlockConnectivity(const std::set<std::set<manifest_idx_t>> &blockConnectivities);
 
-  void setCostFunction(std::function<double(ManifestStats)> costFunction) { this->costFunction = costFunction; }
+  void setCostFunction(std::function<double(ManifestStats)> f) { this->costFunction = f; }
 
   std::pair<std::set<manifest_idx_t>, std::set<manifest_idx_t>> run();
 
@@ -66,7 +71,7 @@ public:
 
   void dependency(std::pair<manifest_idx_t, manifest_idx_t> pair);
 
-  void cycle(std::set<manifest_idx_t> ms);
+  void cycle(const std::set<manifest_idx_t> &ms);
 
   void edgeConnection(manifest_idx_t edgeInx, std::pair<manifest_idx_t, manifest_idx_t> pair) {
     // e0 depends on m1 and m2; 0 <= m1 + m2 -2 e0 <= 1
@@ -92,11 +97,11 @@ public:
   void duplicateImplicitEdge(manifest_idx_t fInx, std::set<manifest_idx_t> edgeDuplicates) {
     // f0 is set if any of the duplicate edges are set (i.e. OR): 0 <= 2f0 - e1 - e2 <=1
     auto row = glp_add_rows(lp, 1);
-    glp_set_row_bnds(lp, row, GLP_DB, 0.0, std::max(size_t(1),edgeDuplicates.size()-1));
+    glp_set_row_bnds(lp, row, GLP_DB, 0.0, std::max(size_t(1), edgeDuplicates.size() - 1));
     std::ostringstream os;
-    os << "f" << fInx ;//<< "_" << edgeDuplicates.size();
-    for(auto edgeIndex :edgeDuplicates){
-        os << "_"<<edgeIndex;
+    os << "f" << fInx;//<< "_" << edgeDuplicates.size();
+    for (auto edgeIndex :edgeDuplicates) {
+      os << "_" << edgeIndex;
     }
     glp_set_row_name(lp, row, os.str().c_str());
 
@@ -105,9 +110,9 @@ public:
     coeffs.push_back(
         std::max(size_t(2), edgeDuplicates.size())); // even when there is one edge f need to have a coefficent 2
 
-    llvm::dbgs() << "Duplicates edges covering manifest "<<fInx<<":\n";
+    llvm::dbgs() << "Duplicates edges covering manifest " << fInx << ":\n";
     for (auto edgeIndex : edgeDuplicates) {
-      llvm::dbgs() << edgeIndex<<",";
+      llvm::dbgs() << edgeIndex << ",";
       rows.push_back(row);
       cols.push_back(colsToE.right.at(edgeIndex));
       coeffs.push_back(-1.0);
@@ -119,7 +124,7 @@ public:
       manifest_idx_t fIndex,
       std::vector<std::tuple<manifest_idx_t /*edge_index*/, std::pair<manifest_idx_t, manifest_idx_t> /*m1 -> m2*/,
                              unsigned long /*coverage*/>>
-          implicitCov,
+      implicitCov,
       double targetCoverage) {
     // e1..eN indicate implicit coverage edges
     auto row = glp_add_rows(lp, 1);
@@ -128,20 +133,25 @@ public:
     os << "implicit_requirement_" << 0;
     glp_set_row_name(lp, row, os.str().c_str());
 
-    for (auto [fIndex, _, coverage] : implicitCov) {
+    for (auto[fIndex, _, coverage] : implicitCov) {
       rows.push_back(row);
       cols.push_back(colsToF.right.at(fIndex));
       coeffs.push_back(coverage);
     }
   }
 
-  void connectivity(std::set<manifest_idx_t> ms, size_t targetConnectivity);
+  void connectivity(const std::set<manifest_idx_t> &ms, size_t targetConnectivity);
 
-  void blockConnectivity(std::set<manifest_idx_t> ms, size_t targetBlockConnectivity);
+  void blockConnectivity(const std::set<manifest_idx_t> &ms, size_t targetBlockConnectivity);
 
-   void addImplicitCoverage(std::vector<std::tuple<composition::manifest_idx_t, std::pair<composition::manifest_idx_t, composition::manifest_idx_t>, long unsigned int>> implicitCov, std::map<composition::manifest_idx_t, std::pair<std::set<composition::manifest_idx_t>, long unsigned int>> duplicateEdgesOnManifest){
+  void addImplicitCoverage(std::vector<std::tuple<composition::manifest_idx_t,
+                                                  std::pair<composition::manifest_idx_t, composition::manifest_idx_t>,
+                                                  long unsigned int>> implicitCov,
+                           std::map<composition::manifest_idx_t,
+                                    std::pair<std::set<composition::manifest_idx_t>,
+                                              long unsigned int>> duplicateEdgesOnManifest) {
     // TODO: ensure setting the cost column to zero does not negatively affect the optimization
-    for (auto& [eIdx, pair, coverage] : implicitCov) {
+    for (auto&[eIdx, pair, coverage] : implicitCov) {
       llvm::dbgs() << "edge" << eIdx << "_" << pair.first << "_" << pair.second << "\n";
       std::ostringstream os;
       os << "e" << eIdx;
@@ -155,29 +165,29 @@ public:
       colsToE.insert({col, eIdx});
 
       // explicit
-      rows.push_back(1);
+      rows.push_back(EXPLICIT);
       cols.push_back(col);
       coeffs.push_back(0); // Edges have no explicit coverage
 
       // implicit
-      rows.push_back(2);
+      rows.push_back(IMPLICIT);
       cols.push_back(col);
       coeffs.push_back(0); // Edges have no implicit coverage, f represents such coverages
 
       // hotness
-      rows.push_back(3);
+      rows.push_back(HOTNESS);
       cols.push_back(col);
       coeffs.push_back(0); // edges have no hotness
 
       // hotnessProtectee
-      rows.push_back(4);
+      rows.push_back(HOTNESS_PROTECTEE);
       cols.push_back(col);
       coeffs.push_back(0); // edges have no protectee hotness
     }
-    llvm::dbgs()<<"Nr. Duplicate edges reported:"<<duplicateEdgesOnManifest.size()<<"\n";
+    llvm::dbgs() << "Nr. Duplicate edges reported:" << duplicateEdgesOnManifest.size() << "\n";
     // Rows for duplicate edges with f variables
-    for (auto& [mIdx, edgecov] : duplicateEdgesOnManifest) {
-      auto &[edges,coverage] = edgecov;
+    for (auto&[mIdx, edgecov] : duplicateEdgesOnManifest) {
+      auto &[edges, coverage] = edgecov;
       llvm::dbgs() << "f" << mIdx;
       std::ostringstream os;
       os << "f" << mIdx;
@@ -196,12 +206,12 @@ public:
       colsToF.insert({col, mIdx});
 
       // explicit
-      rows.push_back(1);
+      rows.push_back(EXPLICIT);
       cols.push_back(col);
       coeffs.push_back(0); // Edges have no explicit coverage
 
       // implicit
-      rows.push_back(2);
+      rows.push_back(IMPLICIT);
       cols.push_back(col);
       /*auto item =
           std::find_if(begin(implicitCov), end(implicitCov), [&mIdx](const auto& e) { return std::get<0>(e) == mIdx; });
@@ -215,26 +225,26 @@ public:
       coeffs.push_back(coverage);
 
       // hotness
-      rows.push_back(3);
+      rows.push_back(HOTNESS);
       cols.push_back(col);
       coeffs.push_back(0); // edges have no hotness
 
       // hotnessProtectee
-      rows.push_back(4);
+      rows.push_back(HOTNESS_PROTECTEE);
       cols.push_back(col);
       coeffs.push_back(0); // edges have no protectee hotness
     }
     // Add edge constraints, i.e. e = M1 && M2
-    for (auto& [eIdx, pair, _] : implicitCov) {
+    for (auto&[eIdx, pair, _] : implicitCov) {
       edgeConnection(eIdx, pair);
     }
 
     // Add duplicate edge constaints, i.e. f = dup_e1 || dup_e2 || dup_e3
-    for (auto& [mIdx, edges] : duplicateEdgesOnManifest) {
+    for (auto&[mIdx, edges] : duplicateEdgesOnManifest) {
       duplicateImplicitEdge(mIdx, edges.first);
     }
 
-        // Add desired implicit coverage
+    // Add desired implicit coverage
     // implicitCoverageConstraint(implicitCoverageToInstruction, implicitCov, 0.0);
   }
 }; // namespace composition::graph
