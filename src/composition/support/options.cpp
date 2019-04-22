@@ -14,10 +14,6 @@ llvm::cl::opt<std::string>
 llvm::cl::opt<std::string> PatchInfo("cf-patchinfo", llvm::cl::init("cf-patchinfo.json"),
                                      llvm::cl::desc("Dumps the patching information to the given file."));
 
-llvm::cl::opt<int> NumberOfOptimizations("cf-number-of-optimizations", llvm::cl::Hidden);
-llvm::cl::opt<double> PercentageOfManifests("cf-percentage-of-manifests", llvm::cl::Hidden);
-llvm::cl::opt<double> PerformanceThreshold("cf-performance-threshold", llvm::cl::Hidden);
-llvm::cl::opt<double> MinConnectivity("cf-min-connectivity", llvm::cl::Hidden);
-llvm::cl::opt<double> MinCoverage("cf-min-coverage", llvm::cl::Hidden);
-llvm::cl::opt<double> MinImplicitCoverage("cf-min-implicit-coverage", llvm::cl::Hidden);
+llvm::cl::opt<std::string> ILPProblem("cf-ilp-prob", llvm::cl::Hidden);
+llvm::cl::opt<std::string> ILPSolution("cf-ilp-sol", llvm::cl::Hidden);
 } // namespace composition::support

@@ -15,11 +15,7 @@ extern llvm::cl::opt<std::string> WeightConfig;
 extern llvm::cl::opt<std::string> DumpStats;
 extern llvm::cl::opt<std::string> UseStrategy;
 extern llvm::cl::opt<std::string> PatchInfo;
-extern llvm::cl::opt<int> NumberOfOptimizations;
-extern llvm::cl::opt<double> PercentageOfManifests;
-extern llvm::cl::opt<double> PerformanceThreshold;
-extern llvm::cl::opt<double> MinConnectivity;
-extern llvm::cl::opt<double> MinCoverage;
-extern llvm::cl::opt<double> MinImplicitCoverage;
+extern llvm::cl::opt<std::string> ILPProblem;
+extern llvm::cl::opt<std::string> ILPSolution;
 } // namespace composition::support
 #endif // COMPOSITION_FRAMEWORK_SUPPORT_OPTIONS_HPP

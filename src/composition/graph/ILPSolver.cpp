@@ -1,4 +1,5 @@
 #include <composition/graph/ILPSolver.hpp>
+#include <composition/support/options.hpp>
 
 namespace composition::graph {
 
@@ -123,13 +124,18 @@ std::pair<std::set<manifest_idx_t>, std::set<manifest_idx_t>> ILPSolver::run() {
   arv.insert(arv.end(), coeffs.begin(), coeffs.end());
 
   glp_load_matrix(lp, dataSize, &iav[0], &jav[0], &arv[0]); // calls the routine glp_load_matrix
-  llvm::dbgs() << "Writing prob.glp\n";
-  glp_write_lp(lp, nullptr, "prob.glp");
+
+  if (!composition::support::ILPProblem.empty()) {
+    glp_write_lp(lp, nullptr, composition::support::ILPProblem.getValue().c_str());
+  }
 
   glp_simplex(lp, nullptr); // calls the routine glp_simplex to solve LP problem
   glp_intopt(lp, nullptr);
   auto total_cost = glp_mip_obj_val(lp);
-  glp_print_mip(lp, "sol.glp");
+
+  if (!composition::support::ILPSolution.empty()) {
+    glp_print_mip(lp, composition::support::ILPSolution.getValue().c_str());
+  }
 
   std::set<manifest_idx_t> acceptedManifests{};
   for (auto&[col, mIdx] : colsToM) {
