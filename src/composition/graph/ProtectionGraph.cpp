@@ -5,6 +5,7 @@
 #include <composition/graph/constraint/dependency.hpp>
 #include <composition/graph/constraint/present.hpp>
 #include <composition/graph/constraint/preserved.hpp>
+#include <composition/graph/constraint/n_of.hpp>
 #include <composition/metric/ManifestStats.hpp>
 #include <lemon/connectivity.h>
 #include <queue>
@@ -20,6 +21,7 @@ using composition::graph::constraint::Present;
 using composition::graph::constraint::PresentConstraint;
 using composition::graph::constraint::Preserved;
 using composition::graph::constraint::PreservedConstraint;
+using composition::graph::constraint::NOf;
 using composition::metric::Coverage;
 using composition::metric::ManifestStats;
 using llvm::dbgs;
@@ -118,6 +120,10 @@ size_t ProtectionGraph::countVertices() { return static_cast<size_t>(lemon::coun
 size_t ProtectionGraph::countEdges() { return static_cast<size_t>(lemon::countArcs(LG)); }
 
 constraint_idx_t ProtectionGraph::addConstraint(manifest_idx_t idx, std::shared_ptr<Constraint> c) {
+  if (llvm::isa<NOf>(c.get())) {
+    return ConstraintIdx++;
+  }
+
   MANIFESTS_CONSTRAINTS.insert({idx, ConstraintIdx});
   if (auto d = dyn_cast<Dependency>(c.get())) {
     auto dstNode = add_vertex(d->getFrom(), true);
@@ -505,6 +511,32 @@ implictInstructions(manifest_idx_t idx, const ManifestProtectionMap &dep,
   return result;
 }
 
+std::vector<std::pair<manifest_idx_t,
+                      std::pair<uint64_t,
+                                std::vector<manifest_idx_t>>>> calculateNOfs(std::unordered_map<manifest_idx_t,
+                                                                                                Manifest *> manifests) {
+  std::vector<std::pair<manifest_idx_t, std::pair<uint64_t, std::vector<manifest_idx_t>>>> result{};
+
+  for (auto[idx, m] : manifests) {
+    for (auto c : m->constraints) {
+      if (auto nOf = dyn_cast<NOf>(c.get())) {
+        auto nOfManifests = nOf->getManifests();
+
+        std::vector<manifest_idx_t> indexes{};
+        for (auto nM : nOfManifests) {
+          if (manifests.find(nM->index) != manifests.end()) {
+            indexes.push_back(nM->index);
+          }
+        }
+
+        result.push_back({idx, {nOf->getN(), indexes}});
+      }
+    }
+  }
+
+  return result;
+}
+
 std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
                                                           const std::unordered_map<llvm::BasicBlock *, uint64_t> &BFI,
                                                           size_t totalInstructions) {
@@ -568,6 +600,8 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
     s.normalize(explicitCBounds, implicitCBounds, hotnessBounds, hotnessProtecteeBounds);
   }
 
+  auto nOfs = calculateNOfs(MANIFESTS);
+
   Profiler resolvingProfiler{};
 
   auto costFunction = [](ManifestStats s) -> double {
@@ -584,6 +618,7 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
     solver.addConnectivity(connectivities);
     solver.addBlockConnectivity(blockConnectivities);
     solver.addImplicitCoverage(implicitCov, duplicateEdgesOnManifest);
+    solver.addNOfDependencies(nOfs);
     auto[acceptedIndices, acceptedEdges] = solver.run();
     solver.destroy();
 

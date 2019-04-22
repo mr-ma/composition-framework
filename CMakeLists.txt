@@ -46,6 +46,7 @@ add_library(CompositionFramework SHARED
         include/composition/graph/constraint/present.hpp
         include/composition/graph/constraint/preserved.hpp
         include/composition/graph/constraint/true.hpp
+        include/composition/graph/constraint/n_of.hpp
 
         include/composition/graph/util/dot.hpp
         include/composition/graph/util/graphml.hpp
@@ -86,6 +87,7 @@ add_library(CompositionFramework SHARED
         src/composition/graph/constraint/present.cpp
         src/composition/graph/constraint/preserved.cpp
         src/composition/graph/constraint/true.cpp
+        src/composition/graph/constraint/n_of.cpp
 
         src/composition/metric/Coverage.cpp
         src/composition/metric/Performance.cpp

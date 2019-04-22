@@ -31,6 +31,7 @@ private:
   int cycleCount = 0;
   int connectivityCount = 0;
   int blockConnectivityCount = 0;
+  int nOfCount = 0;
   std::function<double(ManifestStats)> costFunction;
   std::vector<int> rows{};
   std::vector<int> cols{};
@@ -244,6 +245,35 @@ public:
 
     // Add desired implicit coverage
     // implicitCoverageConstraint(implicitCoverageToInstruction, implicitCov, 0.0);
+  }
+
+  void addNOfDependencies(std::vector<std::pair<manifest_idx_t,
+                                                std::pair<uint64_t, std::vector<manifest_idx_t>>>> nOfs) {
+    for (auto[mIdx, nOf] : nOfs) {
+      auto N = std::min(nOf.first, nOf.second.size());
+
+      // m1 cannot exist without m2 -> m2 - m1 >= 0 - hence m1 depends on m2
+      for (auto idx : nOf.second) {
+        dependency({idx, mIdx});
+      }
+
+      // mX cannot exist without N of m1...mK -> m1 + ... + mK - mX >= (N - 1)
+      auto row = glp_add_rows(lp, 1);
+      glp_set_row_bnds(lp, row, GLP_LO, N - 1, 0.0);
+      std::ostringstream os;
+      os << "n_" << N << "_of_" << nOfCount++;
+      glp_set_row_name(lp, row, os.str().c_str());
+
+      rows.push_back(row);
+      cols.push_back(colsToM.right.at(mIdx));
+      coeffs.push_back(-1.0);
+
+      for (auto idx : nOf.second) {
+        rows.push_back(row);
+        cols.push_back(colsToM.right.at(idx));
+        coeffs.push_back(1.0);
+      }
+    }
   }
 }; // namespace composition::graph
 } // namespace composition::graph

@@ -16,7 +16,7 @@ public:
   /**
    * Existing types of constraints
    */
-  enum class ConstraintType { CK_DEPENDENCY, CK_PRESENT, CK_PRESERVED, CK_TRUE };
+  enum class ConstraintType { CK_DEPENDENCY, CK_PRESENT, CK_PRESERVED, CK_TRUE, CK_N_OF };
 
 private:
   /**
