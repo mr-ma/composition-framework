@@ -19,10 +19,10 @@ using llvm::dbgs;
 
 class ILPSolver {
 private:
-  int EXPLICIT;
-  int IMPLICIT;
-  int HOTNESS;
-  int HOTNESS_PROTECTEE;
+  int EXPLICIT{};
+  int IMPLICIT{};
+  int HOTNESS{};
+  int HOTNESS_PROTECTEE{};
 
   glp_prob *lp;
   int cycleCount = 0;

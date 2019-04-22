@@ -152,8 +152,8 @@ std::pair<std::set<manifest_idx_t>, std::set<manifest_idx_t>> ILPSolver::run() {
     }
   }
 
-  uint64_t explicitInstructionCoverage = (uint64_t) glp_mip_row_val(lp, EXPLICIT);
-  uint64_t implicitInstructionCoverage = (uint64_t) glp_mip_row_val(lp, IMPLICIT);
+  auto explicitInstructionCoverage = (uint64_t) glp_mip_row_val(lp, EXPLICIT);
+  auto implicitInstructionCoverage = (uint64_t) glp_mip_row_val(lp, IMPLICIT);
   llvm::dbgs() << "explicit instruction coverage:" << explicitInstructionCoverage << " implicit instruction coverage:"
                << implicitInstructionCoverage << "\n";
   return {acceptedManifests, acceptedEdges};
