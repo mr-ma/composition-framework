@@ -408,7 +408,10 @@ void ProtectionGraph::removeManifest(manifest_idx_t m) {
       }
     }
     DependencyUndo.right.erase(current);
-    ManifestRegistry::Remove(MANIFESTS.at(current));
+    auto it = MANIFESTS.find(current);
+    if (it != MANIFESTS.end()) {
+      ManifestRegistry::Remove(it->second);
+    }
     MANIFESTS.erase(current);
   }
 }
@@ -543,8 +546,8 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
   // TODO: cStats.stats is not set at this point ----
   size_t TotalInstructions = cStats.stats.numberOfAllInstructions;
   llvm::dbgs() << "Total instruction:" << totalInstructions << "\n";
-  llvm::dbgs() << "DesiredImplicitCoverage:" << ILPImplicitBound<<"\n";
-  size_t implicitCoverageToInstruction = totalInstructions * ((double)ILPImplicitBound / 100.00);
+  llvm::dbgs() << "DesiredImplicitCoverage:" << ILPImplicitBound << "\n";
+  size_t implicitCoverageToInstruction = totalInstructions * ((double) ILPImplicitBound / 100.00);
   llvm::dbgs() << "Requested Implicit coverage of (instruction) " << implicitCoverageToInstruction << "\n";
 
   Profiler detectingProfiler{};
