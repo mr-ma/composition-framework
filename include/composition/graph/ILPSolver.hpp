@@ -250,7 +250,7 @@ public:
   void addNOfDependencies(std::vector<std::pair<manifest_idx_t,
                                                 std::pair<uint64_t, std::vector<manifest_idx_t>>>> nOfs) {
     for (auto[mIdx, nOf] : nOfs) {
-      auto N = std::min(nOf.first, nOf.second.size());
+      long N = std::min(nOf.first, nOf.second.size());
 
       // m1 cannot exist without m2 -> m2 - m1 >= 0 - hence m1 depends on m2
       for (auto idx : nOf.second) {
