@@ -18,13 +18,15 @@ extern llvm::cl::opt<std::string> PatchInfo;
 extern llvm::cl::opt<std::string> ILPProblem;
 extern llvm::cl::opt<std::string> ILPSolution;
 extern llvm::cl::opt<std::string> ILPSolutionReadable;
-
 /*
  * List of global variables which can be used to control the ILP
  */
-extern llvm::cl::opt<int> DesiredConnectivity;
-extern llvm::cl::opt<int> DesiredBlockConnectivity;
-extern llvm::cl::opt<int> DesiredImplicitCoverage;
+extern llvm::cl::opt<int> ILPExplicitBound;
+extern llvm::cl::opt<int> ILPImplicitBound;
+extern llvm::cl::opt<int> ILPConnectivityBound;
+extern llvm::cl::opt<int> ILPBlockConnectivityBound;
+extern llvm::cl::opt<int> ILPOverheadBound;
+extern llvm::cl::opt<std::string> ILPObjective;
 
 } // namespace composition::support
 #endif // COMPOSITION_FRAMEWORK_SUPPORT_OPTIONS_HPP

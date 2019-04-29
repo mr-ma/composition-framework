@@ -27,7 +27,7 @@ using composition::metric::ManifestStats;
 using llvm::dbgs;
 using llvm::dyn_cast;
 
-using composition::support::DesiredImplicitCoverage;
+using composition::support::ILPImplicitBound;
 
 ProtectionGraph::ProtectionGraph() {
   vertices = std::make_unique<lemon::ListDigraph::NodeMap<vertex_t>>(LG);
@@ -543,7 +543,8 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
   // TODO: cStats.stats is not set at this point ----
   size_t TotalInstructions = cStats.stats.numberOfAllInstructions;
   llvm::dbgs() << "Total instruction:" << totalInstructions << "\n";
-  size_t implicitCoverageToInstruction = totalInstructions * (DesiredImplicitCoverage / 100);
+  llvm::dbgs() << "DesiredImplicitCoverage:" << ILPImplicitBound<<"\n";
+  size_t implicitCoverageToInstruction = totalInstructions * ((double)ILPImplicitBound / 100.00);
   llvm::dbgs() << "Requested Implicit coverage of (instruction) " << implicitCoverageToInstruction << "\n";
 
   Profiler detectingProfiler{};

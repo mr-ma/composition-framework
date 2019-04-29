@@ -17,8 +17,8 @@ using composition::Manifest;
 using composition::manifest_idx_t;
 using composition::metric::ManifestStats;
 using llvm::dbgs;
-using composition::support::DesiredConnectivity;
-using composition::support::DesiredBlockConnectivity;
+using composition::support::ILPConnectivityBound;
+using composition::support::ILPBlockConnectivityBound;
 
 class ILPSolver {
 private:

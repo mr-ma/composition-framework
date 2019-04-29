@@ -99,14 +99,14 @@ void ILPSolver::addCycles(const std::set<std::set<manifest_idx_t>> &cycles) {
 void ILPSolver::addConnectivity(const std::set<std::set<manifest_idx_t>> &connectivities) {
   // Add connectivity
   for (auto &&c : connectivities) {
-    connectivity(c, DesiredConnectivity);
+    connectivity(c, ILPConnectivityBound);
   }
 }
 
 void ILPSolver::addBlockConnectivity(const std::set<std::set<manifest_idx_t>> &blockConnectivities) {
   // Add  blockConnectivity
   for (auto &&c : blockConnectivities) {
-    blockConnectivity(c, DesiredBlockConnectivity);
+    blockConnectivity(c, ILPBlockConnectivityBound);
   }
 }
 

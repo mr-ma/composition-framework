@@ -246,10 +246,13 @@ bool CompositionFrameworkPass::graphPass(llvm::Module &M) {
   size_t totalInstructions = 0;
   for (auto &F: sensitiveFunctions)
     totalInstructions += Coverage::ValueToInstructions(F).size();
-  dbgs() << "Running ILP\n on " << totalInstructions << "\n";
-  auto accepted = Graph->ilpConflictHandling(M, BFI, totalInstructions);
-  //auto accepted = Graph->randomConflictHandling(M);
-
+  std::set<Manifest *> accepted;
+  if(composition::support::UseStrategy.compare("ilp")==0) {
+     dbgs() << "Running ILP\n on " << totalInstructions << "\n";
+     accepted = Graph->ilpConflictHandling(M, BFI, totalInstructions);
+  } else {
+     accepted = Graph->randomConflictHandling(M);
+  }
   dbgs() << "Removing unselected manifests\n";
   // Just keep accepted manifests
   std::set<Manifest *> registered = ManifestRegistry::GetAll();

@@ -17,15 +17,23 @@ llvm::cl::opt<std::string> PatchInfo("cf-patchinfo", llvm::cl::init("cf-patchinf
 llvm::cl::opt<std::string> ILPProblem("cf-ilp-prob", llvm::cl::Hidden);
 llvm::cl::opt<std::string> ILPSolution("cf-ilp-sol", llvm::cl::Hidden);
 llvm::cl::opt<std::string> ILPSolutionReadable("cf-ilp-sol-readable", llvm::cl::Hidden);
+llvm::cl::opt<std::string> ILPObjective("cf-ilp-obj", llvm::cl::init("overhead"), llvm::cl::desc("ILP objective function choose between min 'overhead' (default),  max 'explicit', max 'implicit', max 'connectivity'"));
 
 /*
  * List of ILP options
  */
 
+//llvm::cl::opt<int>
+  //  ILPConnectivityBound("cf-ilp-connectivity", llvm::cl::init(2), llvm::cl::desc("Instruction Connectivity"));
 llvm::cl::opt<int>
-    DesiredConnectivity("cf-ilp-connectivity", llvm::cl::init(2), llvm::cl::desc("Instruction Connectivity"));
+    ILPBlockConnectivityBound("cf-ilp-blockconnectivity-bound", llvm::cl::init(1), llvm::cl::desc("Block Connectivity"));
 llvm::cl::opt<int>
-    DesiredBlockConnectivity("cf-ilp-blockconnectivity", llvm::cl::init(1), llvm::cl::desc("Block Connectivity"));
+    ILPImplicitBound("cf-ilp-implicit-bound", llvm::cl::init(1), llvm::cl::desc("Implicit Coverage"));
 llvm::cl::opt<int>
-    DesiredImplicitCoverage("cf-ilp-implicitcoverage", llvm::cl::init(1), llvm::cl::desc("Implicit Coverage"));
+    ILPConnectivityBound("cf-ilp-connectivity-bound", llvm::cl::init(2), llvm::cl::desc("Instruction Connectivity"));
+llvm::cl::opt<int>
+    ILPExplicitBound("cf-ilp-explicit-bound", llvm::cl::init(2), llvm::cl::desc("Explicit coverage constraint"));
+llvm::cl::opt<int>
+    ILPOverheadBound("cf-ilp-overhead-bound", llvm::cl::init(2), llvm::cl::desc("Overhead constraint"));
+
 } // namespace composition::support
