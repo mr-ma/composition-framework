@@ -27,7 +27,8 @@ private:
   int HOTNESS{};
   int HOTNESS_PROTECTEE{};
   int OVERHEAD{};
-  enum Modes { minOverhead, maxExplicit, maxImplicit, maxConnectivity };
+  int MANIFEST{};
+  enum Modes { minOverhead, maxExplicit, maxImplicit, maxConnectivity, maxManifest };
   Modes ObjectiveMode{};
   glp_prob* lp;
   int cycleCount = 0;
@@ -42,6 +43,7 @@ private:
   boost::bimaps::bimap<int, manifest_idx_t> colsToM{};
   boost::bimaps::bimap<int, manifest_idx_t> colsToE{};
   boost::bimaps::bimap<int, manifest_idx_t> colsToF{};
+  const std::string MANIFEST_OBJ = "manifest";
   const std::string OVERHEAD_OBJ = "overhead";
   const std::string EXPLICIT_OBJ = "explicit";
   const std::string IMPLICIT_OBJ = "implicit";
@@ -89,6 +91,8 @@ public:
       ObjectiveMode = maxImplicit;
     } else if (obj.compare(CONNECTIVITY_OBJ) == 0) {
       ObjectiveMode = maxConnectivity;
+    } else if (obj.compare(MANIFEST_OBJ) == 0) {
+      ObjectiveMode = maxManifest;
     } else {
       // default is minOverhead
       ObjectiveMode = minOverhead;
@@ -174,6 +178,8 @@ public:
       return overheadValue;
     case maxExplicit:
       return explicitValue;
+    case maxManifest:
+      return 1; //every manifest has weight of 1
     default:
       return 0;
       // TODO: case maxConnectivity:
@@ -223,6 +229,9 @@ public:
       objective = "max Connectivity. ";
       // TODO: print for connectivity
       break;
+    case maxManifest:
+      objective = "max manifest. ";
+      break;
     default:
       break;
     }
@@ -240,6 +249,10 @@ public:
       IMPLICIT = glp_add_rows(lp, 1);
       glp_set_row_name(lp, IMPLICIT, "implicit");                 // assigns name q to second row
       glp_set_row_bnds(lp, IMPLICIT, GLP_LO, implicitBound, 0.0); // 0 < implicit <= inf
+      
+      MANIFEST = glp_add_rows(lp, 1);
+      glp_set_row_name(lp, MANIFEST, "manifest");
+      glp_set_row_bnds(lp, MANIFEST, GLP_LO, 0.0, 0.0);
       break;
     case maxExplicit:
       // row 1
@@ -254,6 +267,9 @@ public:
       } else {
         glp_set_row_bnds(lp, OVERHEAD, GLP_LO, overheadBound,0); // 0 < overhead <= inf
       }
+      MANIFEST = glp_add_rows(lp, 1);
+      glp_set_row_name(lp, MANIFEST, "manifest");
+      glp_set_row_bnds(lp, MANIFEST, GLP_LO, 0.0, 0.0);
       break;
     case maxImplicit:
       // row 1
@@ -268,7 +284,29 @@ public:
       } else {
         glp_set_row_bnds(lp, OVERHEAD, GLP_LO, overheadBound,0); // 0 < overhead <= inf
       }
+      MANIFEST = glp_add_rows(lp, 1);
+      glp_set_row_name(lp, MANIFEST, "manifest");
+      glp_set_row_bnds(lp, MANIFEST, GLP_LO, 0.0, 0.0);
       break;
+    case maxManifest:
+      // row 1
+      EXPLICIT = glp_add_rows(lp, 1);
+      glp_set_row_name(lp, EXPLICIT, "explicit");                 // assigns name p to first row
+      glp_set_row_bnds(lp, EXPLICIT, GLP_LO, explicitBound, 0.0); // 0 < explicit <= inf
+      // row 2
+      IMPLICIT = glp_add_rows(lp, 1);
+      glp_set_row_name(lp, IMPLICIT, "implicit");                 // assigns name q to second row
+      glp_set_row_bnds(lp, IMPLICIT, GLP_LO, implicitBound, 0.0); // 0 < implicit <= inf
+      // row 3
+      OVERHEAD = glp_add_rows(lp, 1);
+      glp_set_row_name(lp, OVERHEAD, "overhead");                 // assigns name p to first row
+      if(overheadBound>0){
+        glp_set_row_bnds(lp, OVERHEAD, GLP_UP, 0.0, overheadBound); // 0 < overhead <= inf
+      } else {
+        glp_set_row_bnds(lp, OVERHEAD, GLP_LO, overheadBound,0); // 0 < overhead <= inf
+      }
+      break;
+ 
     case maxConnectivity:
       // TODO: maximize connectivity?
     default:
@@ -284,7 +322,7 @@ public:
     glp_set_row_bnds(lp, HOTNESS_PROTECTEE, GLP_LO, hotnessProtectee, 0.0); // 0 < unique <= inf
   }
   void addModeColumns(const int col, const double overheadValue, const int explicitValue, const int implicitValue,
-                      const double hotnessValue, const double blockHotnessValue) {
+                      const double hotnessValue, const double blockHotnessValue, const int manifestValue) {
    switch (ObjectiveMode) {
     case minOverhead:
       // explicit
@@ -292,14 +330,16 @@ public:
       cols.push_back(col);
       coeffs.push_back(explicitValue);
 
-      // manifest has no implicit coverage but edges do
       rows.push_back(IMPLICIT);
       cols.push_back(col);
       coeffs.push_back(implicitValue);
 
+      rows.push_back(MANIFEST);
+      cols.push_back(col);
+      coeffs.push_back(manifestValue);
+ 
       break;
     case maxExplicit:
-      // manifest has no implicit coverage but edges do
       rows.push_back(IMPLICIT);
       cols.push_back(col);
       coeffs.push_back(implicitValue);
@@ -307,6 +347,10 @@ public:
       rows.push_back(OVERHEAD);
       cols.push_back(col);
       coeffs.push_back(overheadValue);
+
+      rows.push_back(MANIFEST);
+      cols.push_back(col);
+      coeffs.push_back(manifestValue);
       break;
     case maxImplicit:
       // explicit
@@ -317,7 +361,27 @@ public:
       rows.push_back(OVERHEAD);
       cols.push_back(col);
       coeffs.push_back(overheadValue);
+
+      rows.push_back(MANIFEST);
+      cols.push_back(col);
+      coeffs.push_back(manifestValue);
       break;
+    case maxManifest:
+      // explicit
+      rows.push_back(EXPLICIT);
+      cols.push_back(col);
+      coeffs.push_back(explicitValue);
+
+      // manifest has no implicit coverage but edges do
+      rows.push_back(IMPLICIT);
+      cols.push_back(col);
+      coeffs.push_back(implicitValue);
+      // overhead
+      rows.push_back(OVERHEAD);
+      cols.push_back(col);
+      coeffs.push_back(overheadValue);
+      break;
+
     case maxConnectivity:
       // TODO: maximize connectivity?
     default:
@@ -353,7 +417,7 @@ public:
 
       colsToE.insert({col, eIdx});
 
-      addModeColumns(col, 0, 0, 0, 0, 0);
+      addModeColumns(col, 0, 0, 0, 0, 0,0);
     }
     //llvm::dbgs() << "Nr. Duplicate edges reported:" << duplicateEdgesOnManifest.size() << "\n";
     // Rows for duplicate edges with f variables
@@ -370,7 +434,7 @@ public:
       glp_set_obj_coef(lp, col, get_obj_coef_edge(coverage)); // TODO: f (edge duplicates) do not impose any costs
 
       colsToF.insert({col, mIdx});
-      addModeColumns(col, 0, 0, coverage, 0, 0);
+      addModeColumns(col, 0, 0, coverage, 0, 0,0);
     }
     // Add edge constraints, i.e. e = M1 && M2
     for (auto& [eIdx, pair, _] : implicitCov) {

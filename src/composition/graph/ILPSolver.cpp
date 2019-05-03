@@ -41,7 +41,7 @@ void ILPSolver::addManifests(const std::unordered_map<manifest_idx_t, Manifest*>
 
     colsToM.insert({col, m->index});
     // depending on the objective columns need to be added differently
-    addModeColumns(col, costFunction(stats[mIdx]) /*overhead*/, stats[mIdx].explicitC, 0 /*implicit(only edges)*/,stats[mIdx].hotness, stats[mIdx].hotnessProtectee);
+    addModeColumns(col, costFunction(stats[mIdx]) /*overhead*/, stats[mIdx].explicitC, 0 /*implicit(only edges)*/,stats[mIdx].hotness, stats[mIdx].hotnessProtectee, /*isManifest*/ 1);
   }
 }
 
