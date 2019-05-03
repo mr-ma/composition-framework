@@ -23,9 +23,9 @@ extern llvm::cl::opt<std::string> ILPSolutionReadable;
  */
 extern llvm::cl::opt<int> ILPExplicitBound;
 extern llvm::cl::opt<int> ILPImplicitBound;
-extern llvm::cl::opt<int> ILPConnectivityBound;
-extern llvm::cl::opt<int> ILPBlockConnectivityBound;
-extern llvm::cl::opt<int> ILPOverheadBound;
+extern llvm::cl::opt<double> ILPConnectivityBound;
+extern llvm::cl::opt<double> ILPBlockConnectivityBound;
+extern llvm::cl::opt<double> ILPOverheadBound;
 extern llvm::cl::opt<std::string> ILPObjective;
 
 } // namespace composition::support

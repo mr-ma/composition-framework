@@ -68,7 +68,7 @@ Stats::implictInstructionsPerEdge(
   llvm::dbgs() << "Graph Nodes\n";
   for (auto[idx, m] : MANIFESTS) {
     auto n = G.addNode();
-    m->dump();
+    //m->dump();
     auto mCov = m->Coverage();
     coverage[n] = std::unordered_set<llvm::Instruction *>(mCov.begin(), mCov.end());
 
@@ -79,7 +79,7 @@ Stats::implictInstructionsPerEdge(
   llvm::dbgs() << "Graph Edges\n";
   for (const auto &it : dep.left) {
     for (auto v : it.second) {
-      llvm::dbgs() << it.first << " - " << v << "\n";
+      //llvm::dbgs() << it.first << " - " << v << "\n";
       G.addArc(nodes.at(it.first), nodes.at(v));
     }
   }
@@ -126,10 +126,10 @@ Stats::implictInstructionsPerEdge(
 
   llvm::dbgs() << "Calc\n";
   for (auto n : sorted) {
-    llvm::dbgs() << "Node:" << indices[n] << '\n';
+    //llvm::dbgs() << "Node:" << indices[n] << '\n';
     for (lemon::ListDigraph::InArcIt e(G, n); e != lemon::INVALID; ++e) {
       auto other = G.source(e);
-      llvm::dbgs() << "Edge to Node:" << indices[other] << " coverage: " << coverage[other].size() << '\n';
+      //llvm::dbgs() << "Edge to Node:" << indices[other] << " coverage: " << coverage[other].size() << '\n';
       if (indices[other] == indices[n]) {
         llvm::dbgs() << "FOUND A SELF-EDGE " << "\n";
         exit(1);
@@ -139,11 +139,12 @@ Stats::implictInstructionsPerEdge(
       if (!edges.empty() && cov != coverage[other].size()) {
         llvm::dbgs() << "What's going on here, different coverage for the same manifest?\n";
         llvm::dbgs() << "Coverage protectee:" << coverage[other].size() << " previously captured:" << cov << "\n";
+        exit(1);
       }
       cov = coverage[other].size();
       //////START HERE THE EDGES DOES NOT MAINTAIN THE VALUES AFTER EACH INSERT? POINTER ISSUE??
       edges.insert(edgeIndex);
-      llvm::dbgs() << "Count of protecting edges for node " << indices[other] << " is " << edges.size() << "\n";
+      //llvm::dbgs() << "Count of protecting edges for node " << indices[other] << " is " << edges.size() << "\n";
       edgeIndex++;
 
       // coverage[n].insert(coverage[other].begin(), coverage[other].end());
@@ -174,7 +175,7 @@ Stats::implictInstructions(const ManifestProtectionMap &dep, std::unordered_map<
   llvm::dbgs() << "Graph Edges\n";
   for (const auto &it : dep.left) {
     for (auto v : it.second) {
-      llvm::dbgs() << it.first << " - " << v << "\n";
+      //llvm::dbgs() << it.first << " - " << v << "\n";
       G.addArc(nodes.at(it.first), nodes.at(v));
     }
   }
@@ -217,10 +218,10 @@ Stats::implictInstructions(const ManifestProtectionMap &dep, std::unordered_map<
 
   llvm::dbgs() << "Calc\n";
   for (auto n : sorted) {
-    llvm::dbgs() << "Node:" << G.id(n) << '\n';
+    //llvm::dbgs() << "Node:" << G.id(n) << '\n';
     for (lemon::ListDigraph::InArcIt e(G, n); e != lemon::INVALID; ++e) {
       auto other = G.source(e);
-      llvm::dbgs() << "Incoming Node:" << G.id(other) << " coverage: " << coverage[other].size() << '\n';
+      //llvm::dbgs() << "Incoming Node:" << G.id(other) << " coverage: " << coverage[other].size() << '\n';
       coverage[n].insert(coverage[other].begin(), coverage[other].end());
     }
   }
@@ -236,7 +237,7 @@ Stats::implictInstructions(const ManifestProtectionMap &dep, std::unordered_map<
 
     std::copy_if(coverage[n].begin(), coverage[n].end(), std::inserter(corrected, corrected.begin()),
                  [&own](llvm::Instruction *needle) { return own.find(needle) == own.end(); });
-    llvm::dbgs() << "coverage after copy_if:" << corrected.size() << "\n";
+    //llvm::dbgs() << "coverage after copy_if:" << corrected.size() << "\n";
     result.insert({MANIFESTS.at(indices[n]), corrected});
   }
 
@@ -284,11 +285,6 @@ void Stats::collect(const std::set<llvm::Instruction *> &allInstructions, std::v
   llvm::dbgs() << "Done\n";
 
   for (auto&[m, instr] : manifestImplicitlyCoveredInstructions) {
-    llvm::dbgs() << "implicitly covered instructions by manifest:" << instr.size() << "\n";
-    if (!instr.empty()) {
-      llvm::dbgs() << "FOUND IMPLICIT\n";
-    }
-
     implicitlyCoveredInstructions.insert(instr.begin(), instr.end());
     this->numberOfImplicitlyProtectedInstructions += instr.size();
   }

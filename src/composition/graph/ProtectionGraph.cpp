@@ -28,6 +28,9 @@ using llvm::dbgs;
 using llvm::dyn_cast;
 
 using composition::support::ILPImplicitBound;
+using composition::support::ILPExplicitBound;
+using composition::support::ILPOverheadBound;
+using composition::support::ILPObjective;
 
 ProtectionGraph::ProtectionGraph() {
   vertices = std::make_unique<lemon::ListDigraph::NodeMap<vertex_t>>(LG);
@@ -546,9 +549,10 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
   // TODO: cStats.stats is not set at this point ----
   size_t TotalInstructions = cStats.stats.numberOfAllInstructions;
   llvm::dbgs() << "Total instruction:" << totalInstructions << "\n";
-  llvm::dbgs() << "DesiredImplicitCoverage:" << ILPImplicitBound << "\n";
-  size_t implicitCoverageToInstruction = totalInstructions * ((double) ILPImplicitBound / 100.00);
-  llvm::dbgs() << "Requested Implicit coverage of (instruction) " << implicitCoverageToInstruction << "\n";
+  llvm::dbgs() << "ILPImplicitBound:" << ILPImplicitBound << "\n";
+  //llvm::dbgs() << "PercentageImplicitBound:" << ILPPercentageImplicitBound << "\n";
+  //size_t implicitCoverageToInstruction = totalInstructions * ((double) ILPPercentageImplicitBound / 100.00);
+  //llvm::dbgs() << "Requested Implicit coverage of (instruction) " << implicitCoverageToInstruction << "\n";
 
   Profiler detectingProfiler{};
   auto conflicts = vertexConflicts();
@@ -613,7 +617,7 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
   };
   do {
     ILPSolver solver{};
-    solver.init(0, implicitCoverageToInstruction, 0, 0);
+    solver.init(ILPObjective, ILPOverheadBound, ILPExplicitBound, ILPImplicitBound, 0, 0);
     solver.setCostFunction(costFunction);
     solver.addManifests(MANIFESTS, mStats);
     solver.addDependencies(dependencies);
@@ -629,13 +633,11 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
     std::set<Manifest *> accepted{};
     for (auto &mIdx : acceptedIndices) {
       accepted.insert(MANIFESTS.at(mIdx));
-      // TODO: calculate implicit coverage based on the accepted edges
     }
-    for (auto &eIdx : acceptedEdges) {
-      // accepted.insert(MANIFESTS.at(mIdx));
-      // TODO: calculate implicit coverage based on the accepted edges
-      llvm::dbgs() << "accepted edge" << eIdx << "\n";
-    }
+    //for (auto &eIdx : acceptedEdges) {
+      //// TODO: calculate implicit coverage based on the accepted edges
+      //llvm::dbgs() << "accepted edge" << eIdx << "\n";
+    //}
 
     ProtectionGraph pg{};
     pg.addManifests(accepted);

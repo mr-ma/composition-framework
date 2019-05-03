@@ -4,21 +4,21 @@
 #include <boost/bimap/bimap.hpp>
 #include <composition/Manifest.hpp>
 #include <composition/metric/ManifestStats.hpp>
+#include <composition/support/options.hpp>
 #include <functional>
 #include <glpk.h>
 #include <llvm/Support/Debug.h>
 #include <map>
 #include <set>
 #include <vector>
-#include <composition/support/options.hpp>
 
 namespace composition::graph {
 using composition::Manifest;
 using composition::manifest_idx_t;
 using composition::metric::ManifestStats;
-using llvm::dbgs;
-using composition::support::ILPConnectivityBound;
 using composition::support::ILPBlockConnectivityBound;
+using composition::support::ILPConnectivityBound;
+using llvm::dbgs;
 
 class ILPSolver {
 private:
@@ -26,8 +26,10 @@ private:
   int IMPLICIT{};
   int HOTNESS{};
   int HOTNESS_PROTECTEE{};
-
-  glp_prob *lp;
+  int OVERHEAD{};
+  enum Modes { minOverhead, maxExplicit, maxImplicit, maxConnectivity };
+  Modes ObjectiveMode{};
+  glp_prob* lp;
   int cycleCount = 0;
   int connectivityCount = 0;
   int blockConnectivityCount = 0;
@@ -40,6 +42,11 @@ private:
   boost::bimaps::bimap<int, manifest_idx_t> colsToM{};
   boost::bimaps::bimap<int, manifest_idx_t> colsToE{};
   boost::bimaps::bimap<int, manifest_idx_t> colsToF{};
+  const std::string OVERHEAD_OBJ = "overhead";
+  const std::string EXPLICIT_OBJ = "explicit";
+  const std::string IMPLICIT_OBJ = "implicit";
+  const std::string CONNECTIVITY_OBJ = "connectivity";
+
 public:
   ILPSolver();
 
@@ -47,20 +54,21 @@ public:
 
   void destroy();
 
-  void init(int explicitCov, int implicitCov, double hotness, double hotnessProtectee);
+  void init(std::string objective, double overheadBound, int explicitCov, int implicitCov, double hotness,
+            double hotnessProtectee);
 
-  void addManifests(const std::unordered_map<manifest_idx_t, Manifest *> &manifests,
+  void addManifests(const std::unordered_map<manifest_idx_t, Manifest*>& manifests,
                     std::map<manifest_idx_t, ManifestStats> stats);
 
-  void addDependencies(const std::set<std::pair<manifest_idx_t, manifest_idx_t>> &dependencies);
+  void addDependencies(const std::set<std::pair<manifest_idx_t, manifest_idx_t>>& dependencies);
 
-  void addConflicts(const std::set<std::pair<manifest_idx_t, manifest_idx_t>> &conflicts);
+  void addConflicts(const std::set<std::pair<manifest_idx_t, manifest_idx_t>>& conflicts);
 
-  void addCycles(const std::set<std::set<manifest_idx_t>> &cycles);
+  void addCycles(const std::set<std::set<manifest_idx_t>>& cycles);
 
-  void addConnectivity(const std::set<std::set<manifest_idx_t>> &connectivities);
+  void addConnectivity(const std::set<std::set<manifest_idx_t>>& connectivities);
 
-  void addBlockConnectivity(const std::set<std::set<manifest_idx_t>> &blockConnectivities);
+  void addBlockConnectivity(const std::set<std::set<manifest_idx_t>>& blockConnectivities);
 
   void setCostFunction(std::function<double(ManifestStats)> f) { this->costFunction = f; }
 
@@ -70,7 +78,22 @@ public:
 
   void dependency(std::pair<manifest_idx_t, manifest_idx_t> pair);
 
-  void cycle(const std::set<manifest_idx_t> &ms);
+  void cycle(const std::set<manifest_idx_t>& ms);
+
+  void setMode(const std::string obj) {
+    if (obj.compare(OVERHEAD_OBJ) == 0) {
+      ObjectiveMode = minOverhead;
+    } else if (obj.compare(EXPLICIT_OBJ) == 0) {
+      ObjectiveMode = maxExplicit;
+    } else if (obj.compare(IMPLICIT_OBJ) == 0) {
+      ObjectiveMode = maxImplicit;
+    } else if (obj.compare(CONNECTIVITY_OBJ) == 0) {
+      ObjectiveMode = maxConnectivity;
+    } else {
+      // default is minOverhead
+      ObjectiveMode = minOverhead;
+    }
+  }
 
   void edgeConnection(manifest_idx_t edgeInx, std::pair<manifest_idx_t, manifest_idx_t> pair) {
     // e0 depends on m1 and m2; 0 <= m1 + m2 -2 e0 <= 1
@@ -98,8 +121,8 @@ public:
     auto row = glp_add_rows(lp, 1);
     glp_set_row_bnds(lp, row, GLP_DB, 0.0, std::max(size_t(1), edgeDuplicates.size() - 1));
     std::ostringstream os;
-    os << "f" << fInx;//<< "_" << edgeDuplicates.size();
-    for (auto edgeIndex :edgeDuplicates) {
+    os << "f" << fInx; //<< "_" << edgeDuplicates.size();
+    for (auto edgeIndex : edgeDuplicates) {
       os << "_" << edgeIndex;
     }
     glp_set_row_name(lp, row, os.str().c_str());
@@ -109,21 +132,21 @@ public:
     coeffs.push_back(
         std::max(size_t(2), edgeDuplicates.size())); // even when there is one edge f need to have a coefficent 2
 
-    llvm::dbgs() << "Duplicates edges covering manifest " << fInx << ":\n";
+    //llvm::dbgs() << "Duplicates edges covering manifest " << fInx << ":\n";
     for (auto edgeIndex : edgeDuplicates) {
-      llvm::dbgs() << edgeIndex << ",";
+      //llvm::dbgs() << edgeIndex << ",";
       rows.push_back(row);
       cols.push_back(colsToE.right.at(edgeIndex));
       coeffs.push_back(-1.0);
     }
-    llvm::dbgs() << "\n";
+    //llvm::dbgs() << "\n";
   }
 
   void implicitCoverageConstraint(
       manifest_idx_t fIndex,
       std::vector<std::tuple<manifest_idx_t /*edge_index*/, std::pair<manifest_idx_t, manifest_idx_t> /*m1 -> m2*/,
                              unsigned long /*coverage*/>>
-      implicitCov,
+          implicitCov,
       double targetCoverage) {
     // e1..eN indicate implicit coverage edges
     auto row = glp_add_rows(lp, 1);
@@ -132,26 +155,193 @@ public:
     os << "implicit_requirement_" << 0;
     glp_set_row_name(lp, row, os.str().c_str());
 
-    for (auto[fIndex, _, coverage] : implicitCov) {
+    for (auto [fIndex, _, coverage] : implicitCov) {
       rows.push_back(row);
       cols.push_back(colsToF.right.at(fIndex));
       coeffs.push_back(coverage);
     }
   }
 
-  void connectivity(const std::set<manifest_idx_t> &ms, size_t targetConnectivity);
+  void connectivity(const std::set<manifest_idx_t>& ms, double targetConnectivity);
 
-  void blockConnectivity(const std::set<manifest_idx_t> &ms, size_t targetBlockConnectivity);
+  void blockConnectivity(const std::set<manifest_idx_t>& ms, double targetBlockConnectivity);
 
-  void addImplicitCoverage(std::vector<std::tuple<composition::manifest_idx_t,
-                                                  std::pair<composition::manifest_idx_t, composition::manifest_idx_t>,
-                                                  long unsigned int>> implicitCov,
-                           std::map<composition::manifest_idx_t,
-                                    std::pair<std::set<composition::manifest_idx_t>,
-                                              long unsigned int>> duplicateEdgesOnManifest) {
+  double get_obj_coef_manifest(double overheadValue,int explicitValue) {
+    //this is only called for manifests and thus no implicit value is needed, 
+    //implicit values are only on edges not manifests!
+    switch (ObjectiveMode) {
+    case minOverhead:
+      return overheadValue;
+    case maxExplicit:
+      return explicitValue;
+    default:
+      return 0;
+      // TODO: case maxConnectivity:
+      // return connectivity is not a column yet!
+    }
+  }
+  double get_obj_coef_edge(long unsigned int coverage) {
+    switch (ObjectiveMode) {
+    case maxImplicit:
+      return coverage;
+    default:
+      return 0;
+    }
+  }
+  int get_obj_dir() {
+    switch (ObjectiveMode) {
+    case minOverhead:
+      return GLP_MIN;
+    default:
+      return GLP_MAX;
+    }
+  }
+  void printModeILPResults() {
+    std::string objective = "";
+    uint64_t explicit_re, implicit_re = 0;
+    double overhead_re, connectivity = 0.0;
+    switch (ObjectiveMode) {
+    case minOverhead:
+      objective = "min Overhead. ";
+      explicit_re = (uint64_t)glp_mip_row_val(lp, EXPLICIT);
+      implicit_re = (uint64_t)glp_mip_row_val(lp, IMPLICIT);
+      overhead_re = (double)glp_mip_obj_val(lp);
+      break;
+    case maxExplicit:
+      objective = "max Explicit. ";
+      explicit_re = (uint64_t)glp_mip_obj_val(lp);
+      implicit_re = (uint64_t)glp_mip_row_val(lp, IMPLICIT);
+      overhead_re = (double)glp_mip_row_val(lp, OVERHEAD);
+      break;
+    case maxImplicit:
+      objective = "max Implicit. ";
+      explicit_re = (uint64_t)glp_mip_row_val(lp, EXPLICIT);
+      overhead_re = (double)glp_mip_row_val(lp, OVERHEAD);
+      implicit_re = (uint64_t)glp_mip_obj_val(lp);
+      break;
+    case maxConnectivity:
+      objective = "max Connectivity. ";
+      // TODO: print for connectivity
+      break;
+    default:
+      break;
+    }
+
+    llvm::dbgs() <<"ILP resuls. "<< objective << " overhead: " << overhead_re << " explicit instruction coverage: " << explicit_re<< " implicit instruction coverage: " << implicit_re << "\n";
+  }
+  void addModeRows(double overheadBound, int explicitBound, int implicitBound, double hotness, double hotnessProtectee) {
+    switch (ObjectiveMode) {
+    case minOverhead:
+      // row 1
+      EXPLICIT = glp_add_rows(lp, 1);
+      glp_set_row_name(lp, EXPLICIT, "explicit");                 // assigns name p to first row
+      glp_set_row_bnds(lp, EXPLICIT, GLP_LO, explicitBound, 0.0); // 0 < explicit <= inf
+      // row 2
+      IMPLICIT = glp_add_rows(lp, 1);
+      glp_set_row_name(lp, IMPLICIT, "implicit");                 // assigns name q to second row
+      glp_set_row_bnds(lp, IMPLICIT, GLP_LO, implicitBound, 0.0); // 0 < implicit <= inf
+      break;
+    case maxExplicit:
+      // row 1
+      IMPLICIT = glp_add_rows(lp, 1);
+      glp_set_row_name(lp, IMPLICIT, "implicit");                 // assigns name q to second row
+      glp_set_row_bnds(lp, IMPLICIT, GLP_LO, implicitBound, 0.0); // 0 < implicit <= inf
+      //row 2
+      OVERHEAD = glp_add_rows(lp, 1);
+      glp_set_row_name(lp, OVERHEAD, "overhead");                 // assigns name p to first row
+      if(overheadBound>0){
+        glp_set_row_bnds(lp, OVERHEAD, GLP_UP, 0.0, overheadBound); // 0 < overhead <= inf
+      } else {
+        glp_set_row_bnds(lp, OVERHEAD, GLP_LO, overheadBound,0); // 0 < overhead <= inf
+      }
+      break;
+    case maxImplicit:
+      // row 1
+      EXPLICIT = glp_add_rows(lp, 1);
+      glp_set_row_name(lp, EXPLICIT, "explicit");                 // assigns name p to first row
+      glp_set_row_bnds(lp, EXPLICIT, GLP_LO, explicitBound, 0.0); // 0 < explicit <= inf
+      // row 2
+      OVERHEAD = glp_add_rows(lp, 1);
+      glp_set_row_name(lp, OVERHEAD, "overhead");                 // assigns name p to first row
+      if(overheadBound>0){
+        glp_set_row_bnds(lp, OVERHEAD, GLP_UP, 0.0, overheadBound); // 0 < overhead <= inf
+      } else {
+        glp_set_row_bnds(lp, OVERHEAD, GLP_LO, overheadBound,0); // 0 < overhead <= inf
+      }
+      break;
+    case maxConnectivity:
+      // TODO: maximize connectivity?
+    default:
+      break;
+    }
+    // row 3
+    HOTNESS = glp_add_rows(lp, 1);
+    glp_set_row_name(lp, HOTNESS, "hotness");            // assigns name q to second row
+    glp_set_row_bnds(lp, HOTNESS, GLP_LO, hotness, 0.0); // 0 < unique <= inf
+    // row 4
+    HOTNESS_PROTECTEE = glp_add_rows(lp, 1);
+    glp_set_row_name(lp, HOTNESS_PROTECTEE, "hotnessProtectee");            // assigns name q to second row
+    glp_set_row_bnds(lp, HOTNESS_PROTECTEE, GLP_LO, hotnessProtectee, 0.0); // 0 < unique <= inf
+  }
+  void addModeColumns(const int col, const double overheadValue, const int explicitValue, const int implicitValue,
+                      const double hotnessValue, const double blockHotnessValue) {
+   switch (ObjectiveMode) {
+    case minOverhead:
+      // explicit
+      rows.push_back(EXPLICIT);
+      cols.push_back(col);
+      coeffs.push_back(explicitValue);
+
+      // manifest has no implicit coverage but edges do
+      rows.push_back(IMPLICIT);
+      cols.push_back(col);
+      coeffs.push_back(implicitValue);
+
+      break;
+    case maxExplicit:
+      // manifest has no implicit coverage but edges do
+      rows.push_back(IMPLICIT);
+      cols.push_back(col);
+      coeffs.push_back(implicitValue);
+      // overhead
+      rows.push_back(OVERHEAD);
+      cols.push_back(col);
+      coeffs.push_back(overheadValue);
+      break;
+    case maxImplicit:
+      // explicit
+      rows.push_back(EXPLICIT);
+      cols.push_back(col);
+      coeffs.push_back(explicitValue);
+      // overhead
+      rows.push_back(OVERHEAD);
+      cols.push_back(col);
+      coeffs.push_back(overheadValue);
+      break;
+    case maxConnectivity:
+      // TODO: maximize connectivity?
+    default:
+      break;
+    }
+    // hotness
+    rows.push_back(HOTNESS);
+    cols.push_back(col);
+    coeffs.push_back(hotnessValue);
+
+    // hotnessProtectee
+    rows.push_back(HOTNESS_PROTECTEE);
+    cols.push_back(col);
+    coeffs.push_back(blockHotnessValue);
+ }
+  void addImplicitCoverage(
+      std::vector<std::tuple<composition::manifest_idx_t,
+                             std::pair<composition::manifest_idx_t, composition::manifest_idx_t>, long unsigned int>>
+          implicitCov,
+      std::map<composition::manifest_idx_t, std::pair<std::set<composition::manifest_idx_t>, long unsigned int>>
+          duplicateEdgesOnManifest) {
     // TODO: ensure setting the cost column to zero does not negatively affect the optimization
-    for (auto&[eIdx, pair, coverage] : implicitCov) {
-      llvm::dbgs() << "edge" << eIdx << "_" << pair.first << "_" << pair.second << "\n";
+    for (auto& [eIdx, pair, coverage] : implicitCov) {
+      //llvm::dbgs() << "edge" << eIdx << "_" << pair.first << "_" << pair.second << "\n";
       std::ostringstream os;
       os << "e" << eIdx;
       auto col = glp_add_cols(lp, 1);
@@ -163,83 +353,32 @@ public:
 
       colsToE.insert({col, eIdx});
 
-      // explicit
-      rows.push_back(EXPLICIT);
-      cols.push_back(col);
-      coeffs.push_back(0); // Edges have no explicit coverage
-
-      // implicit
-      rows.push_back(IMPLICIT);
-      cols.push_back(col);
-      coeffs.push_back(0); // Edges have no implicit coverage, f represents such coverages
-
-      // hotness
-      rows.push_back(HOTNESS);
-      cols.push_back(col);
-      coeffs.push_back(0); // edges have no hotness
-
-      // hotnessProtectee
-      rows.push_back(HOTNESS_PROTECTEE);
-      cols.push_back(col);
-      coeffs.push_back(0); // edges have no protectee hotness
+      addModeColumns(col, 0, 0, 0, 0, 0);
     }
-    llvm::dbgs() << "Nr. Duplicate edges reported:" << duplicateEdgesOnManifest.size() << "\n";
+    //llvm::dbgs() << "Nr. Duplicate edges reported:" << duplicateEdgesOnManifest.size() << "\n";
     // Rows for duplicate edges with f variables
-    for (auto&[mIdx, edgecov] : duplicateEdgesOnManifest) {
-      auto &[edges, coverage] = edgecov;
-      llvm::dbgs() << "f" << mIdx;
+    for (auto& [mIdx, edgecov] : duplicateEdgesOnManifest) {
+      auto& [edges, coverage] = edgecov;
+      //llvm::dbgs() << "f" << mIdx;
       std::ostringstream os;
       os << "f" << mIdx;
-      /*for (auto& edge : edges) {
-        os << "_" << edge;
-        llvm::dbgs() << "_" << edge;
-      }
-      llvm::dbgs() << "\n";
-      */auto col = glp_add_cols(lp, 1);
+      auto col = glp_add_cols(lp, 1);
       glp_set_col_name(lp, col, os.str().c_str()); // assigns name m_n to nth column
 
-      glp_set_col_kind(lp, col, GLP_BV);           // values are binary
-      glp_set_col_bnds(lp, col, GLP_DB, 0.0, 1.0); // values are binary
-      glp_set_obj_coef(lp, col, 0);                // TODO: f (edge duplicates) do not impose any costs
+      glp_set_col_kind(lp, col, GLP_BV);                      // values are binary
+      glp_set_col_bnds(lp, col, GLP_DB, 0.0, 1.0);            // values are binary
+      glp_set_obj_coef(lp, col, get_obj_coef_edge(coverage)); // TODO: f (edge duplicates) do not impose any costs
 
       colsToF.insert({col, mIdx});
-
-      // explicit
-      rows.push_back(EXPLICIT);
-      cols.push_back(col);
-      coeffs.push_back(0); // Edges have no explicit coverage
-
-      // implicit
-      rows.push_back(IMPLICIT);
-      cols.push_back(col);
-      /*auto item =
-          std::find_if(begin(implicitCov), end(implicitCov), [&mIdx](const auto& e) { return std::get<0>(e) == mIdx; });
-      if(item != implicitCov.end()){
-	auto &[itemid,manifestmap,coverage] = *item;
-        coeffs.push_back(coverage); // TODO: fix implicit value
-	llvm::dbgs() << "TEST:"<<mIdx<<"   "<<itemid << "   "<<coverage<<"\n";
-      }else
-	coeffs.push_back(0);
-*/
-      coeffs.push_back(coverage);
-
-      // hotness
-      rows.push_back(HOTNESS);
-      cols.push_back(col);
-      coeffs.push_back(0); // edges have no hotness
-
-      // hotnessProtectee
-      rows.push_back(HOTNESS_PROTECTEE);
-      cols.push_back(col);
-      coeffs.push_back(0); // edges have no protectee hotness
+      addModeColumns(col, 0, 0, coverage, 0, 0);
     }
     // Add edge constraints, i.e. e = M1 && M2
-    for (auto&[eIdx, pair, _] : implicitCov) {
+    for (auto& [eIdx, pair, _] : implicitCov) {
       edgeConnection(eIdx, pair);
     }
 
     // Add duplicate edge constaints, i.e. f = dup_e1 || dup_e2 || dup_e3
-    for (auto&[mIdx, edges] : duplicateEdgesOnManifest) {
+    for (auto& [mIdx, edges] : duplicateEdgesOnManifest) {
       duplicateImplicitEdge(mIdx, edges.first);
     }
 
@@ -247,9 +386,9 @@ public:
     // implicitCoverageConstraint(implicitCoverageToInstruction, implicitCov, 0.0);
   }
 
-  void addNOfDependencies(std::vector<std::pair<manifest_idx_t,
-                                                std::pair<uint64_t, std::vector<manifest_idx_t>>>> nOfs) {
-    for (auto[mIdx, nOf] : nOfs) {
+  void
+  addNOfDependencies(std::vector<std::pair<manifest_idx_t, std::pair<uint64_t, std::vector<manifest_idx_t>>>> nOfs) {
+    for (auto [mIdx, nOf] : nOfs) {
       long N = std::min(nOf.first, nOf.second.size());
 
       // m1 cannot exist without m2 -> m2 - m1 >= 0 - hence m1 depends on m2
