@@ -86,10 +86,10 @@ void ILPSolver::addBlockConnectivity(const std::set<std::set<manifest_idx_t>> &b
   }
 }
 
-void ILPSolver::addExplicitCoverages(const std::set<std::set<manifest_idx_t>> &coverage) {
+void ILPSolver::addExplicitCoverages(const std::map<llvm::Instruction *, std::set<manifest_idx_t>> &coverage) {
   // Add explicit coverage
-  for (auto &&c : coverage) {
-    explicitCoverage(c);
+  for (auto &[I, c] : coverage) {
+    explicitCoverage(I, c);
   }
 }
 
@@ -118,9 +118,9 @@ std::pair<std::set<manifest_idx_t>, std::set<manifest_idx_t>> ILPSolver::run() {
 
   glp_iocp params{};
   glp_init_iocp(&params);
-  
+
   params.gmi_cuts = GLP_ON;
-  params.br_tech = GLP_BT_BPH;
+  params.br_tech = GLP_BR_PCH;
 
   glp_simplex(lp, nullptr); // calls the routine glp_simplex to solve LP problem
   glp_intopt(lp, &params);
@@ -234,17 +234,19 @@ void ILPSolver::blockConnectivity(const std::set<manifest_idx_t> &ms, double tar
   }
 }
 
-void ILPSolver::explicitCoverage(const std::set<manifest_idx_t> &ms) {
+void ILPSolver::explicitCoverage(llvm::Instruction *I, const std::set<manifest_idx_t> &ms) {
   //
 
   std::ostringstream os;
   os << "i" << instructionCount++;
 
   auto col = glp_add_cols(lp, 1);
+  ItoCols.insert({I, col});
+
   glp_set_col_name(lp, col, os.str().c_str()); // assigns name m_n to nth column
   glp_set_col_kind(lp, col, GLP_BV);                      // values are binary
   glp_set_col_bnds(lp, col, GLP_DB, 0.0, 1.0);            // values are binary
-  glp_set_obj_coef(lp, col, get_obj_coef_edge(1));
+  glp_set_obj_coef(lp, col, 1.0);
 
   // any of m1...mN if c
   auto orRow = glp_add_rows(lp, 1);
@@ -260,6 +262,58 @@ void ILPSolver::explicitCoverage(const std::set<manifest_idx_t> &ms) {
     rows.push_back(orRow);
     cols.push_back(colsToM.right.at(m));
     coeffs.push_back(-1.0);
+  }
+
+}
+
+void ILPSolver::addUndoDependencies(const std::unordered_map<manifest_idx_t, Manifest *> &manifests) {
+  llvm::dbgs() << "Size: " << ItoCols.size() << "\n";
+  for (auto[idx, m] : manifests) {
+    for (auto v : m->UndoValues()) {
+      if (auto I = llvm::dyn_cast<llvm::Instruction>(v)) {
+        // m1 <=> i1
+        auto it = ItoCols.find(I);
+        if (it == ItoCols.end()) {
+          continue;
+        }
+        auto iCol = it->second;
+        auto mCol = colsToM.right.at(idx);
+
+        // (1) m1 >= i1
+        {
+          auto row = glp_add_rows(lp, 1);
+          glp_set_row_bnds(lp, row, GLP_LO, 0.0, 0.0);
+
+          std::ostringstream os;
+          os << "undo_m" << idx << "_i" << iCol;
+          glp_set_row_name(lp, row, os.str().c_str());
+
+          rows.push_back(row);
+          cols.push_back(iCol);
+          coeffs.push_back(-1.0);
+
+          rows.push_back(row);
+          cols.push_back(mCol);
+          coeffs.push_back(1.0);
+        }
+        {
+          auto row = glp_add_rows(lp, 1);
+          glp_set_row_bnds(lp, row, GLP_LO, 0.0, 0.0);
+
+          std::ostringstream os;
+          os << "undo_i" << iCol << "_m" << idx;
+          glp_set_row_name(lp, row, os.str().c_str());
+
+          rows.push_back(row);
+          cols.push_back(iCol);
+          coeffs.push_back(1.0);
+
+          rows.push_back(row);
+          cols.push_back(mCol);
+          coeffs.push_back(-1.0);
+        }
+      }
+    }
   }
 
 }

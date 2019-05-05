@@ -44,6 +44,7 @@ private:
   boost::bimaps::bimap<int, manifest_idx_t> colsToM{};
   boost::bimaps::bimap<int, manifest_idx_t> colsToE{};
   boost::bimaps::bimap<int, manifest_idx_t> colsToF{};
+  std::unordered_map<llvm::Instruction *, int> ItoCols{};
   const std::string MANIFEST_OBJ = "manifest";
   const std::string OVERHEAD_OBJ = "overhead";
   const std::string EXPLICIT_OBJ = "explicit";
@@ -73,7 +74,9 @@ public:
 
   void addBlockConnectivity(const std::set<std::set<manifest_idx_t>> &blockConnectivities);
 
-  void addExplicitCoverages(const std::set<std::set<manifest_idx_t>> &coverage);
+  void addExplicitCoverages(const std::map<llvm::Instruction *, std::set<manifest_idx_t>> &coverage);
+
+  void addUndoDependencies(const std::unordered_map<manifest_idx_t, Manifest *> &manifests);
 
   void setCostFunction(std::function<double(ManifestStats)> f) { this->costFunction = f; }
 
@@ -153,7 +156,7 @@ public:
 
   void blockConnectivity(const std::set<manifest_idx_t> &ms, double targetBlockConnectivity);
 
-  void explicitCoverage(const std::set<manifest_idx_t> &ms);
+  void explicitCoverage(llvm::Instruction* I, const std::set<manifest_idx_t> &ms);
 
   double get_obj_coef_manifest(double overheadValue) {
     //this is only called for manifests and thus no implicit/explicit value is needed,
@@ -169,7 +172,6 @@ public:
   double get_obj_coef_edge(long unsigned int coverage) {
     switch (ObjectiveMode) {
     case maxImplicit:return coverage;
-    case maxExplicit:return coverage;
     default:return 0;
     }
   }
@@ -317,7 +319,9 @@ public:
       coeffs.push_back(manifestValue);
 
       break;
-    case maxExplicit:rows.push_back(IMPLICIT);
+    case maxExplicit:
+      // implicit
+      rows.push_back(IMPLICIT);
       cols.push_back(col);
       coeffs.push_back(implicitValue);
       // overhead

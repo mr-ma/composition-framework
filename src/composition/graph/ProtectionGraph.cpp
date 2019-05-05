@@ -326,7 +326,7 @@ std::set<std::set<manifest_idx_t>> ProtectionGraph::computeCycles() {
   return cycles;
 }
 
-std::set<std::set<manifest_idx_t>> ProtectionGraph::computeConnectivity(llvm::Module &M) {
+std::map<llvm::Instruction *, std::set<manifest_idx_t>> ProtectionGraph::computeExactCoverage(llvm::Module &M) {
   std::map<llvm::Instruction *, std::set<manifest_idx_t>> mapping{};
 
   for (auto&[mIdx, m] : MANIFESTS) {
@@ -335,6 +335,11 @@ std::set<std::set<manifest_idx_t>> ProtectionGraph::computeConnectivity(llvm::Mo
     }
   }
 
+  return mapping;
+}
+
+std::set<std::set<manifest_idx_t>> ProtectionGraph::computeConnectivity(const std::map<llvm::Instruction *,
+                                                                                 std::set<manifest_idx_t>> &mapping) {
   std::set<std::set<manifest_idx_t>> result{};
   for (auto&[I, mapped] : mapping) {
     result.insert(mapped);
@@ -516,7 +521,8 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
   auto dependencies = computeDependencies();
   cStats.timeConflictDetection += detectingProfiler.stop();
   auto cycles = computeCycles();
-  auto connectivities = computeConnectivity(M);
+  auto exactCoverage = computeExactCoverage(M);
+  auto connectivities = computeConnectivity(exactCoverage);
   auto blockConnectivities = computeBlockConnectivity(M);
 
   // Sanity check
@@ -582,9 +588,12 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
     solver.addCycles(cycles);
     solver.addConnectivity(connectivities);
     solver.addBlockConnectivity(blockConnectivities);
-    solver.addExplicitCoverages(connectivities);
+    solver.addExplicitCoverages(exactCoverage);
     solver.addImplicitCoverage(implicitCov, duplicateEdgesOnManifest);
     solver.addNOfDependencies(nOfs);
+
+    // Must come after explicit coverage is set
+    solver.addUndoDependencies(MANIFESTS);
     auto[acceptedIndices, acceptedEdges] = solver.run();
     solver.destroy();
 
@@ -593,8 +602,8 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
       accepted.insert(MANIFESTS.at(mIdx));
     }
     //for (auto &eIdx : acceptedEdges) {
-      //// TODO: calculate implicit coverage based on the accepted edges
-      //llvm::dbgs() << "accepted edge" << eIdx << "\n";
+    //// TODO: calculate implicit coverage based on the accepted edges
+    //llvm::dbgs() << "accepted edge" << eIdx << "\n";
     //}
 
     ProtectionGraph pg{};

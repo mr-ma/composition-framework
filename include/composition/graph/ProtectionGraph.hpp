@@ -188,7 +188,8 @@ public:
   std::set<std::pair<manifest_idx_t, manifest_idx_t>> vertexConflicts();
   std::set<std::pair<manifest_idx_t, manifest_idx_t>> computeDependencies();
   std::set<std::set<manifest_idx_t>> computeCycles();
-  std::set<std::set<manifest_idx_t>> computeConnectivity(llvm::Module &M);
+  std::map<llvm::Instruction *, std::set<manifest_idx_t>> computeExactCoverage(llvm::Module &M);
+  std::set<std::set<manifest_idx_t>> computeConnectivity(const std::map<llvm::Instruction *, std::set<manifest_idx_t>> &mapping);
   std::set<std::set<manifest_idx_t>> computeBlockConnectivity(llvm::Module &M);
 
   /**
