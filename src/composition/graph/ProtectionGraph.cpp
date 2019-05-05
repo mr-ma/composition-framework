@@ -474,49 +474,6 @@ std::set<Manifest *> ProtectionGraph::randomConflictHandling(llvm::Module &M) {
   return accepted;
 }
 
-std::unordered_set<llvm::Instruction *>
-implictInstructions(manifest_idx_t idx, const ManifestProtectionMap &dep,
-                    const std::map<manifest_idx_t, std::set<llvm::Instruction *>> &coverageCache) {
-
-  std::unordered_set<manifest_idx_t> flatDeps{};
-
-  std::unordered_set<manifest_idx_t> seen{};
-  std::queue<manifest_idx_t> q{};
-
-  for (auto[it, it_end] = dep.left.equal_range(idx); it != it_end; ++it) {
-    for (auto v : it->second) {
-      if (v == idx) {
-        continue;
-      }
-      q.push(v);
-      seen.insert(v);
-    }
-  }
-  while (!q.empty()) {
-    manifest_idx_t nextIdx = q.front();
-    flatDeps.insert(nextIdx);
-    q.pop();
-
-    for (auto[it, it_end] = dep.left.equal_range(nextIdx); it != it_end; ++it) {
-      for (auto v : it->second) {
-        if (flatDeps.find(v) != flatDeps.end() || v == idx) {
-          continue;
-        }
-        flatDeps.insert(v);
-        q.push(v);
-      }
-    }
-  }
-
-  std::unordered_set<llvm::Instruction *> result{};
-  for (auto d : flatDeps) {
-    auto &cov = coverageCache.at(d);
-    result.insert(cov.begin(), cov.end());
-  }
-
-  return result;
-}
-
 std::vector<std::pair<manifest_idx_t,
                       std::pair<uint64_t,
                                 std::vector<manifest_idx_t>>>> calculateNOfs(std::unordered_map<manifest_idx_t,
