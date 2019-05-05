@@ -582,6 +582,7 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
     solver.addCycles(cycles);
     solver.addConnectivity(connectivities);
     solver.addBlockConnectivity(blockConnectivities);
+    solver.addExplicitCoverages(connectivities);
     solver.addImplicitCoverage(implicitCov, duplicateEdgesOnManifest);
     solver.addNOfDependencies(nOfs);
     auto[acceptedIndices, acceptedEdges] = solver.run();

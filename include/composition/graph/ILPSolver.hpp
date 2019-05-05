@@ -35,6 +35,7 @@ private:
   int connectivityCount = 0;
   int blockConnectivityCount = 0;
   int nOfCount = 0;
+  int instructionCount = 0;
   std::function<double(ManifestStats)> costFunction;
   std::vector<int> rows{};
   std::vector<int> cols{};
@@ -56,7 +57,7 @@ public:
 
   void destroy();
 
-  void init(std::string objective, double overheadBound, int explicitCov, int implicitCov, double hotness,
+  void init(const std::string &objective, double overheadBound, int explicitCov, int implicitCov, double hotness,
             double hotnessProtectee);
 
   void addManifests(const std::unordered_map<manifest_idx_t, Manifest *> &manifests,
@@ -71,6 +72,8 @@ public:
   void addConnectivity(const std::set<std::set<manifest_idx_t>> &connectivities);
 
   void addBlockConnectivity(const std::set<std::set<manifest_idx_t>> &blockConnectivities);
+
+  void addExplicitCoverages(const std::set<std::set<manifest_idx_t>> &coverage);
 
   void setCostFunction(std::function<double(ManifestStats)> f) { this->costFunction = f; }
 
@@ -150,14 +153,13 @@ public:
 
   void blockConnectivity(const std::set<manifest_idx_t> &ms, double targetBlockConnectivity);
 
-  double get_obj_coef_manifest(double overheadValue, int explicitValue) {
-    //this is only called for manifests and thus no implicit value is needed, 
-    //implicit values are only on edges not manifests!
+  void explicitCoverage(const std::set<manifest_idx_t> &ms);
+
+  double get_obj_coef_manifest(double overheadValue) {
+    //this is only called for manifests and thus no implicit/explicit value is needed,
+    //implicit/explicit values are only on edges not manifests!
     switch (ObjectiveMode) {
     case minOverhead:return overheadValue;
-    case maxExplicit:
-      // TODO: the explicit coverage is not unique. wanted?
-      return explicitValue;
     case maxManifest:return 1; //every manifest has weight of 1
     default:return 0;
       // TODO: case maxConnectivity:
@@ -167,6 +169,7 @@ public:
   double get_obj_coef_edge(long unsigned int coverage) {
     switch (ObjectiveMode) {
     case maxImplicit:return coverage;
+    case maxExplicit:return coverage;
     default:return 0;
     }
   }

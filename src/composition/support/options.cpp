@@ -28,7 +28,7 @@ llvm::cl::opt<std::string> ILPObjective("cf-ilp-obj", llvm::cl::init("overhead")
 llvm::cl::opt<double>
     ILPBlockConnectivityBound("cf-ilp-blockconnectivity-bound", llvm::cl::init(1), llvm::cl::desc("Block Connectivity"));
 llvm::cl::opt<int>
-    ILPImplicitBound("cf-ilp-implicit-bound", llvm::cl::init(1), llvm::cl::desc("Implicit Coverage"));
+    ILPImplicitBound("cf-ilp-implicit-bound", llvm::cl::init(0), llvm::cl::desc("Implicit Coverage"));
 llvm::cl::opt<double>
     ILPConnectivityBound("cf-ilp-connectivity-bound", llvm::cl::init(0), llvm::cl::desc("Instruction Connectivity"));
 llvm::cl::opt<int>
