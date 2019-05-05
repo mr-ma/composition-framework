@@ -180,7 +180,7 @@ public:
     std::string objective;
     uint64_t explicit_re = 0;
     uint64_t implicit_re = 0;
-    double overhead_re = 0.0:
+    double overhead_re = 0.0;
     double connectivity = 0.0;
 
     switch (ObjectiveMode) {
