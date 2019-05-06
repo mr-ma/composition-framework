@@ -256,12 +256,12 @@ void ILPSolver::explicitCoverage(llvm::Instruction *I, const std::set<manifest_i
 
   rows.push_back(orRow);
   cols.push_back(col);
-  coeffs.push_back(std::max(size_t(2), ms.size()));
+  coeffs.push_back(-1.0);
 
   for (auto m : ms) {
     rows.push_back(orRow);
     cols.push_back(colsToM.right.at(m));
-    coeffs.push_back(-1.0);
+    coeffs.push_back(1.0);
   }
 
 }
