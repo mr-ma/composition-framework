@@ -295,6 +295,9 @@ bool CompositionFrameworkPass::protectionPass(llvm::Module &M) {
   }
   dbgs() << "#" << std::to_string(i) << "/" << std::to_string(total) << "\n";
 
+  dbgs() << "Collecting stats\n";
+  cStats.stats.collect(sensitiveFunctions, manifests, Graph->getManifestProtectionMap());
+
   /*
    * TODO: I discovered this possibility very late in the thesis. It can be
    * extended to have more control over pass scheduling. For example, we could
@@ -316,8 +319,6 @@ bool CompositionFrameworkPass::protectionPass(llvm::Module &M) {
   dbgs() << "Writing patchinfo\n";
   writePatchInfo(patchInfos);
 
-  dbgs() << "Collecting stats\n";
-  cStats.stats.collect(sensitiveFunctions, manifests, Graph->getManifestProtectionMap());
   //cStats.dump(dbgs());
 
   if (!DumpStats.empty()) {
