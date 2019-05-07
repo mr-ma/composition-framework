@@ -235,8 +235,6 @@ void ILPSolver::blockConnectivity(const std::set<manifest_idx_t> &ms, double tar
 }
 
 void ILPSolver::explicitCoverage(llvm::Instruction *I, const std::set<manifest_idx_t> &ms) {
-  //
-
   std::ostringstream os;
   os << "i" << instructionCount;
 
@@ -245,14 +243,14 @@ void ILPSolver::explicitCoverage(llvm::Instruction *I, const std::set<manifest_i
   glp_set_col_name(lp, col, os.str().c_str()); // assigns name m_n to nth column
   glp_set_col_kind(lp, col, GLP_BV);                      // values are binary
   glp_set_col_bnds(lp, col, GLP_DB, 0.0, 1.0);            // values are binary
-  glp_set_obj_coef(lp, col, get_obj_coef_explicit(1.0));
+  glp_set_obj_coef(lp, col, get_obj_coef_explicit(1));
 
   ItoCols.insert({I, col});
-  addModeColumns(col, 0, 1 /*explicit cov of instruction*/, 0, 0, 0,0);
+  addModeColumns(col, 0, 1 /*explicit cov of instruction*/, 0, 0, 0, 0);
 
   // any of m1...mN if c
   auto orRow = glp_add_rows(lp, 1);
-  glp_set_row_bnds(lp, orRow, GLP_DB, 0.0, std::max(size_t(1), ms.size()-1));
+  glp_set_row_bnds(lp, orRow, GLP_DB, 0.0, std::max(size_t(1), ms.size() - 1));
   os << "_row";
   glp_set_row_name(lp, orRow, os.str().c_str());
 
@@ -266,24 +264,6 @@ void ILPSolver::explicitCoverage(llvm::Instruction *I, const std::set<manifest_i
     coeffs.push_back(-1.0);
   }
   instructionCount++;
-  /*for (auto m : ms) {
-    // if c then m:
-    // m >= c
-    // m - c >= 0
-    auto andRow = glp_add_rows(lp, 1);
-    glp_set_row_bnds(lp, andRow, GLP_LO, 0.0, 0.0);
-    os.clear();
-    os << "i" << instructionCount++ << "_m" << m;
-    glp_set_row_name(lp, andRow, os.str().c_str());
-
-    rows.push_back(andRow);
-    cols.push_back(col);
-    coeffs.push_back(-1.0);
-
-    rows.push_back(andRow);
-    cols.push_back(colsToM.right.at(m));
-    coeffs.push_back(1.0);
-  }*/
 }
 
 void ILPSolver::addUndoDependencies(const std::unordered_map<manifest_idx_t, Manifest *> &manifests) {
@@ -299,39 +279,21 @@ void ILPSolver::addUndoDependencies(const std::unordered_map<manifest_idx_t, Man
         auto iCol = it->second;
         auto mCol = colsToM.right.at(idx);
 
-        // (1) m1 >= i1
-        {
-          auto row = glp_add_rows(lp, 1);
-          glp_set_row_bnds(lp, row, GLP_DB, 0.0, 0.0);
+        // m1 <=> i1
+        auto row = glp_add_rows(lp, 1);
+        glp_set_row_bnds(lp, row, GLP_FX, 0.0, 0.0);
 
-          std::ostringstream os;
-          os << "undo_m" << idx << "_i" << iCol;
-          glp_set_row_name(lp, row, os.str().c_str());
+        std::ostringstream os;
+        os << "undo_m" << idx << "_i" << iCol;
+        glp_set_row_name(lp, row, os.str().c_str());
 
-          rows.push_back(row);
-          cols.push_back(iCol);
-          coeffs.push_back(-1.0);
+        rows.push_back(row);
+        cols.push_back(iCol);
+        coeffs.push_back(-1.0);
 
-          rows.push_back(row);
-          cols.push_back(mCol);
-          coeffs.push_back(1.0);
-        }
-        /*{
-          auto row = glp_add_rows(lp, 1);
-          glp_set_row_bnds(lp, row, GLP_UP, 0.0, 0.0);
-
-          std::ostringstream os;
-          os << "undo_i" << iCol << "_m" << idx;
-          glp_set_row_name(lp, row, os.str().c_str());
-
-          rows.push_back(row);
-          cols.push_back(iCol);
-          coeffs.push_back(1.0);
-
-          rows.push_back(row);
-          cols.push_back(mCol);
-          coeffs.push_back(-1.0);
-        }*/
+        rows.push_back(row);
+        cols.push_back(mCol);
+        coeffs.push_back(1.0);
       }
     }
   }
