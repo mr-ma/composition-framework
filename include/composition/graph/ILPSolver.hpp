@@ -36,6 +36,7 @@ private:
   int blockConnectivityCount = 0;
   int nOfCount = 0;
   int instructionCount = 0;
+  int duplicateImplicitEdgeCount = 0;
   std::function<double(ManifestStats)> costFunction;
   std::vector<int> rows{};
   std::vector<int> cols{};
@@ -132,9 +133,10 @@ public:
     glp_set_row_bnds(lp, row, GLP_DB, 0.0, std::max(size_t(1), edgeDuplicates.size() - 1));
     std::ostringstream os;
     os << "f" << fInx; //<< "_" << edgeDuplicates.size();
-    for (auto edgeIndex : edgeDuplicates) {
+    /*for (auto edgeIndex : edgeDuplicates) {
       os << "_" << edgeIndex;
-    }
+    }*/
+    os << "_" << duplicateImplicitEdgeCount;
     glp_set_row_name(lp, row, os.str().c_str());
 
     rows.push_back(row);
@@ -156,7 +158,7 @@ public:
 
   void blockConnectivity(const std::set<manifest_idx_t> &ms, double targetBlockConnectivity);
 
-  void explicitCoverage(llvm::Instruction* I, const std::set<manifest_idx_t> &ms);
+  void explicitCoverage(llvm::Instruction *I, const std::set<manifest_idx_t> &ms);
 
   double get_obj_coef_manifest(double overheadValue) {
     //this is only called for manifests and thus no implicit/explicit value is needed,
