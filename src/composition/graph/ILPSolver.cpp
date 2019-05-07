@@ -246,7 +246,7 @@ void ILPSolver::explicitCoverage(llvm::Instruction *I, const std::set<manifest_i
   glp_set_col_name(lp, col, os.str().c_str()); // assigns name m_n to nth column
   glp_set_col_kind(lp, col, GLP_BV);                      // values are binary
   glp_set_col_bnds(lp, col, GLP_DB, 0.0, 1.0);            // values are binary
-  glp_set_obj_coef(lp, col, 1.0);
+  glp_set_obj_coef(lp, col, get_obj_coef_explicit(1.0));
 
   // any of m1...mN if c
   auto orRow = glp_add_rows(lp, 1);

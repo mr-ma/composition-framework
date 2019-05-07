@@ -175,6 +175,14 @@ public:
     default:return 0;
     }
   }
+
+  double get_obj_coef_explicit(long unsigned int coverage) {
+    switch (ObjectiveMode) {
+    case maxExplicit:return coverage;
+    default:return 0;
+    }
+  }
+
   int get_obj_dir() {
     switch (ObjectiveMode) {
     case minOverhead:return GLP_MIN;
