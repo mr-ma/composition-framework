@@ -238,7 +238,7 @@ void ILPSolver::explicitCoverage(llvm::Instruction *I, const std::set<manifest_i
   //
 
   std::ostringstream os;
-  os << "i" << instructionCount++;
+  os << "i" << instructionCount;
 
   auto col = glp_add_cols(lp, 1);
   ItoCols.insert({I, col});
@@ -256,14 +256,32 @@ void ILPSolver::explicitCoverage(llvm::Instruction *I, const std::set<manifest_i
 
   rows.push_back(orRow);
   cols.push_back(col);
-  coeffs.push_back(-1.0);
+  coeffs.push_back(std::max(size_t(2), ms.size()));
 
   for (auto m : ms) {
     rows.push_back(orRow);
     cols.push_back(colsToM.right.at(m));
-    coeffs.push_back(1.0);
+    coeffs.push_back(-1.0);
   }
 
+  for (auto m : ms) {
+    // if c then m:
+    // m >= c
+    // m - c >= 0
+    auto andRow = glp_add_rows(lp, 1);
+    glp_set_row_bnds(lp, andRow, GLP_LO, 0.0, 0.0);
+    os.clear();
+    os << "i" << instructionCount++ << "_m" << m;
+    glp_set_row_name(lp, andRow, os.str().c_str());
+
+    rows.push_back(andRow);
+    cols.push_back(col);
+    coeffs.push_back(-1.0);
+
+    rows.push_back(andRow);
+    cols.push_back(colsToM.right.at(m));
+    coeffs.push_back(1.0);
+  }
 }
 
 void ILPSolver::addUndoDependencies(const std::unordered_map<manifest_idx_t, Manifest *> &manifests) {
