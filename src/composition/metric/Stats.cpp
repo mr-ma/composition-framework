@@ -68,14 +68,13 @@ Stats::implictInstructionsPerEdge(
   llvm::dbgs() << "Graph Nodes\n";
   for (auto[idx, m] : MANIFESTS) {
     auto n = G.addNode();
-    //m->dump();
+  //  m->dump();
     auto mCov = m->Coverage();
     coverage[n] = std::unordered_set<llvm::Instruction *>(mCov.begin(), mCov.end());
 
     indices[n] = idx;
     nodes.insert({idx, n});
   }
-
   llvm::dbgs() << "Graph Edges\n";
   for (const auto &it : dep.left) {
     for (auto v : it.second) {
