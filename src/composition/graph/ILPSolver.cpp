@@ -124,9 +124,12 @@ std::pair<std::set<manifest_idx_t>, std::set<manifest_idx_t>> ILPSolver::run() {
   params.presolve = GLP_ON;
 
   int mip_ecode = glp_intopt(lp, &params);
-  llvm::dbgs() << "MIP exit code: " << mip_ecode << "\n";
+  int mip_status = glp_mip_status(lp);
+  llvm::dbgs() << "MIP exit code: " << mip_ecode << " status code: " << mip_ecode << "\n";
+  // No error occured
   assert(mip_ecode == 0);
-  assert(glp_mip_status(lp) == GLP_OPT);
+  // Solution is INTEGER OPTIMAL
+  assert(mip_status == GLP_OPT);
 
   auto objective_result = glp_mip_obj_val(lp);
 
