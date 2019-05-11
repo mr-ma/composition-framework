@@ -387,6 +387,7 @@ public:
     cols.push_back(col);
     coeffs.push_back(blockHotnessValue);
   }
+  /*
   void addImplicitCoverage(
       const std::vector<std::tuple<composition::manifest_idx_t,
                                    std::pair<composition::manifest_idx_t, composition::manifest_idx_t>,
@@ -439,6 +440,48 @@ public:
 
     // Add desired implicit coverage
     // implicitCoverageConstraint(implicitCoverageToInstruction, implicitCov, 0.0);
+  }*/
+
+  void addNewImplicitCoverage() {
+    // Rules
+    /**
+     * (1) For each instruction (i_i) that is explicitly covered, introduce a copied implicit instruction variable (implicit_i)
+     *
+     * (2) The implicit instruction variable is binary
+     *
+     * (3) If the instruction is not explicitly covered, it cannot be implicitly covered
+     *
+     * (4) Instruction are implictly covered if we have a manifest protecting a manifests explicit covered instruction
+     */
+
+    // Idea
+    /**
+     * (4 constraint) implicit_i = 1 <=> i_i and (any manifest protecting i_i) and (any manifest protecting a manifest that explicitly protects i_i)
+     *
+     * By definition we know that i_i is protected iff a corresponding manifest protects it, i.e., we can simplify to:
+     *
+     * (4 simplified) implicit_i = 1 <=> i_i and (any manifest protecting a manifest that explicitly protects i_i)
+     *
+     * We can substiute/define (any manifest protecting a manifest that explicitly protects i_i) as:
+     * * (4.1) mj protects i_i, mk protects mj
+     * * (4.2) f_mj_mk = mj + mk -1
+     * * (4.3) implicit_i = 1 <=> i_i and (any f_mj_mk)
+     */
+
+    // Constraints
+    /**
+     * (1-3) i_i >= implicit_i
+     * (4) implicit_i = 1 <=> any(f_mj_mk)
+     * (4 implicit_i_row bounds) 0 <= implicit_i <= std::max(1, count(f_mj_mk) - 1)
+     * (4 constraint) N = std::max(2, count(f_mj_mk));  -f_mj_mk + N * implicit_i - implicit_i_row = 0
+     *
+     * Examples:
+     * One manifest: -f_mj_mk + 2 * implicit_i - implicit_i_row = 0; 0 <= implicit_i_row <= 1
+     * Two manifests: 2 * -f_mj_mk + 2 * implicit_i - implicit_i_row = 0; 0 <= implicit_i_row <= 1
+     * Three manifests: 3 * -f_mj_mk + 3 * implicit_i - implicit_i_row = 0; 0 <= implicit_i_row <= 2
+     *
+     */
+
   }
 
   void

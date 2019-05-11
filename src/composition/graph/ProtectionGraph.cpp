@@ -589,7 +589,8 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
     solver.addConnectivity(connectivities);
     solver.addBlockConnectivity(blockConnectivities);
     solver.addExplicitCoverages(exactCoverage);
-    solver.addImplicitCoverage(implicitCov, duplicateEdgesOnManifest);
+    //solver.addImplicitCoverage(implicitCov, duplicateEdgesOnManifest);
+    solver.addNewImplicitCoverage();
     solver.addNOfDependencies(nOfs);
 
     // Must come after explicit coverage is set
