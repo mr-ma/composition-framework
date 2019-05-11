@@ -387,7 +387,7 @@ public:
     cols.push_back(col);
     coeffs.push_back(blockHotnessValue);
   }
-  /*
+
   void addImplicitCoverage(
       const std::vector<std::tuple<composition::manifest_idx_t,
                                    std::pair<composition::manifest_idx_t, composition::manifest_idx_t>,
@@ -440,9 +440,9 @@ public:
 
     // Add desired implicit coverage
     // implicitCoverageConstraint(implicitCoverageToInstruction, implicitCov, 0.0);
-  }*/
+  }
 
-  void addNewImplicitCoverage() {
+  void addNewImplicitCoverage(const std::map<llvm::Instruction *, std::set<manifest_idx_t>> &coverage, std::unordered_map<int, std::set<manifest_idx_t>> ms) {
     // Rules
     /**
      * (1) For each instruction (i_i) that is explicitly covered, introduce a copied implicit instruction variable (implicit_i)
@@ -482,6 +482,59 @@ public:
      *
      */
 
+    std::unordered_map<llvm::Instruction *, int> implicitVariables{};
+    for (auto[instr, explicitCol] : ItoCols) {
+      std::ostringstream os;
+      os << "implicit_" << glp_get_col_name(lp, explicitCol);
+
+      auto col = glp_add_cols(lp, 1);
+
+      glp_set_col_name(lp, col, os.str().c_str()); // assigns name m_n to nth column
+      glp_set_col_kind(lp, col, GLP_BV);                      // values are binary
+      glp_set_col_bnds(lp, col, GLP_DB, 0.0, 1.0);            // values are binary
+      glp_set_obj_coef(lp, col, get_obj_coef_explicit(1));
+
+      implicitVariables.insert({instr, col});
+      addModeColumns(col, 0, 0, 1 /*implicit cov of instruction*/, 0, 0, 0);
+
+
+      // Apply (1-3)
+      auto row = glp_add_rows(lp, 1);
+      glp_set_row_bnds(lp, row, GLP_UP, 0.0, 0.0);
+      glp_set_row_name(lp, row, os.str().c_str());
+
+      rows.push_back(row);
+      cols.push_back(col);
+      coeffs.push_back(1.0);
+
+      rows.push_back(row);
+      cols.push_back(explicitCol);
+      coeffs.push_back(-1.0);
+    }
+
+
+    // Apply (4)
+
+    // ms is the set that protects i implicitly
+    for (auto[instr, implicitCol] : implicitVariables) {
+      std::ostringstream os;
+      os << glp_get_col_name(lp, implicitCol) << "_row";
+
+      auto orRow = glp_add_rows(lp, 1);
+      glp_set_row_bnds(lp, orRow, GLP_DB, 0.0, std::max(size_t(1), ms.size() - 1));
+      glp_set_row_name(lp, orRow, os.str().c_str());
+
+      rows.push_back(orRow);
+      cols.push_back(implicitCol);
+      coeffs.push_back(std::max(size_t(2), ms.size()));
+
+      // TODO fix this, i.e., insert the f_mj_mk here instead
+      for (auto m : ms) {
+        rows.push_back(orRow);
+        cols.push_back(colsToM.right.at(manifest_idx_t(1)));
+        coeffs.push_back(-1.0);
+      }
+    }
   }
 
   void

@@ -339,7 +339,7 @@ std::map<llvm::Instruction *, std::set<manifest_idx_t>> ProtectionGraph::compute
 }
 
 std::set<std::set<manifest_idx_t>> ProtectionGraph::computeConnectivity(const std::map<llvm::Instruction *,
-                                                                                 std::set<manifest_idx_t>> &mapping) {
+                                                                                       std::set<manifest_idx_t>> &mapping) {
   std::set<std::set<manifest_idx_t>> result{};
   for (auto&[I, mapped] : mapping) {
     result.insert(mapped);
@@ -590,7 +590,7 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
     solver.addBlockConnectivity(blockConnectivities);
     solver.addExplicitCoverages(exactCoverage);
     //solver.addImplicitCoverage(implicitCov, duplicateEdgesOnManifest);
-    solver.addNewImplicitCoverage();
+    solver.addNewImplicitCoverage({}, {});
     solver.addNOfDependencies(nOfs);
 
     // Must come after explicit coverage is set

@@ -274,7 +274,6 @@ void ILPSolver::explicitCoverage(llvm::Instruction *I, const std::set<manifest_i
 }
 
 void ILPSolver::addUndoDependencies(const std::unordered_map<manifest_idx_t, Manifest *> &manifests) {
-  llvm::dbgs() << "Size: " << ItoCols.size() << "\n";
   for (auto[idx, m] : manifests) {
     for (auto v : m->UndoValues()) {
       if (auto I = llvm::dyn_cast<llvm::Instruction>(v)) {
@@ -291,7 +290,7 @@ void ILPSolver::addUndoDependencies(const std::unordered_map<manifest_idx_t, Man
         glp_set_row_bnds(lp, row, GLP_FX, 0.0, 0.0);
 
         std::ostringstream os;
-        os << "undo_m" << idx << "_i" << iCol;
+        os << "undo_m" << idx << "_" << glp_get_col_name(lp, iCol);
         glp_set_row_name(lp, row, os.str().c_str());
 
         rows.push_back(row);
