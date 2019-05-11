@@ -270,11 +270,11 @@ std::set<std::set<manifest_idx_t>> ProtectionGraph::computeCycles() {
 
   std::set<std::set<manifest_idx_t>> cycles{};
 
-  /*llvm::dbgs() << "Cycles...\n";
+  llvm::dbgs() << "Cycles...\n";
   AllCycles a{};
   llvm::dbgs() << "Nodes: " << lemon::countNodes(LG) << " Edges: " << lemon::countArcs(LG) << "\n";
-  std::set<std::set<lemon::ListDigraph::Node>> all = a.simpleCycles(LG);
-  llvm::dbgs() << "End...\n";*/
+  std::set<std::set<lemon::ListDigraph::Node>> all = a.simpleCycles(LG, 100);
+  llvm::dbgs() << "End...\n";
 
   lemon::ListDigraph::NodeMap<int> components{LG};
   lemon::stronglyConnectedComponents(LG, components);

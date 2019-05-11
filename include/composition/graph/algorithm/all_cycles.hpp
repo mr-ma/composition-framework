@@ -22,7 +22,8 @@ private:
 
   bool findCyclesInSCG(const lemon::SubDigraph<lemon::ListDigraph> g,
                        const lemon::SubDigraph<lemon::ListDigraph>::Node startVertex,
-                       const lemon::SubDigraph<lemon::ListDigraph>::Node currentVertex) {
+                       const lemon::SubDigraph<lemon::ListDigraph>::Node currentVertex,
+                       const int max) {
     bool foundCycle = false;
     stack.push_front(currentVertex);
     blockedSet.insert(currentVertex);
@@ -37,12 +38,15 @@ private:
         }
         size_t pre = allCycles.size();
         allCycles.insert(cycle);
-        llvm::dbgs() << allCycles.size() << "\n";
         assert(allCycles.size() == (pre + 1));
         foundCycle = true;
       } else if (blockedSet.find(neighbor) == blockedSet.end()) {
-        bool gotCycle = findCyclesInSCG(g, startVertex, neighbor);
+        bool gotCycle = findCyclesInSCG(g, startVertex, neighbor, max);
         foundCycle = foundCycle || gotCycle;
+      }
+
+      if (allCycles.size() >= max) {
+        return foundCycle;
       }
     }
 
@@ -75,7 +79,7 @@ private:
   }
 
 public:
-  std::set<std::set<lemon::ListDigraph::Node>> simpleCycles(lemon::ListDigraph &g) {
+  std::set<std::set<lemon::ListDigraph::Node>> simpleCycles(lemon::ListDigraph &g, int max) {
     lemon::ListDigraph::NodeMap<bool> node_filter{g, true};
     lemon::ListDigraph::ArcMap<bool> arc_filter{g, true};
     lemon::SubDigraph<lemon::ListDigraph> subGraph(g, node_filter, arc_filter);
@@ -112,8 +116,12 @@ public:
       }
       lemon::SubDigraph<lemon::ListDigraph> sccSubGraph(g, scc_node_filter, arc_filter);
       lemon::SubDigraph<lemon::ListDigraph>::NodeIt start(sccSubGraph);
-      findCyclesInSCG(sccSubGraph, start, start);
+      findCyclesInSCG(sccSubGraph, start, start, max);
       subGraph.disable(start);
+
+      if (allCycles.size() >= max) {
+        return allCycles;
+      }
     }
 
     return allCycles;
