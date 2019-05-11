@@ -81,7 +81,6 @@ void ILPSolver::addConnectivity(const std::set<std::set<manifest_idx_t>> &connec
 
 void ILPSolver::addBlockConnectivity(const std::set<std::set<manifest_idx_t>> &blockConnectivities) {
   // Add  blockConnectivity
-  return;
   for (auto &&c : blockConnectivities) {
     blockConnectivity(c, ILPBlockConnectivityBound);
   }
@@ -257,8 +256,7 @@ void ILPSolver::explicitCoverage(llvm::Instruction *I, const std::set<manifest_i
 
   rows.push_back(orRow);
   cols.push_back(col);
-  auto coef = std::max(size_t(2), ms.size());
-  coeffs.push_back(coef);
+  coeffs.push_back(std::max(size_t(2), ms.size()));
 
   for (auto m : ms) {
     rows.push_back(orRow);
@@ -270,7 +268,6 @@ void ILPSolver::explicitCoverage(llvm::Instruction *I, const std::set<manifest_i
 
 void ILPSolver::addUndoDependencies(const std::unordered_map<manifest_idx_t, Manifest *> &manifests) {
   llvm::dbgs() << "Size: " << ItoCols.size() << "\n";
-  //return;
   for (auto[idx, m] : manifests) {
     for (auto v : m->UndoValues()) {
       if (auto I = llvm::dyn_cast<llvm::Instruction>(v)) {
