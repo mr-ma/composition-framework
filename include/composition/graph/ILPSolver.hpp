@@ -481,37 +481,6 @@ public:
      * Three manifests: 3 * -f_mj_mk + 3 * implicit_i - implicit_i_row = 0; 0 <= implicit_i_row <= 2
      */
 
-    std::unordered_map<llvm::Instruction *, int> implicitVariables{};
-    for (auto[instr, explicitCol] : ItoCols) {
-      std::ostringstream os;
-      os << "implicit_" << glp_get_col_name(lp, explicitCol);
-
-      auto col = glp_add_cols(lp, 1);
-
-      glp_set_col_name(lp, col, os.str().c_str()); // assigns name m_n to nth column
-      glp_set_col_kind(lp, col, GLP_BV);                      // values are binary
-      glp_set_col_bnds(lp, col, GLP_DB, 0.0, 1.0);            // values are binary
-      glp_set_obj_coef(lp, col, get_obj_coef_edge(1));
-
-      implicitVariables.insert({instr, col});
-      addModeColumns(col, 0, 0, 1 /*implicit cov of instruction*/, 0, 0, 0);
-
-
-      // Apply (1-3)
-      auto row = glp_add_rows(lp, 1);
-      glp_set_row_bnds(lp, row, GLP_UP, 0.0, 0.0);
-      glp_set_row_name(lp, row, os.str().c_str());
-
-      rows.push_back(row);
-      cols.push_back(col);
-      coeffs.push_back(1.0);
-
-      rows.push_back(row);
-      cols.push_back(explicitCol);
-      coeffs.push_back(-1.0);
-    }
-
-
     // Apply (4)
 
     // ms is the set that protects i implicitly
@@ -528,16 +497,44 @@ public:
         }
       }
 
-      auto implicitCol = implicitVariables.at(instr);
-      std::ostringstream os;
-      os << glp_get_col_name(lp, implicitCol) << "_row";
+      if (implicitlyCoversInstr.empty()) {
+        continue;
+      }
 
+      auto explicitCol = ItoCols.at(instr);
+      std::ostringstream os;
+      os << "implicit_" << glp_get_col_name(lp, explicitCol);
+
+      auto col = glp_add_cols(lp, 1);
+
+      glp_set_col_name(lp, col, os.str().c_str()); // assigns name m_n to nth column
+      glp_set_col_kind(lp, col, GLP_BV);                      // values are binary
+      glp_set_col_bnds(lp, col, GLP_DB, 0.0, 1.0);            // values are binary
+      glp_set_obj_coef(lp, col, get_obj_coef_edge(1));
+
+      addModeColumns(col, 0, 0, 1 /*implicit cov of instruction*/, 0, 0, 0);
+
+
+      // Apply (1-3)
+      auto row = glp_add_rows(lp, 1);
+      glp_set_row_bnds(lp, row, GLP_UP, 0.0, 0.0);
+      glp_set_row_name(lp, row, os.str().c_str());
+
+      rows.push_back(row);
+      cols.push_back(col);
+      coeffs.push_back(1.0);
+
+      rows.push_back(row);
+      cols.push_back(explicitCol);
+      coeffs.push_back(-1.0);
+      
       auto orRow = glp_add_rows(lp, 1);
-      glp_set_row_bnds(lp, orRow, GLP_DB, 0.0, std::max(size_t(1), implicitlyCoversInstr.size() - 1));
+      os << "_row";
       glp_set_row_name(lp, orRow, os.str().c_str());
+      glp_set_row_bnds(lp, orRow, GLP_DB, 0.0, std::max(size_t(1), implicitlyCoversInstr.size() - 1));
 
       rows.push_back(orRow);
-      cols.push_back(implicitCol);
+      cols.push_back(col);
       coeffs.push_back(std::max(size_t(2), implicitlyCoversInstr.size()));
 
       for (auto m : implicitlyCoversInstr) {
