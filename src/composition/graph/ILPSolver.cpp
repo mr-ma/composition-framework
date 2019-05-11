@@ -121,17 +121,18 @@ std::pair<std::set<manifest_idx_t>, std::set<manifest_idx_t>> ILPSolver::run() {
 
   params.gmi_cuts = GLP_ON;
   params.br_tech = GLP_BR_PCH;
+  params.presolve = GLP_ON;
 
-  // Fix matrix is singular for some cases
-  glp_adv_basis(lp, 0);
+  int mip_ecode = glp_intopt(lp, &params);
+  llvm::dbgs() << "MIP exit code: " << mip_ecode << "\n";
+  assert(mip_ecode == 0);
+  assert(glp_mip_status(lp) == GLP_OPT);
 
-  glp_simplex(lp, nullptr); // calls the routine glp_simplex to solve LP problem
-  glp_intopt(lp, &params);
   auto objective_result = glp_mip_obj_val(lp);
 
   // Write machine readable solution
   if (!composition::support::ILPSolution.empty()) {
-    glp_write_sol(lp, composition::support::ILPSolution.getValue().c_str());
+    glp_write_mip(lp, composition::support::ILPSolution.getValue().c_str());
   }
 
   // Write human readable solution
