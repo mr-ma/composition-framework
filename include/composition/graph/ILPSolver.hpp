@@ -442,7 +442,8 @@ public:
     // implicitCoverageConstraint(implicitCoverageToInstruction, implicitCov, 0.0);
   }
 
-  void addNewImplicitCoverage(const std::map<llvm::Instruction *, std::set<manifest_idx_t>> &coverage, std::unordered_map<int, std::set<manifest_idx_t>> ms) {
+  void addNewImplicitCoverage(const std::map<llvm::Instruction *, std::set<manifest_idx_t>> &coverage,
+                              std::unordered_map<manifest_idx_t, std::set<manifest_idx_t>> implicitManifestEdges) {
     // Rules
     /**
      * (1) For each instruction (i_i) that is explicitly covered, introduce a copied implicit instruction variable (implicit_i)
@@ -514,22 +515,34 @@ public:
     // Apply (4)
 
     // ms is the set that protects i implicitly
-    for (auto[instr, implicitCol] : implicitVariables) {
+    for (auto[instr, ms] : coverage) {
+      std::set<manifest_idx_t> implicitlyCoversInstr{};
+
+      for (auto m : ms) {
+        auto it = implicitManifestEdges.find(m);
+
+        if (it != implicitManifestEdges.end()) {
+          for (auto implicitM : it->second) {
+            implicitlyCoversInstr.insert(implicitM);
+          }
+        }
+      }
+
+      auto implicitCol = implicitVariables.at(instr);
       std::ostringstream os;
       os << glp_get_col_name(lp, implicitCol) << "_row";
 
       auto orRow = glp_add_rows(lp, 1);
-      glp_set_row_bnds(lp, orRow, GLP_DB, 0.0, std::max(size_t(1), ms.size() - 1));
+      glp_set_row_bnds(lp, orRow, GLP_DB, 0.0, std::max(size_t(1), implicitlyCoversInstr.size() - 1));
       glp_set_row_name(lp, orRow, os.str().c_str());
 
       rows.push_back(orRow);
       cols.push_back(implicitCol);
-      coeffs.push_back(std::max(size_t(2), ms.size()));
+      coeffs.push_back(std::max(size_t(2), implicitlyCoversInstr.size()));
 
-      // TODO fix this, i.e., insert the f_mj_mk here instead
-      for (auto m : ms) {
+      for (auto m : implicitlyCoversInstr) {
         rows.push_back(orRow);
-        cols.push_back(colsToM.right.at(manifest_idx_t(1)));
+        cols.push_back(colsToM.right.at(m));
         coeffs.push_back(-1.0);
       }
     }

@@ -561,6 +561,11 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
   //                       unsigned long /*coverage*/>>
   auto implicitCov = s.implictInstructionsPerEdge(ManifestProtection, MANIFESTS, &duplicateEdgesOnManifest);
 
+  std::unordered_map<manifest_idx_t, std::set<manifest_idx_t>> implicitManifestEdges{};
+  for (auto[e, mPair, c] : implicitCov) {
+    implicitManifestEdges[mPair.second].insert(mPair.first);
+  }
+
   for (auto[edgeIndex, manifestPair, coverage] : implicitCov) {
     eStats[edgeIndex].implicitC = coverage;
     implicitCBounds.first = std::min(implicitCBounds.first, coverage);
@@ -590,7 +595,7 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
     solver.addBlockConnectivity(blockConnectivities);
     solver.addExplicitCoverages(exactCoverage);
     //solver.addImplicitCoverage(implicitCov, duplicateEdgesOnManifest);
-    solver.addNewImplicitCoverage({}, {});
+    solver.addNewImplicitCoverage(exactCoverage, implicitManifestEdges);
     solver.addNOfDependencies(nOfs);
 
     // Must come after explicit coverage is set
