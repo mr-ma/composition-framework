@@ -127,7 +127,7 @@ public:
 
   const ManifestProtectionMap getManifestProtectionMap() const { return ManifestProtection; }
 
-  void addManifests(const std::set<Manifest *>& manifests);
+  void addManifests(const std::set<Manifest *> &manifests);
   void addManifest(Manifest *m);
 
   void Print(const std::string &name) {
@@ -178,7 +178,7 @@ public:
    * @param manifests to sort
    * @return the sorted manifests
    */
-  std::vector<Manifest *> topologicalSortManifests(const std::set<Manifest *>& manifests);
+  std::vector<Manifest *> topologicalSortManifests(const std::set<Manifest *> &manifests);
 
   /**
    * Computes the dependency relationship of the manifests.
@@ -189,7 +189,8 @@ public:
   std::set<std::pair<manifest_idx_t, manifest_idx_t>> computeDependencies();
   std::set<std::set<manifest_idx_t>> computeCycles();
   std::map<llvm::Instruction *, std::set<manifest_idx_t>> computeExactCoverage(llvm::Module &M);
-  std::set<std::set<manifest_idx_t>> computeConnectivity(const std::map<llvm::Instruction *, std::set<manifest_idx_t>> &mapping);
+  std::set<std::set<manifest_idx_t>> computeConnectivity(const std::map<llvm::Instruction *,
+                                                                        std::set<manifest_idx_t>> &mapping);
   std::set<std::set<manifest_idx_t>> computeBlockConnectivity(llvm::Module &M);
 
   /**

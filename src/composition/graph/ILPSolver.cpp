@@ -17,10 +17,9 @@ void ILPSolver::destroy() {
   lp = nullptr;
 }
 
-void ILPSolver::init(const std::string &objectiveMode, double overheadBound, int explicitBound, int implicitBound,
+void ILPSolver::init(double overheadBound, int explicitBound, int implicitBound,
                      double hotness, double hotnessProtectee) {
 
-  this->setMode(objectiveMode);
   //after setting the mode we can set the objective direction, min or max
   glp_set_obj_dir(lp, get_obj_dir());
   addModeRows(overheadBound, explicitBound, implicitBound, hotness, hotnessProtectee);
@@ -31,6 +30,10 @@ void ILPSolver::addManifests(const std::unordered_map<manifest_idx_t, Manifest *
   // COLUMNS
   for (auto&[mIdx, m] : manifests) {
     // column N
+    // auto v = new Variable();
+    // v.setName("m" + m->index");
+    // v.setObjCoefficient(get_obj_coef_manifest(costFunction(stats[mIdx]))));
+    //
     std::ostringstream os;
     os << "m" << m->index;
     auto col = glp_add_cols(lp, 1);
@@ -164,6 +167,7 @@ std::pair<std::set<manifest_idx_t>, std::set<manifest_idx_t>> ILPSolver::run() {
 
 void ILPSolver::conflict(std::pair<manifest_idx_t, manifest_idx_t> pair) {
   // m1 and m2 conflict; m1 + m2 <= 1
+  // XOR(m1, m2)
   auto row = glp_add_rows(lp, 1);
   glp_set_row_bnds(lp, row, GLP_UP, 0.0, 1.0);
   std::ostringstream os;
@@ -181,6 +185,7 @@ void ILPSolver::conflict(std::pair<manifest_idx_t, manifest_idx_t> pair) {
 
 void ILPSolver::dependency(std::pair<manifest_idx_t, manifest_idx_t> pair) {
   // m1 depends on m2; m1 <= m2; m1 - m2 <= 0
+  // implication(m1, m2)
   auto row = glp_add_rows(lp, 1);
   glp_set_row_bnds(lp, row, GLP_UP, 0.0, 0.0);
   std::ostringstream os;
@@ -198,6 +203,7 @@ void ILPSolver::dependency(std::pair<manifest_idx_t, manifest_idx_t> pair) {
 
 void ILPSolver::cycle(const std::set<manifest_idx_t> &ms) {
   // m1..mN form a cycle; m1+m2+..+mN <= N-1
+  // maximumNOf({ms}, ms.size() - 1);
   auto row = glp_add_rows(lp, 1);
   glp_set_row_bnds(lp, row, GLP_UP, 0.0, ms.size() - 1);
   std::ostringstream os;
@@ -213,6 +219,7 @@ void ILPSolver::cycle(const std::set<manifest_idx_t> &ms) {
 
 void ILPSolver::connectivity(const std::set<manifest_idx_t> &ms, double targetConnectivity) {
   // m1..mN protect an Instruction; m1+m2+..+mN >= min(N, targetConnectivity)
+  // nOf({ms}, std::min(N, targetConnectivity))
   auto row = glp_add_rows(lp, 1);
   glp_set_row_bnds(lp, row, GLP_LO, std::min((double) ms.size(), targetConnectivity), 0.0);
   std::ostringstream os;
@@ -228,6 +235,7 @@ void ILPSolver::connectivity(const std::set<manifest_idx_t> &ms, double targetCo
 
 void ILPSolver::blockConnectivity(const std::set<manifest_idx_t> &ms, double targetBlockConnectivity) {
   // m1..mN protect a BasicBlock; m1+m2+..+mN >= min(N, targetBlockConnectivity)
+  // nOf({ms}, std::min(N, targetBlockConnectivity))
   auto row = glp_add_rows(lp, 1);
   glp_set_row_bnds(lp, row, GLP_LO, std::min((double) ms.size(), targetBlockConnectivity), 0.0);
   std::ostringstream os;
@@ -245,6 +253,13 @@ void ILPSolver::explicitCoverage(llvm::Instruction *I, const std::set<manifest_i
   std::ostringstream os;
   os << "i" << instructionCount;
 
+  // auto v = any_of({colsM}, {coefs});
+
+  // auto v = new Variable();
+  // v.setName("i" + instructionCount);
+  // v.setBounds(0.0, 1.0);
+  // v.setObjCoefficient(get_obj_coef_explicit(1));
+  // ilp.addVariable(v);
   auto col = glp_add_cols(lp, 1);
 
   glp_set_col_name(lp, col, os.str().c_str()); // assigns name m_n to nth column
@@ -254,6 +269,15 @@ void ILPSolver::explicitCoverage(llvm::Instruction *I, const std::set<manifest_i
 
   ItoCols.insert({I, col});
   addModeColumns(col, 0, 1 /*explicit cov of instruction*/, 0, 0, 0, 0);
+
+  // auto c = new Constraint();
+  // c.setName("i" + instructionCount + "_row");
+  // c.setBounds(0.0, std::max(size_t(1), ms.size() - 1));
+  // c.add({v, std::max(size_t(2), ms.size(2)))});
+  // for (auto m : ms) {
+  //     c.add({colsToM.right.at(m), -1.0});
+  // }
+  // ilp.addConstraint(c);
 
   // any of m1...mN if c
   auto orRow = glp_add_rows(lp, 1);
@@ -286,6 +310,8 @@ void ILPSolver::addUndoDependencies(const std::unordered_map<manifest_idx_t, Man
         auto mCol = colsToM.right.at(idx);
 
         // m1 <=> i1
+        // iff(iCol, mCol)
+
         auto row = glp_add_rows(lp, 1);
         glp_set_row_bnds(lp, row, GLP_FX, 0.0, 0.0);
 

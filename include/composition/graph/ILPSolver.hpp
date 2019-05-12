@@ -19,6 +19,11 @@ using composition::metric::ManifestStats;
 using composition::support::ILPBlockConnectivityBound;
 using composition::support::ILPConnectivityBound;
 using llvm::dbgs;
+using composition::support::Objective::minOverhead;
+using composition::support::Objective::maxConnectivity;
+using composition::support::Objective::maxImplicit;
+using composition::support::Objective::maxExplicit;
+using composition::support::Objective::maxManifest;
 
 class ILPSolver {
 private:
@@ -28,15 +33,12 @@ private:
   int HOTNESS_PROTECTEE{};
   int OVERHEAD{};
   int MANIFEST{};
-  enum Modes { minOverhead, maxExplicit, maxImplicit, maxConnectivity, maxManifest };
-  Modes ObjectiveMode{};
   glp_prob *lp;
   int cycleCount = 0;
   int connectivityCount = 0;
   int blockConnectivityCount = 0;
   int nOfCount = 0;
   int instructionCount = 0;
-  int duplicateImplicitEdgeCount = 0;
   std::function<double(ManifestStats)> costFunction;
   std::vector<int> rows{};
   std::vector<int> cols{};
@@ -46,11 +48,8 @@ private:
   boost::bimaps::bimap<int, manifest_idx_t> colsToE{};
   boost::bimaps::bimap<int, manifest_idx_t> colsToF{};
   std::unordered_map<llvm::Instruction *, int> ItoCols{};
-  const std::string MANIFEST_OBJ = "manifest";
-  const std::string OVERHEAD_OBJ = "overhead";
-  const std::string EXPLICIT_OBJ = "explicit";
-  const std::string IMPLICIT_OBJ = "implicit";
-  const std::string CONNECTIVITY_OBJ = "connectivity";
+
+  composition::support::Objective ObjectiveMode{};
 
 public:
   ILPSolver();
@@ -59,7 +58,7 @@ public:
 
   void destroy();
 
-  void init(const std::string &objective, double overheadBound, int explicitCov, int implicitCov, double hotness,
+  void init(double overheadBound, int explicitCov, int implicitCov, double hotness,
             double hotnessProtectee);
 
   void addManifests(const std::unordered_map<manifest_idx_t, Manifest *> &manifests,
@@ -79,8 +78,6 @@ public:
 
   void addUndoDependencies(const std::unordered_map<manifest_idx_t, Manifest *> &manifests);
 
-  void setCostFunction(std::function<double(ManifestStats)> f) { this->costFunction = f; }
-
   std::pair<std::set<manifest_idx_t>, std::set<manifest_idx_t>> run();
 
   void conflict(std::pair<manifest_idx_t, manifest_idx_t> pair);
@@ -88,71 +85,6 @@ public:
   void dependency(std::pair<manifest_idx_t, manifest_idx_t> pair);
 
   void cycle(const std::set<manifest_idx_t> &ms);
-
-  void setMode(const std::string &obj) {
-    if (obj == OVERHEAD_OBJ) {
-      ObjectiveMode = minOverhead;
-    } else if (obj == EXPLICIT_OBJ) {
-      ObjectiveMode = maxExplicit;
-    } else if (obj == IMPLICIT_OBJ) {
-      ObjectiveMode = maxImplicit;
-    } else if (obj == CONNECTIVITY_OBJ) {
-      ObjectiveMode = maxConnectivity;
-    } else if (obj == MANIFEST_OBJ) {
-      ObjectiveMode = maxManifest;
-    } else {
-      // default is minOverhead
-      ObjectiveMode = minOverhead;
-    }
-  }
-
-  void edgeConnection(manifest_idx_t edgeInx, std::pair<manifest_idx_t, manifest_idx_t> pair) {
-    // e0 depends on m1 and m2; 0 <= m1 + m2 -2 e0 <= 1
-    auto row = glp_add_rows(lp, 1);
-    glp_set_row_bnds(lp, row, GLP_DB, 0.0, 1.0);
-    std::ostringstream os;
-    os << "edge_" << edgeInx << "_" << pair.first << "_" << pair.second;
-    glp_set_row_name(lp, row, os.str().c_str());
-
-    rows.push_back(row);
-    cols.push_back(colsToM.right.at(pair.first));
-    coeffs.push_back(1.0);
-
-    rows.push_back(row);
-    cols.push_back(colsToM.right.at(pair.second));
-    coeffs.push_back(1.0);
-
-    rows.push_back(row);
-    cols.push_back(colsToE.right.at(edgeInx));
-    coeffs.push_back(-2.0);
-  }
-
-  void duplicateImplicitEdge(manifest_idx_t fInx, const std::set<manifest_idx_t> &edgeDuplicates) {
-    // f0 is set if any of the duplicate edges are set (i.e. OR): 0 <= 2f0 - e1 - e2 <=1
-    auto row = glp_add_rows(lp, 1);
-    glp_set_row_bnds(lp, row, GLP_DB, 0.0, std::max(size_t(1), edgeDuplicates.size() - 1));
-    std::ostringstream os;
-    os << "f" << fInx; //<< "_" << edgeDuplicates.size();
-    /*for (auto edgeIndex : edgeDuplicates) {
-      os << "_" << edgeIndex;
-    }*/
-    os << "_" << duplicateImplicitEdgeCount;
-    glp_set_row_name(lp, row, os.str().c_str());
-
-    rows.push_back(row);
-    cols.push_back(colsToF.right.at(fInx));
-    coeffs.push_back(
-        std::max(size_t(2), edgeDuplicates.size())); // even when there is one edge f need to have a coefficent 2
-
-    //llvm::dbgs() << "Duplicates edges covering manifest " << fInx << ":\n";
-    for (auto edgeIndex : edgeDuplicates) {
-      //llvm::dbgs() << edgeIndex << ",";
-      rows.push_back(row);
-      cols.push_back(colsToE.right.at(edgeIndex));
-      coeffs.push_back(-1.0);
-    }
-    //llvm::dbgs() << "\n";
-  }
 
   void connectivity(const std::set<manifest_idx_t> &ms, double targetConnectivity);
 
@@ -171,7 +103,7 @@ public:
       // return connectivity is not a column yet!
     }
   }
-  double get_obj_coef_edge(long unsigned int coverage) {
+  double get_obj_coef_implicit(long unsigned int coverage) {
     switch (ObjectiveMode) {
     case maxImplicit:return coverage;
     default:return 0;
@@ -389,7 +321,7 @@ public:
   }
 
   void addImplicitCoverage(const std::map<llvm::Instruction *, std::set<manifest_idx_t>> &coverage,
-                              std::unordered_map<manifest_idx_t, std::set<manifest_idx_t>> implicitManifestEdges) {
+                           std::unordered_map<manifest_idx_t, std::set<manifest_idx_t>> implicitManifestEdges) {
     // Rules
     /**
      * (1) For each instruction (i_i) that is explicitly covered, introduce a copied implicit instruction variable (implicit_i)
@@ -456,12 +388,13 @@ public:
       glp_set_col_name(lp, col, os.str().c_str()); // assigns name m_n to nth column
       glp_set_col_kind(lp, col, GLP_BV);                      // values are binary
       glp_set_col_bnds(lp, col, GLP_DB, 0.0, 1.0);            // values are binary
-      glp_set_obj_coef(lp, col, get_obj_coef_edge(1));
+      glp_set_obj_coef(lp, col, get_obj_coef_implicit(1));
 
       addModeColumns(col, 0, 0, 1 /*implicit cov of instruction*/, 0, 0, 0);
 
 
       // Apply (1-3)
+      // impliciation(implicit_i, i_i)
       auto row = glp_add_rows(lp, 1);
       glp_set_row_bnds(lp, row, GLP_UP, 0.0, 0.0);
       glp_set_row_name(lp, row, os.str().c_str());
@@ -473,7 +406,8 @@ public:
       rows.push_back(row);
       cols.push_back(explicitCol);
       coeffs.push_back(-1.0);
-      
+
+      // any({colsM})
       auto orRow = glp_add_rows(lp, 1);
       os << "_row";
       glp_set_row_name(lp, orRow, os.str().c_str());
@@ -498,6 +432,7 @@ public:
       long N = std::min(nOf.first, nOf.second.size());
 
       // m1 cannot exist without m2 -> m2 - m1 >= 0 - hence m1 depends on m2
+      // implication(m1, m2)
       for (auto idx : nOf.second) {
         dependency({idx, mIdx});
       }

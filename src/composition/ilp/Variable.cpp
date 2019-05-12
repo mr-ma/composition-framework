@@ -1,5 +1,6 @@
 #include <composition/ilp/Variable.hpp>
 
+namespace ilp {
 void Variable::apply(glp_prob &m_Problem) {
   m_Column = glp_add_cols(&m_Problem, 1);
   glp_set_col_kind(&m_Problem, m_Column, GLP_BV);
@@ -28,4 +29,20 @@ int Variable::getBoundType() const {
     }
   }
   return GLP_FR;
+}
+void Variable::setName(const std::optional<std::string> &MName) {
+  m_Name = MName;
+}
+void Variable::setObjCoefficient(double MObjCoefficient) {
+  m_ObjCoefficient = MObjCoefficient;
+}
+void Variable::setLowerBound(const std::optional<double> &MLowerBound) {
+  m_LowerBound = MLowerBound;
+}
+void Variable::setUpperBound(const std::optional<double> &MUpperBound) {
+  m_UpperBound = MUpperBound;
+}
+const std::optional<std::string> &Variable::getName() const {
+  return m_Name;
+}
 }

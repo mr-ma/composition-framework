@@ -12,6 +12,7 @@
 #include <random>
 #include <unordered_set>
 #include <vector>
+#include <composition/ilp/ILP.hpp>
 
 namespace composition::graph {
 using composition::graph::ILPSolver;
@@ -489,6 +490,49 @@ std::vector<std::pair<manifest_idx_t,
   return result;
 }
 
+double get_obj_coef_manifest(composition::support::Objective mode, double overheadValue) {
+  //this is only called for manifests and thus no implicit/explicit value is needed,
+  //implicit/explicit values are only on edges not manifests!
+  switch (mode) {
+  case minOverhead:return overheadValue;
+  case maxManifest:return 1; //every manifest has weight of 1
+  default:return 0;
+    // TODO: case maxConnectivity:
+    // return connectivity is not a column yet!
+  }
+}
+double get_obj_coef_implicit(composition::support::Objective mode, long unsigned int coverage) {
+  switch (mode) {
+  case maxImplicit:return coverage;
+  default:return 0;
+  }
+}
+
+double get_obj_coef_explicit(composition::support::Objective mode, long unsigned int coverage) {
+  switch (mode) {
+  case maxExplicit:return coverage;
+  default:return 0;
+  }
+}
+
+std::vector<ilp::Variable *> mIdxToVars(std::unordered_map<manifest_idx_t, ilp::Variable *> &manifestVars,
+                                        const std::set<manifest_idx_t> &manifests) {
+  std::vector<ilp::Variable *> vs{};
+  for (auto m : manifests) {
+    vs.push_back(manifestVars.at(m));
+  }
+  return vs;
+}
+
+std::vector<ilp::Variable *> mIdxToVars(std::unordered_map<manifest_idx_t, ilp::Variable *> &manifestVars,
+                                        const std::vector<manifest_idx_t> &manifests) {
+  std::vector<ilp::Variable *> vs{};
+  for (auto m : manifests) {
+    vs.push_back(manifestVars.at(m));
+  }
+  return vs;
+}
+
 std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
                                                           const std::unordered_map<llvm::BasicBlock *, uint64_t> &BFI,
                                                           size_t totalInstructions) {
@@ -566,23 +610,212 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
     return 1.0 * s.normalizedHotness + (1.0 - s.normalizedHotnessProtectee);
   };
   do {
-    ILPSolver solver{};
-    solver.init(ILPObjective, ILPOverheadBound, ILPExplicitBound, ILPImplicitBound, 0, 0);
-    solver.setCostFunction(costFunction);
-    solver.addManifests(MANIFESTS, mStats);
-    solver.addDependencies(dependencies);
-    solver.addConflicts(conflicts);
-    solver.addCycles(cycles);
-    solver.addConnectivity(connectivities);
-    solver.addBlockConnectivity(blockConnectivities);
-    solver.addExplicitCoverages(exactCoverage);
-    solver.addImplicitCoverage(exactCoverage, implicitManifestEdges);
-    solver.addNOfDependencies(nOfs);
 
-    // Must come after explicit coverage is set
-    solver.addUndoDependencies(MANIFESTS);
-    auto[acceptedIndices, acceptedEdges] = solver.run();
-    solver.destroy();
+    ilp::ILP ilp{};
+    ilp.setDirection(ILPObjective.getValue() == minOverhead ?
+                     ilp::ILP::Direction::MINIMIZE :
+                     ilp::ILP::Direction::MAXIMIZE);
+
+    auto *EXPLICIT = new ilp::Constraint{};
+    EXPLICIT->setName("explicit");
+    if (ILPObjective.getValue() != maxExplicit) {
+      EXPLICIT->setLowerBound(ILPExplicitBound.getValue());
+    }
+    ilp.addConstraint(EXPLICIT);
+
+    auto *IMPLICIT = new ilp::Constraint{};
+    IMPLICIT->setName("implicit");
+    if (ILPObjective.getValue() != maxImplicit) {
+      IMPLICIT->setLowerBound(ILPImplicitBound.getValue());
+    }
+    ilp.addConstraint(IMPLICIT);
+
+    auto *MANIFEST = new ilp::Constraint{};
+    MANIFEST->setName("manifest");
+    if (ILPObjective.getValue() != maxManifest) {
+      MANIFEST->setLowerBound(0.0);
+    }
+    ilp.addConstraint(MANIFEST);
+
+    auto *OVERHEAD = new ilp::Constraint{};
+    OVERHEAD->setName("overhead");
+    if (ILPObjective.getValue() != minOverhead) {
+      if (ILPOverheadBound.getValue() > 0) {
+        OVERHEAD->setUpperBound(ILPOverheadBound.getValue());
+      } else {
+        OVERHEAD->setLowerBound(ILPOverheadBound.getValue());
+      }
+    }
+    ilp.addConstraint(OVERHEAD);
+
+    std::unordered_map<manifest_idx_t, ilp::Variable *> manifestVars{};
+    for (auto[idx, m] : MANIFESTS) {
+      auto *v = new ilp::Variable();
+      v->setName("m" + std::to_string(static_cast<int>(idx)));
+      double overhead = costFunction(mStats.at(idx));
+      v->setObjCoefficient(get_obj_coef_manifest(ILPObjective.getValue(), overhead));
+
+      MANIFEST->add(v, 1.0);
+      OVERHEAD->add(v, overhead);
+      manifestVars.emplace(idx, v);
+      ilp.addVariable(v);
+    }
+
+    // Dependencies
+    for (auto[a, b] : dependencies) {
+      auto *c = ilp::ILP::implication(manifestVars.at(a), manifestVars.at(b));
+      c->setName("dependency_m" + std::to_string(static_cast<int>(a)) + "_m" + std::to_string(static_cast<int>(b)));
+      ilp.addConstraint(c);
+    }
+
+    // Conflicts
+    for (auto[a, b] : conflicts) {
+      auto *c = ilp::ILP::XOR(manifestVars.at(a), manifestVars.at(b));
+      c->setName("conflict_m" + std::to_string(static_cast<int>(a)) + "_m" + std::to_string(static_cast<int>(b)));
+      ilp.addConstraint(c);
+    }
+
+    // Cycles
+    size_t cycleCount = 0;
+    for (const auto &c : cycles) {
+      std::vector<ilp::Variable *> vs = mIdxToVars(manifestVars, c);
+
+      auto *constraint = ilp::ILP::maximumNOf(vs, vs.size() - 1);
+      constraint->setName("cycle_" + std::to_string(cycleCount++));
+      ilp.addConstraint(constraint);
+    }
+
+    // Connectivity
+    size_t connectivityCount = 0;
+    for (const auto &c : connectivities) {
+      std::vector<ilp::Variable *> vs = mIdxToVars(manifestVars, c);
+
+      auto *constraint = ilp::ILP::nOf(vs, std::min(size_t(ILPConnectivityBound.getValue()), vs.size()));
+      constraint->setName("connectivity_" + std::to_string(connectivityCount++));
+      ilp.addConstraint(constraint);
+    }
+
+    // Block Connectivity
+    size_t blockConnectivityCount = 0;
+    for (const auto &c: blockConnectivities) {
+      std::vector<ilp::Variable *> vs = mIdxToVars(manifestVars, c);
+      auto *constraint = ilp::ILP::nOf(vs, std::min(size_t(ILPBlockConnectivityBound.getValue()), vs.size()));
+      constraint->setName("block_connectivity_" + std::to_string(blockConnectivityCount++));
+      ilp.addConstraint(constraint);
+    }
+
+    // Explicit
+    std::unordered_map<llvm::Instruction *, ilp::Variable *> explicitVars{};
+    size_t instructionCount = 0;
+    for (auto c : exactCoverage) {
+      std::vector<ilp::Variable *> vs = mIdxToVars(manifestVars, c.second);
+
+      auto[variable, constraint] = ilp::ILP::anyOf(vs);
+      auto varName = "i" + std::to_string(instructionCount++);
+      variable->setName(varName);
+      double Coverage = 1.0;
+      variable->setObjCoefficient(get_obj_coef_explicit(ILPObjective.getValue(), (unsigned long) Coverage));
+      constraint->setName(varName + "_any");
+
+      ilp.addVariable(variable);
+      ilp.addConstraint(constraint);
+      EXPLICIT->add(variable, Coverage);
+      explicitVars.emplace(c.first, variable);
+    }
+
+    // Implicit
+    for (auto[instr, ms] : exactCoverage) {
+      std::set<manifest_idx_t> implicitlyCoversInstr{};
+
+      for (auto m : ms) {
+        auto it = implicitManifestEdges.find(m);
+
+        if (it != implicitManifestEdges.end()) {
+          for (auto implicitM : it->second) {
+            implicitlyCoversInstr.insert(implicitM);
+          }
+        }
+      }
+
+      if (implicitlyCoversInstr.empty()) {
+        continue;
+      }
+
+      std::vector<ilp::Variable *> vs = mIdxToVars(manifestVars, implicitlyCoversInstr);
+      auto[variable, constraint] = ilp::ILP::anyOf(vs);
+
+      auto *explicitVar = explicitVars.at(instr);
+      auto varName = "implicit_" + explicitVar->getName().value();
+      variable->setName(varName);
+      constraint->setName(varName + "_any");
+
+      auto Coverage = 1;
+      variable->setObjCoefficient(get_obj_coef_implicit(ILPObjective.getValue(), Coverage));
+      IMPLICIT->add(variable, Coverage);
+
+      auto implicationConstraint = ilp::ILP::implication(variable, explicitVar);
+      implicationConstraint->setName(varName);
+
+      ilp.addVariable(variable);
+      ilp.addConstraint(constraint);
+      ilp.addConstraint(implicationConstraint);
+    }
+
+    // NOfDependencies
+    size_t nOfCount = 0;
+    for (auto[mIdx, nOf] : nOfs) {
+      // m1 cannot exist without m2 -> m2 - m1 >= 0 - hence m1 depends on m2
+      // implication(m1, m2)
+      for (auto idx : nOf.second) {
+        auto *constraint = ilp::ILP::implication(manifestVars.at(idx), manifestVars.at(mIdx));
+        ilp.addConstraint(constraint);
+      }
+      std::vector<ilp::Variable *> vs = mIdxToVars(manifestVars, nOf.second);
+      auto N = std::min(nOf.first, nOf.second.size());
+      auto *constraint = ilp::ILP::nOf(vs, N - 1);
+      constraint->setName("n_" + std::to_string(N) + "_of_" + std::to_string(nOfCount++));
+      ilp.addConstraint(constraint);
+    }
+
+    // Undo Dependencies
+    for (auto[idx, m] : MANIFESTS) {
+      for (auto v : m->UndoValues()) {
+        if (auto I = llvm::dyn_cast<llvm::Instruction>(v)) {
+          // m1 <=> i1
+          auto it = explicitVars.find(I);
+          if (it == explicitVars.end()) {
+            continue;
+          }
+          // m1 <=> i1
+          // iff(iCol, mCol)
+          auto mVar = manifestVars.at(idx);
+          auto *constraint = ilp::ILP::iff(it->second, mVar);
+          constraint->setName("undo_" + mVar->getName().value() + "_" + it->second->getName().value());
+          ilp.addConstraint(constraint);
+        }
+      }
+    }
+
+    ilp.build();
+    if (!composition::support::ILPProblem.empty()) {
+      ilp.writeProblem(composition::support::ILPProblem.getValue());
+    }
+    ilp.run();
+    if (!composition::support::ILPSolution.empty()) {
+      ilp.writeSolution(composition::support::ILPSolution.getValue());
+    }
+    if (!composition::support::ILPSolutionReadable.empty()) {
+      ilp.writeSolutionReadable(composition::support::ILPSolutionReadable.getValue());
+    }
+
+    std::set<manifest_idx_t> acceptedIndices{};
+    for (auto[idx, var] : manifestVars) {
+      if (ilp.getValue(var) == 1.0) {
+        acceptedIndices.insert(idx);
+      }
+    }
+
+    ilp.destroy();
 
     std::set<Manifest *> accepted{};
     for (auto &mIdx : acceptedIndices) {

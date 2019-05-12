@@ -1,6 +1,6 @@
 #include <cassert>
 #include <composition/ilp/Constraint.hpp>
-
+namespace ilp {
 std::vector<std::tuple<int /*row*/, int /*col*/, double /*coef*/>> Constraint::apply(glp_prob &m_Problem) {
   m_Row = glp_add_rows(&m_Problem, 1);
 
@@ -31,4 +31,18 @@ int Constraint::getBoundType() const {
     }
   }
   return GLP_FR;
+}
+void Constraint::add(Variable *v, double coef) {
+  m_Variables.push_back(v);
+  m_Coefficients.push_back(coef);
+}
+void Constraint::setName(const std::optional<std::string> &MName) {
+  m_Name = MName;
+}
+void Constraint::setLowerBound(const std::optional<double> &MLowerBound) {
+  m_LowerBound = MLowerBound;
+}
+void Constraint::setUpperBound(const std::optional<double> &MUpperBound) {
+  m_UpperBound = MUpperBound;
+}
 }

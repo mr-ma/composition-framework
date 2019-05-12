@@ -26,7 +26,9 @@ extern llvm::cl::opt<int> ILPImplicitBound;
 extern llvm::cl::opt<double> ILPConnectivityBound;
 extern llvm::cl::opt<double> ILPBlockConnectivityBound;
 extern llvm::cl::opt<double> ILPOverheadBound;
-extern llvm::cl::opt<std::string> ILPObjective;
+
+enum Objective { minOverhead, maxExplicit, maxImplicit, maxConnectivity, maxManifest };
+extern llvm::cl::opt<Objective> ILPObjective;
 
 } // namespace composition::support
 #endif // COMPOSITION_FRAMEWORK_SUPPORT_OPTIONS_HPP
