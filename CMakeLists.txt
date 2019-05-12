@@ -108,7 +108,7 @@ add_library(CompositionFramework SHARED
         src/composition/support/Pass.cpp
         src/composition/AnalysisRegistry.cpp
         src/composition/Stats.cpp
-        src/composition/support/ManifestValueHandle.cpp)
+        src/composition/support/ManifestValueHandle.cpp include/composition/ilp/Variable.hpp include/composition/ilp/Constraint.hpp include/composition/ilp/ILP.hpp src/composition/ilp/ILP.cpp src/composition/ilp/Variable.cpp src/composition/ilp/Constraint.cpp)
 
 add_library(composition-framework::CompositionFramework ALIAS CompositionFramework)
 

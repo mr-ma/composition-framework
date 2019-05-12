@@ -388,61 +388,7 @@ public:
     coeffs.push_back(blockHotnessValue);
   }
 
-  void addImplicitCoverage(
-      const std::vector<std::tuple<composition::manifest_idx_t,
-                                   std::pair<composition::manifest_idx_t, composition::manifest_idx_t>,
-                                   long unsigned int>> &
-      implicitCov,
-      const std::map<composition::manifest_idx_t, std::pair<std::set<composition::manifest_idx_t>, long unsigned int>> &
-      duplicateEdgesOnManifest) {
-    // TODO: ensure setting the cost column to zero does not negatively affect the optimization
-    for (auto&[eIdx, pair, coverage] : implicitCov) {
-      //llvm::dbgs() << "edge" << eIdx << "_" << pair.first << "_" << pair.second << "\n";
-      std::ostringstream os;
-      os << "e" << eIdx;
-      auto col = glp_add_cols(lp, 1);
-      glp_set_col_name(lp, col, os.str().c_str()); // assigns name m_n to nth column
-
-      glp_set_col_kind(lp, col, GLP_BV);           // values are binary
-      glp_set_col_bnds(lp, col, GLP_DB, 0.0, 1.0); // values are binary
-      glp_set_obj_coef(lp, col, 0);                // TODO: edges do not impose any costs
-
-      colsToE.insert({col, eIdx});
-
-      addModeColumns(col, 0, 0, 0, 0, 0, 0);
-    }
-    //llvm::dbgs() << "Nr. Duplicate edges reported:" << duplicateEdgesOnManifest.size() << "\n";
-    // Rows for duplicate edges with f variables
-    for (auto&[mIdx, edgecov] : duplicateEdgesOnManifest) {
-      auto&[edges, coverage] = edgecov;
-      //llvm::dbgs() << "f" << mIdx;
-      std::ostringstream os;
-      os << "f" << mIdx;
-      auto col = glp_add_cols(lp, 1);
-      glp_set_col_name(lp, col, os.str().c_str()); // assigns name m_n to nth column
-
-      glp_set_col_kind(lp, col, GLP_BV);                      // values are binary
-      glp_set_col_bnds(lp, col, GLP_DB, 0.0, 1.0);            // values are binary
-      glp_set_obj_coef(lp, col, get_obj_coef_edge(coverage)); // TODO: f (edge duplicates) do not impose any costs
-
-      colsToF.insert({col, mIdx});
-      addModeColumns(col, 0, 0, coverage, 0, 0, 0);
-    }
-    // Add edge constraints, i.e. e = M1 && M2
-    for (auto&[eIdx, pair, _] : implicitCov) {
-      edgeConnection(eIdx, pair);
-    }
-
-    // Add duplicate edge constaints, i.e. f = dup_e1 || dup_e2 || dup_e3
-    for (auto&[mIdx, edges] : duplicateEdgesOnManifest) {
-      duplicateImplicitEdge(mIdx, edges.first);
-    }
-
-    // Add desired implicit coverage
-    // implicitCoverageConstraint(implicitCoverageToInstruction, implicitCov, 0.0);
-  }
-
-  void addNewImplicitCoverage(const std::map<llvm::Instruction *, std::set<manifest_idx_t>> &coverage,
+  void addImplicitCoverage(const std::map<llvm::Instruction *, std::set<manifest_idx_t>> &coverage,
                               std::unordered_map<manifest_idx_t, std::set<manifest_idx_t>> implicitManifestEdges) {
     // Rules
     /**

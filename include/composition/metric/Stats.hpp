@@ -48,26 +48,24 @@ public:
 
   void dump(llvm::raw_ostream &o);
 
-  void setManifests(const std::set<Manifest *>& manifests);
+  void setManifests(const std::set<Manifest *> &manifests);
 
-  void collect(const std::set<llvm::Function *>& sensitiveFunctions, std::vector<Manifest *> manifests,
+  void collect(const std::set<llvm::Function *> &sensitiveFunctions, std::vector<Manifest *> manifests,
                const ManifestProtectionMap &dep);
 
   void collect(llvm::Module *M, std::vector<Manifest *> manifests, const ManifestProtectionMap &dep);
 
   void collect(llvm::Value *V, std::vector<Manifest *> manifests, const ManifestProtectionMap &dep);
 
-  void collect(const std::set<llvm::Instruction *>& allInstructions, std::vector<Manifest *> manifests,
+  void collect(const std::set<llvm::Instruction *> &allInstructions, std::vector<Manifest *> manifests,
                const ManifestProtectionMap &dep);
 
   std::unordered_map<Manifest *, std::unordered_set<llvm::Instruction *>>
   implictInstructions(const ManifestProtectionMap &dep, std::unordered_map<manifest_idx_t, Manifest *> MANIFESTS);
   std::vector<std::tuple<manifest_idx_t /*edge_index*/, std::pair<manifest_idx_t, manifest_idx_t> /*m1 -> m2*/,
                          unsigned long /*coverage*/>>
-  implictInstructionsPerEdge(
-      const ManifestProtectionMap &dep, const std::unordered_map<manifest_idx_t, Manifest *>& MANIFESTS,
-      std::map<manifest_idx_t /*protected manifest*/,
-               std::pair<std::set<manifest_idx_t> /*edges*/, unsigned long /*coverage*/>> *duplicateEdgesOnManifest);
+  implictInstructionsPerEdge(const ManifestProtectionMap &dep,
+                             const std::unordered_map<manifest_idx_t, Manifest *> &MANIFESTS);
 
 private:
   std::set<llvm::Instruction *> protectedInstructionsDistinct{};
@@ -78,7 +76,7 @@ private:
   std::pair<Connectivity, Connectivity>
   instructionFunctionConnectivity(const std::unordered_map<llvm::Instruction *, size_t> &instructionConnectivityMap);
 
-  Connectivity computeBlockConnectivity(const std::set<llvm::BasicBlock *>& blocks, std::vector<Manifest *> manifests);
+  Connectivity computeBlockConnectivity(const std::set<llvm::BasicBlock *> &blocks, std::vector<Manifest *> manifests);
 };
 
 /**

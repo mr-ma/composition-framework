@@ -246,21 +246,6 @@ std::set<std::pair<manifest_idx_t, manifest_idx_t>> ProtectionGraph::computeDepe
   return dependencies;
 }
 
-/*std::set<std::pair<manifest_idx_t,std::pair<manifest_idx_t, manifest_idx_t>>> ProtectionGraph::computeImplicitEdges()
-{ std::set<std::pair<manifest_idx_t, manifest_idx_t>> dependencies{};
-
-  for (auto& [mIdx, _] : MANIFESTS) {
-    // Manifest dependencies
-    for (auto [it, it_end] = DependencyUndo.right.equal_range(mIdx); it != it_end; ++it) {
-      for (auto v : it->second) {
-        dependencies.insert({v, mIdx});
-      }
-    }
-  }
-
-  return dependencies;
-}*/
-
 std::set<std::set<manifest_idx_t>> ProtectionGraph::computeCycles() {
   Profiler detectingProfiler{};
 
@@ -270,11 +255,12 @@ std::set<std::set<manifest_idx_t>> ProtectionGraph::computeCycles() {
 
   std::set<std::set<manifest_idx_t>> cycles{};
 
-  llvm::dbgs() << "Cycles...\n";
-  AllCycles a{};
-  llvm::dbgs() << "Nodes: " << lemon::countNodes(LG) << " Edges: " << lemon::countArcs(LG) << "\n";
-  std::set<std::set<lemon::ListDigraph::Node>> all = a.simpleCycles(LG, 100);
-  llvm::dbgs() << "End...\n";
+  /* llvm::dbgs() << "Cycles...\n";
+   AllCycles a{};
+   llvm::dbgs() << "Nodes: " << lemon::countNodes(LG) << " Edges: " << lemon::countArcs(LG) << "\n";
+   std::set<std::set<lemon::ListDigraph::Node>> all = a.simpleCycles(LG, 1);
+   llvm::dbgs() << "End...\n";
+   */
 
   lemon::ListDigraph::NodeMap<int> components{LG};
   lemon::stronglyConnectedComponents(LG, components);
@@ -282,11 +268,15 @@ std::set<std::set<manifest_idx_t>> ProtectionGraph::computeCycles() {
   for (lemon::ListDigraph::NodeIt scNode(LG); scNode != lemon::INVALID; ++scNode) {
     sccs[components[scNode]].insert(scNode);
   }
+  /*for(const auto& el : all) {
+    sccs[sccs.size()] = el;
+  }*/
 
   for (auto&[_, scc] : sccs) {
     if (scc.size() == 1) {
       continue;
     } else {
+      llvm::dbgs() << "Elements in potential cycle: " << scc.size() << "\n";
       std::set<manifest_idx_t> cycle{};
 
       for (auto &s : scc) {
@@ -388,12 +378,6 @@ size_t manifestHotness(Manifest *m, const std::unordered_map<llvm::BasicBlock *,
 size_t manifestHotnessProtectee(Manifest *m, const std::unordered_map<llvm::BasicBlock *, uint64_t> &BFI) {
   std::set<llvm::Instruction *> instr = m->Coverage();
   return maxHotnessOfInstructions(instr, BFI);
-}
-
-inline double round(double val) {
-  if (val < 0)
-    return ceil(val - 0.5);
-  return floor(val + 0.5);
 }
 
 void ProtectionGraph::removeManifest(manifest_idx_t m) {
@@ -554,12 +538,10 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
     hotnessProtecteeBounds.first = std::min(hotnessProtecteeBounds.first, mStats[mIdx].hotnessProtectee);
     hotnessProtecteeBounds.second = std::max(hotnessProtecteeBounds.second, mStats[mIdx].hotnessProtectee);
   }
-  std::map<manifest_idx_t /*protected manifest*/, std::pair<std::set<manifest_idx_t> /*edges*/, unsigned long>>
-      duplicateEdgesOnManifest{};
   metric::Stats s{};
   //std::vector<std::tuple<manifest_idx_t /*edge_index*/, std::pair<manifest_idx_t, manifest_idx_t> /*m1 -> m2*/,
   //                       unsigned long /*coverage*/>>
-  auto implicitCov = s.implictInstructionsPerEdge(ManifestProtection, MANIFESTS, &duplicateEdgesOnManifest);
+  auto implicitCov = s.implictInstructionsPerEdge(ManifestProtection, MANIFESTS);
 
   std::unordered_map<manifest_idx_t, std::set<manifest_idx_t>> implicitManifestEdges{};
   for (auto[e, mPair, c] : implicitCov) {
@@ -594,8 +576,7 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
     solver.addConnectivity(connectivities);
     solver.addBlockConnectivity(blockConnectivities);
     solver.addExplicitCoverages(exactCoverage);
-    //solver.addImplicitCoverage(implicitCov, duplicateEdgesOnManifest);
-    solver.addNewImplicitCoverage(exactCoverage, implicitManifestEdges);
+    solver.addImplicitCoverage(exactCoverage, implicitManifestEdges);
     solver.addNOfDependencies(nOfs);
 
     // Must come after explicit coverage is set
@@ -607,10 +588,6 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
     for (auto &mIdx : acceptedIndices) {
       accepted.insert(MANIFESTS.at(mIdx));
     }
-    //for (auto &eIdx : acceptedEdges) {
-    //// TODO: calculate implicit coverage based on the accepted edges
-    //llvm::dbgs() << "accepted edge" << eIdx << "\n";
-    //}
 
     ProtectionGraph pg{};
     pg.addManifests(accepted);
@@ -620,6 +597,35 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
     if (!newCycles.empty()) {
       for (auto &c : newCycles) {
         cycles.insert(c);
+      }
+
+      if (cycles.size() > 1) {
+        std::set<manifest_idx_t> intersectionSet = acceptedIndices;
+
+        for (auto &c : cycles) {
+          std::set<manifest_idx_t> newIntersection{};
+          std::set_intersection(c.begin(),
+                                c.end(),
+                                intersectionSet.begin(),
+                                intersectionSet.end(),
+                                std::inserter(newIntersection, newIntersection.begin()));
+          intersectionSet = newIntersection;
+        }
+
+        std::set<Manifest *> accepted2{};
+        for (auto &mIdx : intersectionSet) {
+          accepted2.insert(MANIFESTS.at(mIdx));
+        }
+
+        ProtectionGraph pg2{};
+        pg2.addManifests(accepted2);
+        pg2.addHierarchy(M);
+        pg2.connectShadowNodes();
+
+        for (auto &c : pg2.computeCycles()) {
+          llvm::dbgs() << "Adding additional cycle of length " << c.size() << "\n";
+          cycles.insert(c);
+        }
       }
     } else {
       cStats.cycles = cycles.size();

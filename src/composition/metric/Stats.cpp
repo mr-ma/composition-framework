@@ -55,11 +55,8 @@ void Stats::collect(const std::set<llvm::Function *> &sensitiveFunctions, std::v
 
 std::vector<std::tuple<manifest_idx_t /*edge_index*/, std::pair<manifest_idx_t, manifest_idx_t> /*m1 -> m2*/,
                        unsigned long /*coverage*/>>
-Stats::implictInstructionsPerEdge(
-    const ManifestProtectionMap &dep, const std::unordered_map<manifest_idx_t, Manifest *> &MANIFESTS,
-    std::map<manifest_idx_t /*protectee manifest*/,
-             std::pair<std::set<manifest_idx_t> /*protector edges*/,
-                       unsigned long /*coverage*/>> *duplicateEdgesOnManifest) {
+Stats::implictInstructionsPerEdge(const ManifestProtectionMap &dep,
+                                  const std::unordered_map<manifest_idx_t, Manifest *> &MANIFESTS) {
   lemon::ListDigraph G{};
   lemon::ListDigraph::NodeMap<std::unordered_set<llvm::Instruction *>> coverage{G};
   lemon::ListDigraph::NodeMap<manifest_idx_t> indices{G};
@@ -68,7 +65,7 @@ Stats::implictInstructionsPerEdge(
   llvm::dbgs() << "Graph Nodes\n";
   for (auto[idx, m] : MANIFESTS) {
     auto n = G.addNode();
-  //  m->dump();
+    //  m->dump();
     auto mCov = m->Coverage();
     coverage[n] = std::unordered_set<llvm::Instruction *>(mCov.begin(), mCov.end());
 
@@ -125,28 +122,14 @@ Stats::implictInstructionsPerEdge(
 
   llvm::dbgs() << "Calc\n";
   for (auto n : sorted) {
-    //llvm::dbgs() << "Node:" << indices[n] << '\n';
     for (lemon::ListDigraph::InArcIt e(G, n); e != lemon::INVALID; ++e) {
       auto other = G.source(e);
-      //llvm::dbgs() << "Edge to Node:" << indices[other] << " coverage: " << coverage[other].size() << '\n';
       if (indices[other] == indices[n]) {
         llvm::dbgs() << "FOUND A SELF-EDGE " << "\n";
         exit(1);
       }
       implicitEdges.emplace_back(edgeIndex, std::make_pair(indices[n], indices[other]), coverage[other].size());
-      auto &[edges, cov] = (*duplicateEdgesOnManifest)[indices[other]];
-      if (!edges.empty() && cov != coverage[other].size()) {
-        llvm::dbgs() << "What's going on here, different coverage for the same manifest?\n";
-        llvm::dbgs() << "Coverage protectee:" << coverage[other].size() << " previously captured:" << cov << "\n";
-        exit(1);
-      }
-      cov = coverage[other].size();
-      //////START HERE THE EDGES DOES NOT MAINTAIN THE VALUES AFTER EACH INSERT? POINTER ISSUE??
-      edges.insert(edgeIndex);
-      //llvm::dbgs() << "Count of protecting edges for node " << indices[other] << " is " << edges.size() << "\n";
       edgeIndex++;
-
-      // coverage[n].insert(coverage[other].begin(), coverage[other].end());
     }
   }
   return implicitEdges;
