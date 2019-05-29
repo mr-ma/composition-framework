@@ -256,12 +256,11 @@ std::set<std::set<manifest_idx_t>> ProtectionGraph::computeCycles() {
 
   std::set<std::set<manifest_idx_t>> cycles{};
 
-  /* llvm::dbgs() << "Cycles...\n";
-   AllCycles a{};
-   llvm::dbgs() << "Nodes: " << lemon::countNodes(LG) << " Edges: " << lemon::countArcs(LG) << "\n";
-   std::set<std::set<lemon::ListDigraph::Node>> all = a.simpleCycles(LG, 1);
-   llvm::dbgs() << "End...\n";
-   */
+  llvm::dbgs() << "Cycles...\n";
+  AllCycles a{};
+  llvm::dbgs() << "Nodes: " << lemon::countNodes(LG) << " Edges: " << lemon::countArcs(LG) << "\n";
+  std::set<std::set<lemon::ListDigraph::Node>> all = a.simpleCycles(LG, 10000);
+  llvm::dbgs() << "End...\n";
 
   lemon::ListDigraph::NodeMap<int> components{LG};
   lemon::stronglyConnectedComponents(LG, components);
@@ -269,15 +268,14 @@ std::set<std::set<manifest_idx_t>> ProtectionGraph::computeCycles() {
   for (lemon::ListDigraph::NodeIt scNode(LG); scNode != lemon::INVALID; ++scNode) {
     sccs[components[scNode]].insert(scNode);
   }
-  /*for(const auto& el : all) {
+  for (const auto &el : all) {
     sccs[sccs.size()] = el;
-  }*/
+  }
 
   for (auto&[_, scc] : sccs) {
     if (scc.size() == 1) {
       continue;
     } else {
-      llvm::dbgs() << "Elements in potential cycle: " << scc.size() << "\n";
       std::set<manifest_idx_t> cycle{};
 
       for (auto &s : scc) {
@@ -471,7 +469,7 @@ std::vector<std::pair<manifest_idx_t,
   std::vector<std::pair<manifest_idx_t, std::pair<uint64_t, std::vector<manifest_idx_t>>>> result{};
 
   for (auto[idx, m] : manifests) {
-    for (auto c : m->constraints) {
+    for (const auto& c : m->constraints) {
       if (auto nOf = dyn_cast<NOf>(c.get())) {
         auto nOfManifests = nOf->getManifests();
 
@@ -651,7 +649,7 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
     std::unordered_map<manifest_idx_t, ilp::Variable *> manifestVars{};
     for (auto[idx, m] : MANIFESTS) {
       auto *v = new ilp::Variable();
-      v->setName("m" + std::to_string(static_cast<int>(idx)));
+      v->setName(m->name + std::to_string(static_cast<int>(idx)));
       double overhead = costFunction(mStats.at(idx));
       v->setObjCoefficient(get_obj_coef_manifest(ILPObjective.getValue(), overhead));
 
@@ -707,7 +705,7 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
     // Explicit
     std::unordered_map<llvm::Instruction *, ilp::Variable *> explicitVars{};
     size_t instructionCount = 0;
-    for (auto c : exactCoverage) {
+    for (const auto &c : exactCoverage) {
       std::vector<ilp::Variable *> vs = mIdxToVars(manifestVars, c.second);
 
       auto[variable, constraint] = ilp::ILP::anyOf(vs);
@@ -777,6 +775,7 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
       ilp.addConstraint(constraint);
     }
 
+
     // Undo Dependencies
     for (auto[idx, m] : MANIFESTS) {
       for (auto v : m->UndoValues()) {
@@ -789,7 +788,7 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
           // m1 <=> i1
           // iff(iCol, mCol)
           auto mVar = manifestVars.at(idx);
-          auto *constraint = ilp::ILP::iff(it->second, mVar);
+          auto *constraint = ilp::ILP::implication(it->second, mVar);
           constraint->setName("undo_" + mVar->getName().value() + "_" + it->second->getName().value());
           ilp.addConstraint(constraint);
         }

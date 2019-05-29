@@ -129,7 +129,6 @@ std::pair<Variable *, Constraint *> ILP::anyOf(const std::vector<Variable *> &vs
 Constraint *ILP::nOf(const std::vector<Variable *> &vs, size_t N) {
   auto *c = new Constraint{};
   c->setLowerBound(std::min(vs.size(), N));
-  c->setUpperBound(vs.size());
 
   for (auto var : vs) {
     c->add(var, 1.0);
@@ -139,7 +138,6 @@ Constraint *ILP::nOf(const std::vector<Variable *> &vs, size_t N) {
 }
 Constraint *ILP::implication(Variable *a, Variable *b) {
   auto *c = new Constraint{};
-  c->setLowerBound(-1.0);
   c->setUpperBound(0.0);
 
   c->add(a, 1.0);
@@ -149,7 +147,6 @@ Constraint *ILP::implication(Variable *a, Variable *b) {
 }
 Constraint *ILP::maximumNOf(const std::vector<Variable *> &vs, size_t N) {
   auto *c = new Constraint{};
-  c->setLowerBound(0.0);
   c->setUpperBound(N);
 
   for (auto var : vs) {
