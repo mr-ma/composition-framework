@@ -106,8 +106,7 @@ std::pair<std::set<manifest_idx_t>, std::set<manifest_idx_t>> ILPSolver::run() {
   jav.insert(jav.end(), cols.begin(), cols.end());
   arv.insert(arv.end(), coeffs.begin(), coeffs.end());
 
-  llvm::dbgs() << "ILP sanity rows:" << dataSize << " columns:" << cols.size() << " coefs:" << coeffs.size() << " ia3:"
-               << rows[3] << " " << rows[2] << " " << rows[1] << " \n";
+  llvm::dbgs() << "ILP sanity rows:" << dataSize << " columns:" << cols.size() << " coefs:" << coeffs.size()<<"\n";
   glp_load_matrix(lp, dataSize, &iav[0], &jav[0], &arv[0]); // calls the routine glp_load_matrix
 
   // Write problem definition
