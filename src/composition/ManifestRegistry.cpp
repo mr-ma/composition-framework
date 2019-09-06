@@ -10,7 +10,7 @@ void ManifestRegistry::Remove(Manifest *m) {
 
   if (manifests.find(m) != manifests.end()) {
     llvm::dbgs() << "Undoing manifest...\n";
-    m->dump();
+    //m->dump();
     m->Undo();
     manifests.erase(m);
   }
