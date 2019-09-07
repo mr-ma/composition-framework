@@ -28,5 +28,8 @@ extern llvm::cl::opt<double> ILPBlockConnectivityBound;
 extern llvm::cl::opt<double> ILPOverheadBound;
 extern llvm::cl::opt<std::string> ILPObjective;
 
+
+extern llvm::cl::opt<bool> ExperimentalSCIPSolver;
+
 } // namespace composition::support
 #endif // COMPOSITION_FRAMEWORK_SUPPORT_OPTIONS_HPP

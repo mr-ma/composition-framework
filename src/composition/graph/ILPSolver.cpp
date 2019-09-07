@@ -1,6 +1,7 @@
 #include <composition/graph/ILPSolver.hpp>
 #include <composition/support/options.hpp>
-
+#include <fstream>
+#include <regex>
 namespace composition::graph {
 
 ILPSolver::ILPSolver() {
@@ -110,53 +111,97 @@ std::pair<std::set<manifest_idx_t>, std::set<manifest_idx_t>> ILPSolver::run() {
   glp_load_matrix(lp, dataSize, &iav[0], &jav[0], &arv[0]); // calls the routine glp_load_matrix
 
   // Write problem definition
+  bool problemFileExists = false;
   if (!composition::support::ILPProblem.empty()) {
     llvm::dbgs() << "Writing problem to" << composition::support::ILPProblem.getValue() << "\n";
     glp_write_lp(lp, nullptr, composition::support::ILPProblem.getValue().c_str());
+    problemFileExists = true;
   }
 
-  glp_iocp params{};
-  glp_init_iocp(&params);
 
-  params.gmi_cuts = GLP_ON;
-  params.br_tech = GLP_BR_PCH;
-  params.presolve = GLP_ON;
+  bool useSCIPResults = false;
+  std::string filePath = composition::support::ILPSolution.getValue();
+  std::string solFilePath = filePath.replace(filePath.find("txt"), 3,"sol");
+  if (problemFileExists && composition::support::ExperimentalSCIPSolver){
+    llvm::dbgs()<<"********USING EXPERIMENTAL SCIP SOLVER*******\n";
+    //USE SCIP solver
+    std::string problemPath = composition::support::ILPProblem.getValue();
+    llvm::dbgs()<<"Solution fileName:"<<solFilePath.c_str()<<"\n";
+    std::string cmd = "/home/sip/SCIPOptSuite-6.0.2-Linux/bin/scip -c \"read "+problemPath+" optimize write solution "+solFilePath+" quit\"";
+    std::system(cmd.c_str());
+    //load the solution into lp problem object
+    useSCIPResults = true; 
+  } else {
 
-  int mip_ecode = glp_intopt(lp, &params);
-  int mip_status = glp_mip_status(lp);
-  llvm::dbgs() << "MIP exit code: " << mip_ecode << " status code: " << mip_ecode << "\n";
-  // No error occured
-  assert(mip_ecode == 0);
-  // Solution is INTEGER OPTIMAL
-  assert(mip_status == GLP_OPT);
+    glp_iocp params{};
+    glp_init_iocp(&params);
 
-  auto objective_result = glp_mip_obj_val(lp);
+    params.gmi_cuts = GLP_ON;
+    params.br_tech = GLP_BR_PCH;
+    params.presolve = GLP_ON;
 
-  // Write machine readable solution
-  if (!composition::support::ILPSolution.empty()) {
-    glp_write_mip(lp, composition::support::ILPSolution.getValue().c_str());
-  }
+    int mip_ecode = glp_intopt(lp, &params);
+    int mip_status = glp_mip_status(lp);
+    llvm::dbgs() << "MIP exit code: " << mip_ecode << " status code: " << mip_ecode << "\n";
+    // No error occured
+    assert(mip_ecode == 0);
+    // Solution is INTEGER OPTIMAL
+    assert(mip_status == GLP_OPT);
 
-  // Write human readable solution
-  if (!composition::support::ILPSolutionReadable.empty()) {
-    glp_print_mip(lp, composition::support::ILPSolutionReadable.getValue().c_str());
+    auto objective_result = glp_mip_obj_val(lp);
+
+    // Write machine readable solution
+    if (!composition::support::ILPSolution.empty()) {
+      glp_write_mip(lp, composition::support::ILPSolution.getValue().c_str());
+    }
+
+    // Write human readable solution
+    if (!composition::support::ILPSolutionReadable.empty()) {
+      glp_print_mip(lp, composition::support::ILPSolutionReadable.getValue().c_str());
+    }
   }
 
   std::set<manifest_idx_t> acceptedManifests{};
+  std::set<manifest_idx_t> acceptedEdges{};
+  if (useSCIPResults){
+    llvm::dbgs()<<"Using SCIPRESULTS...\n";
+    std::ifstream input(solFilePath);
+    std::string in;
+    std::regex pattern("m(\\d+).*?\\d+.*?\\(obj\\:(\\d+)\\)");
+    std::smatch match;
+    llvm::dbgs()<<"Accepted manifests:\n";
+    while (!input.eof()) {
+      std::getline(input, in);
+      if (std::regex_search(in, match, pattern)){
+	manifest_idx_t mIdx =(manifest_idx_t) std::stoull(match[1]);	
+	llvm::dbgs()<<mIdx<<", ";
+	acceptedManifests.insert(mIdx);
+      }
+    }
+    llvm::dbgs()<<"\nStarting cols...\n";
+    exit(1);
+    for(auto&[col, eIdx] : colsToE){
+      llvm::dbgs()<<eIdx<<"\n";
+    }
+    llvm::dbgs()<<"Ending cols...\n";
+  } else {
+  llvm::dbgs()<<"Accepted Manifests:\n";
   for (auto&[col, mIdx] : colsToM) {
     if (glp_mip_col_val(lp, col) == 1) {
+      llvm::dbgs()<<mIdx<<", ";
       acceptedManifests.insert(mIdx);
       // TODO: calculate implicit coverage based on the accepted edges
     }
   }
-
-  std::set<manifest_idx_t> acceptedEdges{};
+  llvm::dbgs()<<"\n";
+  exit(1);
   for (auto&[col, eIdx] : colsToE) {
     if (glp_mip_col_val(lp, col) == 1) {
       acceptedEdges.insert(eIdx);
     }
   }
   printModeILPResults();
+  }
 
   return {acceptedManifests, acceptedEdges};
 }

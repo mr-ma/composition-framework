@@ -36,4 +36,8 @@ llvm::cl::opt<int>
 llvm::cl::opt<double>
     ILPOverheadBound("cf-ilp-overhead-bound", llvm::cl::init(0), llvm::cl::desc("Overhead constraint"));
 
+
+llvm::cl::opt<bool> ExperimentalSCIPSolver("cf-experimental-scip", llvm::cl::Hidden, llvm::cl::desc("Use SCIP solver to solve the problem in a hacky way!"));
+
+
 } // namespace composition::support
