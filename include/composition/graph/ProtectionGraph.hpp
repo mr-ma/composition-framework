@@ -15,7 +15,6 @@
 #include <composition/support/options.hpp>
 #include <composition/util/bimap.hpp>
 #include <cstdint>
-#include <glpk.h>
 #include <iterator>
 #include <lemon/graph_to_eps.h>
 #include <lemon/list_graph.h>

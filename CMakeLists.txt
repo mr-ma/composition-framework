@@ -20,6 +20,12 @@ find_package(LEMON REQUIRED)
 find_package(function-filter REQUIRED)
 find_package(OpenMP REQUIRED)
 
+### OR-Tools
+find_library(ortools_location NAMES libortools.so)
+
+add_library(ortools SHARED IMPORTED)
+set_target_properties(ortools PROPERTIES IMPORTED_LOCATION ${ortools_location})
+
 ##
 ## CONFIGURATION
 ##
@@ -130,9 +136,9 @@ target_include_directories(CompositionFramework
         ${LEMON_INCLUDE_DIRS}
         )
 
-target_compile_options(CompositionFramework PRIVATE -g -fno-rtti)
+#target_compile_options(CompositionFramework PRIVATE -g -fno-rtti)
 target_compile_features(CompositionFramework PUBLIC cxx_std_17)
-target_link_libraries(CompositionFramework PRIVATE glpk emon nlohmann_json::nlohmann_json OpenMP::OpenMP_CXX)
+target_link_libraries(CompositionFramework PRIVATE glpk emon nlohmann_json::nlohmann_json OpenMP::OpenMP_CXX ortools)
 
 target_compile_features(rtlib PUBLIC cxx_std_17)
 

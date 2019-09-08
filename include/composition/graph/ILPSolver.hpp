@@ -1,16 +1,19 @@
 #ifndef COMPOSITION_GRAPH_ILPSOLVER_HPP
 #define COMPOSITION_GRAPH_ILPSOLVER_HPP
 
+#define USE_CBC 1
+
 #include <boost/bimap/bimap.hpp>
 #include <composition/Manifest.hpp>
 #include <composition/metric/ManifestStats.hpp>
 #include <composition/support/options.hpp>
 #include <functional>
-#include <glpk.h>
+#include "ortools/linear_solver/linear_solver.h"
 #include <llvm/Support/Debug.h>
 #include <map>
 #include <set>
 #include <vector>
+
 
 namespace composition::graph {
 using composition::Manifest;
@@ -19,18 +22,23 @@ using composition::metric::ManifestStats;
 using composition::support::ILPBlockConnectivityBound;
 using composition::support::ILPConnectivityBound;
 using llvm::dbgs;
+using operations_research::MPSolver;
+using operations_research::MPConstraint;
+using operations_research::MPVariable;
+using operations_research::MPObjective;
 
 class ILPSolver {
 private:
-  int EXPLICIT{};
-  int IMPLICIT{};
-  int HOTNESS{};
-  int HOTNESS_PROTECTEE{};
-  int OVERHEAD{};
-  int MANIFEST{};
+  MPSolver lp = MPSolver("ilp_sip", MPSolver::OptimizationProblemType::CBC_MIXED_INTEGER_PROGRAMMING);
+  MPObjective* objective{};
+  MPConstraint* EXPLICIT{};
+  MPConstraint* IMPLICIT{};
+  MPConstraint* HOTNESS{};
+  MPConstraint* HOTNESS_PROTECTEE{};
+  MPConstraint* OVERHEAD{};
+  MPConstraint* MANIFEST{};
   enum Modes { minOverhead, maxExplicit, maxImplicit, maxConnectivity, maxManifest };
   Modes ObjectiveMode{};
-  glp_prob *lp;
   int cycleCount = 0;
   int connectivityCount = 0;
   int blockConnectivityCount = 0;
@@ -38,14 +46,11 @@ private:
   int instructionCount = 0;
   int duplicateImplicitEdgeCount = 0;
   std::function<double(ManifestStats)> costFunction;
-  std::vector<int> rows{};
-  std::vector<int> cols{};
-  std::vector<double> coeffs{};
 
-  boost::bimaps::bimap<int, manifest_idx_t> colsToM{};
-  boost::bimaps::bimap<int, manifest_idx_t> colsToE{};
-  boost::bimaps::bimap<int, manifest_idx_t> colsToF{};
-  std::unordered_map<llvm::Instruction *, int> ItoCols{};
+  boost::bimaps::bimap<MPVariable*, manifest_idx_t> colsToM{};
+  boost::bimaps::bimap<MPVariable*, manifest_idx_t> colsToE{};
+  boost::bimaps::bimap<MPVariable*, manifest_idx_t> colsToF{};
+  std::unordered_map<llvm::Instruction *, MPVariable*> ItoCols{};
   const std::string MANIFEST_OBJ = "manifest";
   const std::string OVERHEAD_OBJ = "overhead";
   const std::string EXPLICIT_OBJ = "explicit";
@@ -108,48 +113,32 @@ public:
 
   void edgeConnection(manifest_idx_t edgeInx, std::pair<manifest_idx_t, manifest_idx_t> pair) {
     // e0 depends on m1 and m2; 0 <= m1 + m2 -2 e0 <= 1
-    auto row = glp_add_rows(lp, 1);
-    glp_set_row_bnds(lp, row, GLP_DB, 0.0, 1.0);
     std::ostringstream os;
     os << "edge_" << edgeInx << "_" << pair.first << "_" << pair.second;
-    glp_set_row_name(lp, row, os.str().c_str());
-
-    rows.push_back(row);
-    cols.push_back(colsToM.right.at(pair.first));
-    coeffs.push_back(1.0);
-
-    rows.push_back(row);
-    cols.push_back(colsToM.right.at(pair.second));
-    coeffs.push_back(1.0);
-
-    rows.push_back(row);
-    cols.push_back(colsToE.right.at(edgeInx));
-    coeffs.push_back(-2.0);
+    
+    auto row = lp.MakeRowConstraint(0.0, 1.0, os.str());
+    row->SetCoefficient(colsToM.right.at(pair.first), 1.0);
+    row->SetCoefficient(colsToM.right.at(pair.second), 1.0);
+    row->SetCoefficient(colsToE.right.at(edgeInx), -2.0);
   }
 
   void duplicateImplicitEdge(manifest_idx_t fInx, const std::set<manifest_idx_t> &edgeDuplicates) {
     // f0 is set if any of the duplicate edges are set (i.e. OR): 0 <= 2f0 - e1 - e2 <=1
-    auto row = glp_add_rows(lp, 1);
-    glp_set_row_bnds(lp, row, GLP_DB, 0.0, std::max(size_t(1), edgeDuplicates.size() - 1));
+
     std::ostringstream os;
     os << "f" << fInx; //<< "_" << edgeDuplicates.size();
     /*for (auto edgeIndex : edgeDuplicates) {
       os << "_" << edgeIndex;
     }*/
     os << "_" << duplicateImplicitEdgeCount;
-    glp_set_row_name(lp, row, os.str().c_str());
 
-    rows.push_back(row);
-    cols.push_back(colsToF.right.at(fInx));
-    coeffs.push_back(
-        std::max(size_t(2), edgeDuplicates.size())); // even when there is one edge f need to have a coefficent 2
+    auto row = lp.MakeRowConstraint(0.0, std::max(size_t(1), edgeDuplicates.size() - 1), os.str());
+    row->SetCoefficient(colsToF.right.at(fInx), std::max(size_t(2), edgeDuplicates.size())); // even when there is one edge f need to have a coefficent 2
 
     //llvm::dbgs() << "Duplicates edges covering manifest " << fInx << ":\n";
     for (auto edgeIndex : edgeDuplicates) {
       //llvm::dbgs() << edgeIndex << ",";
-      rows.push_back(row);
-      cols.push_back(colsToE.right.at(edgeIndex));
-      coeffs.push_back(-1.0);
+      row->SetCoefficient(colsToE.right.at(edgeIndex), -1.0);
     }
     //llvm::dbgs() << "\n";
   }
@@ -185,44 +174,38 @@ public:
     }
   }
 
-  int get_obj_dir() {
-    switch (ObjectiveMode) {
-    case minOverhead:return GLP_MIN;
-    default:return GLP_MAX;
-    }
-  }
   void printModeILPResults() {
-    std::string objective;
+    std::string objectiveName;
     uint64_t explicit_re = 0;
     uint64_t implicit_re = 0;
     double overhead_re = 0.0;
     double connectivity = 0.0;
 
     switch (ObjectiveMode) {
-    case minOverhead:objective = "min Overhead. ";
-      explicit_re = (uint64_t) glp_mip_row_val(lp, EXPLICIT);
-      implicit_re = (uint64_t) glp_mip_row_val(lp, IMPLICIT);
-      overhead_re = (double) glp_mip_obj_val(lp);
+    case minOverhead:objectiveName = "min Overhead. ";
+      explicit_re = (uint64_t) EXPLICIT->dual_value();
+      implicit_re = (uint64_t) IMPLICIT->dual_value();
+      overhead_re = (double) objective->Value();
       break;
-    case maxExplicit:objective = "max Explicit. ";
-      explicit_re = (uint64_t) glp_mip_obj_val(lp);
-      implicit_re = (uint64_t) glp_mip_row_val(lp, IMPLICIT);
-      overhead_re = (double) glp_mip_row_val(lp, OVERHEAD);
+    case maxExplicit:objectiveName = "max Explicit. ";
+      explicit_re = (uint64_t) objective->Value();
+      implicit_re = (uint64_t) IMPLICIT->dual_value();
+      overhead_re = (double) OVERHEAD->dual_value();
       break;
-    case maxImplicit:objective = "max Implicit. ";
-      explicit_re = (uint64_t) glp_mip_row_val(lp, EXPLICIT);
-      overhead_re = (double) glp_mip_row_val(lp, OVERHEAD);
-      implicit_re = (uint64_t) glp_mip_obj_val(lp);
+    case maxImplicit:objectiveName = "max Implicit. ";
+      explicit_re = (uint64_t) EXPLICIT->dual_value();
+      overhead_re = (double) OVERHEAD->dual_value();
+      implicit_re = (uint64_t) objective->Value();
       break;
-    case maxConnectivity:objective = "max Connectivity. ";
+    case maxConnectivity:objectiveName = "max Connectivity. ";
       // TODO: print for connectivity
       break;
-    case maxManifest:objective = "max manifest. ";
+    case maxManifest:objectiveName = "max manifest. ";
       break;
     default:break;
     }
 
-    llvm::dbgs() << "ILP resuls. " << objective << " overhead: " << overhead_re << " explicit instruction coverage: "
+    llvm::dbgs() << "ILP resuls. " << objectiveName << " overhead: " << overhead_re << " explicit instruction coverage: "
                  << explicit_re << " implicit instruction coverage: " << implicit_re << "\n";
   }
   void addModeRows(double overheadBound,
@@ -230,71 +213,49 @@ public:
                    int implicitBound,
                    double hotness,
                    double hotnessProtectee) {
+
+    auto infinity = lp.infinity();
     switch (ObjectiveMode) {
     case minOverhead:
       // row 1
-      EXPLICIT = glp_add_rows(lp, 1);
-      glp_set_row_name(lp, EXPLICIT, "explicit");                 // assigns name p to first row
-      glp_set_row_bnds(lp, EXPLICIT, GLP_LO, explicitBound, 0.0); // 0 < explicit <= inf
+      EXPLICIT = lp.MakeRowConstraint(explicitBound, infinity, "explicit"); // 0 < explicit <= inf
       // row 2
-      IMPLICIT = glp_add_rows(lp, 1);
-      glp_set_row_name(lp, IMPLICIT, "implicit");                 // assigns name q to second row
-      glp_set_row_bnds(lp, IMPLICIT, GLP_LO, implicitBound, 0.0); // 0 < implicit <= inf
+      IMPLICIT = lp.MakeRowConstraint(implicitBound, infinity, "implicit"); // 0 < implicit <= inf
 
-      MANIFEST = glp_add_rows(lp, 1);
-      glp_set_row_name(lp, MANIFEST, "manifest");
-      glp_set_row_bnds(lp, MANIFEST, GLP_LO, 0.0, 0.0);
+      MANIFEST = lp.MakeRowConstraint(0.0, infinity, "manifest");
       break;
     case maxExplicit:
       // row 1
-      IMPLICIT = glp_add_rows(lp, 1);
-      glp_set_row_name(lp, IMPLICIT, "implicit");                 // assigns name q to second row
-      glp_set_row_bnds(lp, IMPLICIT, GLP_LO, implicitBound, 0.0); // 0 < implicit <= inf
+      IMPLICIT = lp.MakeRowConstraint(implicitBound, infinity, "implicit"); // 0 < implicit <= inf
       //row 2
-      OVERHEAD = glp_add_rows(lp, 1);
-      glp_set_row_name(lp, OVERHEAD, "overhead");                 // assigns name p to first row
       if (overheadBound > 0) {
-        glp_set_row_bnds(lp, OVERHEAD, GLP_UP, 0.0, overheadBound); // 0 < overhead <= inf
+        OVERHEAD = lp.MakeRowConstraint(-infinity, overheadBound, "overhead");
       } else {
-        glp_set_row_bnds(lp, OVERHEAD, GLP_LO, overheadBound, 0); // 0 < overhead <= inf
+        OVERHEAD = lp.MakeRowConstraint(overheadBound, infinity, "overhead");
       }
-      MANIFEST = glp_add_rows(lp, 1);
-      glp_set_row_name(lp, MANIFEST, "manifest");
-      glp_set_row_bnds(lp, MANIFEST, GLP_LO, 0.0, 0.0);
+      MANIFEST = lp.MakeRowConstraint(0.0, infinity, "manifest");
       break;
     case maxImplicit:
       // row 1
-      EXPLICIT = glp_add_rows(lp, 1);
-      glp_set_row_name(lp, EXPLICIT, "explicit");                 // assigns name p to first row
-      glp_set_row_bnds(lp, EXPLICIT, GLP_LO, explicitBound, 0.0); // 0 < explicit <= inf
+      EXPLICIT = lp.MakeRowConstraint(explicitBound, infinity, "explicit"); // 0 < explicit <= inf
       // row 2
-      OVERHEAD = glp_add_rows(lp, 1);
-      glp_set_row_name(lp, OVERHEAD, "overhead");                 // assigns name p to first row
       if (overheadBound > 0) {
-        glp_set_row_bnds(lp, OVERHEAD, GLP_UP, 0.0, overheadBound); // 0 < overhead <= inf
+        OVERHEAD = lp.MakeRowConstraint(-infinity, overheadBound, "overhead");
       } else {
-        glp_set_row_bnds(lp, OVERHEAD, GLP_LO, overheadBound, 0); // 0 < overhead <= inf
+        OVERHEAD = lp.MakeRowConstraint(overheadBound, infinity, "overhead");
       }
-      MANIFEST = glp_add_rows(lp, 1);
-      glp_set_row_name(lp, MANIFEST, "manifest");
-      glp_set_row_bnds(lp, MANIFEST, GLP_LO, 0.0, 0.0);
+      MANIFEST = lp.MakeRowConstraint(0.0, infinity, "manifest");
       break;
     case maxManifest:
       // row 1
-      EXPLICIT = glp_add_rows(lp, 1);
-      glp_set_row_name(lp, EXPLICIT, "explicit");                 // assigns name p to first row
-      glp_set_row_bnds(lp, EXPLICIT, GLP_LO, explicitBound, 0.0); // 0 < explicit <= inf
+      EXPLICIT = lp.MakeRowConstraint(explicitBound, infinity, "explicit"); // 0 < explicit <= inf
       // row 2
-      IMPLICIT = glp_add_rows(lp, 1);
-      glp_set_row_name(lp, IMPLICIT, "implicit");                 // assigns name q to second row
-      glp_set_row_bnds(lp, IMPLICIT, GLP_LO, implicitBound, 0.0); // 0 < implicit <= inf
+      IMPLICIT = lp.MakeRowConstraint(implicitBound, infinity, "implicit"); // 0 < implicit <= inf
       // row 3
-      OVERHEAD = glp_add_rows(lp, 1);
-      glp_set_row_name(lp, OVERHEAD, "overhead");                 // assigns name p to first row
       if (overheadBound > 0) {
-        glp_set_row_bnds(lp, OVERHEAD, GLP_UP, 0.0, overheadBound); // 0 < overhead <= inf
+        OVERHEAD = lp.MakeRowConstraint(-infinity, overheadBound, "overhead");
       } else {
-        glp_set_row_bnds(lp, OVERHEAD, GLP_LO, overheadBound, 0); // 0 < overhead <= inf
+        OVERHEAD = lp.MakeRowConstraint(overheadBound, infinity, "overhead");
       }
       break;
 
@@ -303,74 +264,40 @@ public:
     default:break;
     }
     // row 3
-    HOTNESS = glp_add_rows(lp, 1);
-    glp_set_row_name(lp, HOTNESS, "hotness");            // assigns name q to second row
-    glp_set_row_bnds(lp, HOTNESS, GLP_LO, hotness, 0.0); // 0 < unique <= inf
+    HOTNESS = lp.MakeRowConstraint(hotness, infinity, "hotness");
     // row 4
-    HOTNESS_PROTECTEE = glp_add_rows(lp, 1);
-    glp_set_row_name(lp, HOTNESS_PROTECTEE, "hotnessProtectee");            // assigns name q to second row
-    glp_set_row_bnds(lp, HOTNESS_PROTECTEE, GLP_LO, hotnessProtectee, 0.0); // 0 < unique <= inf
+    HOTNESS_PROTECTEE = lp.MakeRowConstraint(hotnessProtectee, infinity, "hotnessProtectee");
   }
-  void addModeColumns(const int col, const double overheadValue, const int explicitValue, const int implicitValue,
+  void addModeColumns(const MPVariable* col, const double overheadValue, const int explicitValue, const int implicitValue,
                       const double hotnessValue, const double blockHotnessValue, const int manifestValue) {
     switch (ObjectiveMode) {
     case minOverhead:
       // explicit
-      rows.push_back(EXPLICIT);
-      cols.push_back(col);
-      coeffs.push_back(explicitValue);
-
-      rows.push_back(IMPLICIT);
-      cols.push_back(col);
-      coeffs.push_back(implicitValue);
-
-      rows.push_back(MANIFEST);
-      cols.push_back(col);
-      coeffs.push_back(manifestValue);
-
+      EXPLICIT->SetCoefficient(col, explicitValue);
+      IMPLICIT->SetCoefficient(col, implicitValue);
+      MANIFEST->SetCoefficient(col, manifestValue);
       break;
     case maxExplicit:
       // implicit
-      rows.push_back(IMPLICIT);
-      cols.push_back(col);
-      coeffs.push_back(implicitValue);
+      IMPLICIT->SetCoefficient(col, implicitValue);
       // overhead
-      rows.push_back(OVERHEAD);
-      cols.push_back(col);
-      coeffs.push_back(overheadValue);
-
-      rows.push_back(MANIFEST);
-      cols.push_back(col);
-      coeffs.push_back(manifestValue);
+      OVERHEAD->SetCoefficient(col, overheadValue);
+      MANIFEST->SetCoefficient(col, manifestValue);
       break;
     case maxImplicit:
       // explicit
-      rows.push_back(EXPLICIT);
-      cols.push_back(col);
-      coeffs.push_back(explicitValue);
+      EXPLICIT->SetCoefficient(col, explicitValue);
       // overhead
-      rows.push_back(OVERHEAD);
-      cols.push_back(col);
-      coeffs.push_back(overheadValue);
-
-      rows.push_back(MANIFEST);
-      cols.push_back(col);
-      coeffs.push_back(manifestValue);
+      OVERHEAD->SetCoefficient(col, overheadValue);
+      MANIFEST->SetCoefficient(col, manifestValue);
       break;
     case maxManifest:
       // explicit
-      rows.push_back(EXPLICIT);
-      cols.push_back(col);
-      coeffs.push_back(explicitValue);
-
+      EXPLICIT->SetCoefficient(col, explicitValue);
       // manifest has no implicit coverage but edges do
-      rows.push_back(IMPLICIT);
-      cols.push_back(col);
-      coeffs.push_back(implicitValue);
+      IMPLICIT->SetCoefficient(col, implicitValue);
       // overhead
-      rows.push_back(OVERHEAD);
-      cols.push_back(col);
-      coeffs.push_back(overheadValue);
+      OVERHEAD->SetCoefficient(col, overheadValue);
       break;
 
     case maxConnectivity:
@@ -378,14 +305,10 @@ public:
     default:break;
     }
     // hotness
-    rows.push_back(HOTNESS);
-    cols.push_back(col);
-    coeffs.push_back(hotnessValue);
+    HOTNESS->SetCoefficient(col, hotnessValue);
 
     // hotnessProtectee
-    rows.push_back(HOTNESS_PROTECTEE);
-    cols.push_back(col);
-    coeffs.push_back(blockHotnessValue);
+    HOTNESS_PROTECTEE->SetCoefficient(col, blockHotnessValue);
   }
 
   void addImplicitCoverage(
@@ -400,12 +323,8 @@ public:
       //llvm::dbgs() << "edge" << eIdx << "_" << pair.first << "_" << pair.second << "\n";
       std::ostringstream os;
       os << "e" << eIdx;
-      auto col = glp_add_cols(lp, 1);
-      glp_set_col_name(lp, col, os.str().c_str()); // assigns name m_n to nth column
-
-      glp_set_col_kind(lp, col, GLP_BV);           // values are binary
-      glp_set_col_bnds(lp, col, GLP_DB, 0.0, 1.0); // values are binary
-      glp_set_obj_coef(lp, col, 0);                // TODO: edges do not impose any costs
+      auto col = lp.MakeBoolVar(os.str());
+      objective->SetCoefficient(col, 0); // TODO: edges do not impose any costs
 
       colsToE.insert({col, eIdx});
 
@@ -418,12 +337,8 @@ public:
       //llvm::dbgs() << "f" << mIdx;
       std::ostringstream os;
       os << "f" << mIdx;
-      auto col = glp_add_cols(lp, 1);
-      glp_set_col_name(lp, col, os.str().c_str()); // assigns name m_n to nth column
-
-      glp_set_col_kind(lp, col, GLP_BV);                      // values are binary
-      glp_set_col_bnds(lp, col, GLP_DB, 0.0, 1.0);            // values are binary
-      glp_set_obj_coef(lp, col, get_obj_coef_edge(coverage)); // TODO: f (edge duplicates) do not impose any costs
+      auto col = lp.MakeBoolVar(os.str());
+      objective->SetCoefficient(col, get_obj_coef_edge(coverage)); // TODO: f (edge duplicates) do not impose any costs
 
       colsToF.insert({col, mIdx});
       addModeColumns(col, 0, 0, coverage, 0, 0, 0);
@@ -503,44 +418,24 @@ public:
 
       auto explicitCol = ItoCols.at(instr);
       std::ostringstream os;
-      os << "implicit_" << glp_get_col_name(lp, explicitCol);
+      os << "implicit_" << explicitCol->name();
 
-      auto col = glp_add_cols(lp, 1);
-
-      glp_set_col_name(lp, col, os.str().c_str()); // assigns name m_n to nth column
-      glp_set_col_kind(lp, col, GLP_BV);                      // values are binary
-      glp_set_col_bnds(lp, col, GLP_DB, 0.0, 1.0);            // values are binary
-      glp_set_obj_coef(lp, col, get_obj_coef_edge(1));
+      auto col = lp.MakeBoolVar(os.str());
+      objective->SetCoefficient(col, get_obj_coef_edge(1));
 
       addModeColumns(col, 0, 0, 1 /*implicit cov of instruction*/, 0, 0, 0);
 
 
       // Apply (1-3)
-      auto row = glp_add_rows(lp, 1);
-      glp_set_row_bnds(lp, row, GLP_UP, 0.0, 0.0);
-      glp_set_row_name(lp, row, os.str().c_str());
-
-      rows.push_back(row);
-      cols.push_back(col);
-      coeffs.push_back(1.0);
-
-      rows.push_back(row);
-      cols.push_back(explicitCol);
-      coeffs.push_back(-1.0);
+      auto row = lp.MakeRowConstraint(-lp.infinity(), 0.0, os.str());
+      row->SetCoefficient(col, 1.0);
+      row->SetCoefficient(explicitCol, -1.0);
       
-      auto orRow = glp_add_rows(lp, 1);
       os << "_row";
-      glp_set_row_name(lp, orRow, os.str().c_str());
-      glp_set_row_bnds(lp, orRow, GLP_DB, 0.0, std::max(size_t(1), implicitlyCoversInstr.size() - 1));
-
-      rows.push_back(orRow);
-      cols.push_back(col);
-      coeffs.push_back(std::max(size_t(2), implicitlyCoversInstr.size()));
-
+      auto orRow = lp.MakeRowConstraint(-lp.infinity(), std::max(size_t(1), implicitlyCoversInstr.size() - 1), os.str()); 
+      orRow->SetCoefficient(col, std::max(size_t(2), implicitlyCoversInstr.size()));
       for (auto m : implicitlyCoversInstr) {
-        rows.push_back(orRow);
-        cols.push_back(colsToM.right.at(m));
-        coeffs.push_back(-1.0);
+        orRow->SetCoefficient(colsToM.right.at(m), -1.0);
       }
     }
   }
@@ -557,20 +452,13 @@ public:
       }
 
       // mX cannot exist without N of m1...mK -> m1 + ... + mK - mX >= (N - 1)
-      auto row = glp_add_rows(lp, 1);
-      glp_set_row_bnds(lp, row, GLP_LO, N - 1, 0.0);
       std::ostringstream os;
       os << "n_" << N << "_of_" << nOfCount++;
-      glp_set_row_name(lp, row, os.str().c_str());
 
-      rows.push_back(row);
-      cols.push_back(colsToM.right.at(mIdx));
-      coeffs.push_back(-1.0);
-
+      auto row = lp.MakeRowConstraint(N - 1, lp.infinity(), os.str());
+      row->SetCoefficient(colsToM.right.at(mIdx), -1.0);
       for (auto idx : nOf.second) {
-        rows.push_back(row);
-        cols.push_back(colsToM.right.at(idx));
-        coeffs.push_back(1.0);
+        row->SetCoefficient(colsToM.right.at(idx), 1.0);
       }
     }
   }
