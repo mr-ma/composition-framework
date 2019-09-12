@@ -66,10 +66,10 @@ void ILPSolver::addConflicts(const std::set<std::pair<manifest_idx_t, manifest_i
   }
 }
 
-void ILPSolver::addCycles(const std::set<std::set<manifest_idx_t>> &cycles) {
+void ILPSolver::addCycles(const std::set<std::set<manifest_idx_t>> &cycles,double  stripCycles) {
   // Add cycles
   for (auto &&c : cycles) {
-    cycle(c);
+    cycle(c,stripCycles);
   }
 }
 
@@ -128,6 +128,7 @@ std::pair<std::set<manifest_idx_t>, std::set<manifest_idx_t>> ILPSolver::run() {
     std::string problemPath = composition::support::ILPProblem.getValue();
     llvm::dbgs()<<"Solution fileName:"<<solFilePath.c_str()<<"\n";
     std::string cmd = "/home/sip/SCIPOptSuite-6.0.2-Linux/bin/scip -c \"read "+problemPath+" optimize write solution "+solFilePath+" quit\"";
+    //std::string cmd = "cbc "+problemPath+" solve solu "+solFilePath;
     std::system(cmd.c_str());
     //load the solution into lp problem object
     useSCIPResults = true; 
@@ -168,6 +169,7 @@ std::pair<std::set<manifest_idx_t>, std::set<manifest_idx_t>> ILPSolver::run() {
     std::ifstream input(solFilePath);
     std::string in;
     std::regex pattern("m(\\d+).*?\\d+.*?\\(obj\\:(\\d+)\\)");
+    //std::regex pattern(".*?m(\\d+).*?");
     std::smatch match;
     llvm::dbgs()<<"Accepted manifests:\n";
     while (!input.eof()) {
@@ -179,7 +181,7 @@ std::pair<std::set<manifest_idx_t>, std::set<manifest_idx_t>> ILPSolver::run() {
       }
     }
     llvm::dbgs()<<"\nStarting cols...\n";
-    exit(1);
+    //exit(1);
     for(auto&[col, eIdx] : colsToE){
       llvm::dbgs()<<eIdx<<"\n";
     }
@@ -194,7 +196,7 @@ std::pair<std::set<manifest_idx_t>, std::set<manifest_idx_t>> ILPSolver::run() {
     }
   }
   llvm::dbgs()<<"\n";
-  exit(1);
+  //exit(1);
   for (auto&[col, eIdx] : colsToE) {
     if (glp_mip_col_val(lp, col) == 1) {
       acceptedEdges.insert(eIdx);
@@ -239,11 +241,16 @@ void ILPSolver::dependency(std::pair<manifest_idx_t, manifest_idx_t> pair) {
   cols.push_back(colsToM.right.at(pair.second));
   coeffs.push_back(-1.0);
 }
-
-void ILPSolver::cycle(const std::set<manifest_idx_t> &ms) {
+void ILPSolver::cycle(const std::set<manifest_idx_t> &ms,double stripCycles) {
   // m1..mN form a cycle; m1+m2+..+mN <= N-1
   auto row = glp_add_rows(lp, 1);
-  glp_set_row_bnds(lp, row, GLP_UP, 0.0, ms.size() - 1);
+  auto upperBound = ms.size() - 1;
+  if(stripCycles>0.0) {
+    //strip cycles to avoid slow benchmark generations
+    upperBound =std::max(0.0,(ms.size() - 1) - ( (ms.size() - 1) * stripCycles));
+    llvm::dbgs()<<"Strip percentage:"<<stripCycles<<" total Manifests in cycle:"<<ms.size() - 1 <<" total acceptable after strip:"<<upperBound<<"\n";
+  }
+  glp_set_row_bnds(lp, row, GLP_UP, 0.0, upperBound);
   std::ostringstream os;
   os << "cycle_" << cycleCount++;
   glp_set_row_name(lp, row, os.str().c_str());

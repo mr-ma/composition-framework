@@ -69,7 +69,7 @@ public:
 
   void addConflicts(const std::set<std::pair<manifest_idx_t, manifest_idx_t>> &conflicts);
 
-  void addCycles(const std::set<std::set<manifest_idx_t>> &cycles);
+  void addCycles(const std::set<std::set<manifest_idx_t>> &cycles,double stripCycles=0.0);
 
   void addConnectivity(const std::set<std::set<manifest_idx_t>> &connectivities);
 
@@ -87,7 +87,7 @@ public:
 
   void dependency(std::pair<manifest_idx_t, manifest_idx_t> pair);
 
-  void cycle(const std::set<manifest_idx_t> &ms);
+  void cycle(const std::set<manifest_idx_t> &ms,double stripCycles = 0.0);
 
   void setMode(const std::string &obj) {
     if (obj == OVERHEAD_OBJ) {

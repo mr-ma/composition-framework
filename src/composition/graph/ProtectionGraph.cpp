@@ -3,13 +3,18 @@
 #include <composition/graph/ProtectionGraph.hpp>
 #include <composition/graph/algorithm/all_cycles.hpp>
 #include <composition/graph/constraint/dependency.hpp>
+#include <composition/graph/constraint/n_of.hpp>
 #include <composition/graph/constraint/present.hpp>
 #include <composition/graph/constraint/preserved.hpp>
-#include <composition/graph/constraint/n_of.hpp>
 #include <composition/metric/ManifestStats.hpp>
+#include <fstream>
+#include <iostream>
+#include <lemon/concepts/graph.h>
 #include <lemon/connectivity.h>
 #include <queue>
 #include <random>
+#include <sstream>
+#include <string>
 #include <unordered_set>
 #include <vector>
 
@@ -17,32 +22,35 @@ namespace composition::graph {
 using composition::graph::ILPSolver;
 using composition::graph::algorithm::AllCycles;
 using composition::graph::constraint::Dependency;
+using composition::graph::constraint::NOf;
 using composition::graph::constraint::Present;
 using composition::graph::constraint::PresentConstraint;
 using composition::graph::constraint::Preserved;
 using composition::graph::constraint::PreservedConstraint;
-using composition::graph::constraint::NOf;
 using composition::metric::Coverage;
 using composition::metric::ManifestStats;
 using llvm::dbgs;
 using llvm::dyn_cast;
 
-using composition::support::ILPImplicitBound;
+using composition::support::ExperimentalNetworkX;
+using composition::support::ExperimentalNetworkXCycleFile;
+using composition::support::ExperimentalNetworkXEdgeFile;
 using composition::support::ILPExplicitBound;
-using composition::support::ILPOverheadBound;
+using composition::support::ILPImplicitBound;
 using composition::support::ILPObjective;
+using composition::support::ILPOverheadBound;
 
 ProtectionGraph::ProtectionGraph() {
   vertices = std::make_unique<lemon::ListDigraph::NodeMap<vertex_t>>(LG);
   edges = std::make_unique<lemon::ListDigraph::ArcMap<edge_t>>(LG);
 }
 
-void ProtectionGraph::addManifests(const std::set<Manifest *> &manifests) {
+void ProtectionGraph::addManifests(const std::set<Manifest*>& manifests) {
   size_t total = manifests.size();
   dbgs() << "Adding " << std::to_string(total) << " manifests to protection graph\n";
 
   size_t i = 0;
-  for (auto &m : manifests) {
+  for (auto& m : manifests) {
     dbgs() << "#" << std::to_string(i++) << "/" << std::to_string(total) << "\r";
     addManifest(m);
   }
@@ -50,15 +58,15 @@ void ProtectionGraph::addManifests(const std::set<Manifest *> &manifests) {
   dbgs() << "#" << std::to_string(i) << "/" << std::to_string(total) << "\n";
 }
 
-void ProtectionGraph::addManifest(Manifest *m) {
+void ProtectionGraph::addManifest(Manifest* m) {
   m->Clean();
   MANIFESTS.insert({m->index, m});
-  for (auto &c : m->constraints) {
+  for (auto& c : m->constraints) {
     addConstraint(m->index, c);
   }
 }
 
-vertex_idx_t ProtectionGraph::add_vertex(llvm::Value *value, bool shadow) {
+vertex_idx_t ProtectionGraph::add_vertex(llvm::Value* value, bool shadow) {
   if (auto vFound = vertexCache[shadow]->find(value);
       vFound != vertexCache[shadow]->end() && VERTICES_DESCRIPTORS.find(vFound->second) != VERTICES_DESCRIPTORS.end()) {
     return vFound->second;
@@ -76,12 +84,12 @@ vertex_idx_t ProtectionGraph::add_vertex(llvm::Value *value, bool shadow) {
 }
 
 vertex_idx_t ProtectionGraph::add_vertex(
-    llvm::Value *value,
-    const std::unordered_map<constraint::constraint_idx_t, std::shared_ptr<constraint::Constraint>> &constraints) {
+    llvm::Value* value,
+    const std::unordered_map<constraint::constraint_idx_t, std::shared_ptr<constraint::Constraint>>& constraints) {
   vertex_idx_t idx = add_vertex(value, false);
-  auto &v = (*vertices)[VERTICES_DESCRIPTORS.at(idx)];
+  auto& v = (*vertices)[VERTICES_DESCRIPTORS.at(idx)];
 
-  for (auto&[cIdx, c] : constraints) {
+  for (auto& [cIdx, c] : constraints) {
     v.constraints.insert({cIdx, c});
     CONSTRAINTS_VERTICES.insert({cIdx, idx});
   }
@@ -107,11 +115,11 @@ edge_idx_t ProtectionGraph::add_edge(vertex_idx_t sIdx, vertex_idx_t dIdx) {
 
 edge_idx_t ProtectionGraph::add_edge(
     vertex_idx_t sIdx, vertex_idx_t dIdx,
-    const std::unordered_map<constraint::constraint_idx_t, std::shared_ptr<constraint::Constraint>> &constraints) {
+    const std::unordered_map<constraint::constraint_idx_t, std::shared_ptr<constraint::Constraint>>& constraints) {
   edge_idx_t idx = add_edge(sIdx, dIdx);
-  auto &e = (*edges)[EDGES_DESCRIPTORS.at(idx)];
+  auto& e = (*edges)[EDGES_DESCRIPTORS.at(idx)];
 
-  for (auto&[cIdx, c] : constraints) {
+  for (auto& [cIdx, c] : constraints) {
     e.constraints.insert({cIdx, c});
     CONSTRAINTS_EDGES.insert({ConstraintIdx, EdgeIdx});
   }
@@ -144,18 +152,18 @@ constraint_idx_t ProtectionGraph::addConstraint(manifest_idx_t idx, std::shared_
   return ConstraintIdx++;
 }
 
-void addToConstraintsMaps(const vertex_t &v, PresentConstraint &present, PreservedConstraint &preserved,
-                          std::set<constraint_idx_t> &presentConstraints,
-                          std::set<constraint_idx_t> &preservedConstraints) {
+void addToConstraintsMaps(const vertex_t& v, PresentConstraint& present, PreservedConstraint& preserved,
+                          std::set<constraint_idx_t>& presentConstraints,
+                          std::set<constraint_idx_t>& preservedConstraints) {
   if (v.constraints.empty()) {
     return;
   }
 
-  for (auto&[cIdx, c] : v.constraints) {
-    if (auto *p1 = llvm::dyn_cast<Present>(c.get())) {
+  for (auto& [cIdx, c] : v.constraints) {
+    if (auto* p1 = llvm::dyn_cast<Present>(c.get())) {
       presentConstraints.insert(cIdx);
       present = p1->isInverse() ? present | PresentConstraint::NOT_PRESENT : present | PresentConstraint::PRESENT;
-    } else if (auto *p2 = llvm::dyn_cast<Preserved>(c.get())) {
+    } else if (auto* p2 = llvm::dyn_cast<Preserved>(c.get())) {
       preservedConstraints.insert(cIdx);
       preserved =
           p2->isInverse() ? preserved | PreservedConstraint::NOT_PRESERVED : preserved | PreservedConstraint::PRESERVED;
@@ -172,26 +180,26 @@ std::set<std::pair<manifest_idx_t, manifest_idx_t>> ProtectionGraph::vertexConfl
 
     std::set<constraint_idx_t> presentConstraints{};
     std::set<constraint_idx_t> preservedConstraints{};
-    vertex_t &v = (*vertices)[n];
+    vertex_t& v = (*vertices)[n];
     addToConstraintsMaps(v, present, preserved, presentConstraints, preservedConstraints);
 
     auto addVertexConstraint = [&, this](vertex_idx_t idx) {
-      vertex_t &v = (*vertices)[VERTICES_DESCRIPTORS.at(idx)];
+      vertex_t& v = (*vertices)[VERTICES_DESCRIPTORS.at(idx)];
       addToConstraintsMaps(v, present, preserved, presentConstraints, preservedConstraints);
     };
 
-    auto addParentBB = [&, this](llvm::BasicBlock *BB) {
+    auto addParentBB = [&, this](llvm::BasicBlock* BB) {
       if (BB->getParent() != nullptr) {
-        llvm::Function *F = BB->getParent();
+        llvm::Function* F = BB->getParent();
         if (auto vFound = vertexCache[false]->find(F); vFound != vertexCache[false]->end()) {
           addVertexConstraint(vFound->second);
         }
       }
     };
 
-    auto addParentI = [&, this](llvm::Instruction *I) {
+    auto addParentI = [&, this](llvm::Instruction* I) {
       if (I->getParent() != nullptr) {
-        llvm::BasicBlock *BB = I->getParent();
+        llvm::BasicBlock* BB = I->getParent();
         if (auto vFound = vertexCache[false]->find(BB); vFound != vertexCache[false]->end()) {
           addVertexConstraint(vFound->second);
           addParentBB(BB);
@@ -234,9 +242,9 @@ std::set<std::pair<manifest_idx_t, manifest_idx_t>> ProtectionGraph::vertexConfl
 std::set<std::pair<manifest_idx_t, manifest_idx_t>> ProtectionGraph::computeDependencies() {
   std::set<std::pair<manifest_idx_t, manifest_idx_t>> dependencies{};
 
-  for (auto&[mIdx, _] : MANIFESTS) {
+  for (auto& [mIdx, _] : MANIFESTS) {
     // Manifest dependencies
-    for (auto[it, it_end] = DependencyUndo.right.equal_range(mIdx); it != it_end; ++it) {
+    for (auto [it, it_end] = DependencyUndo.right.equal_range(mIdx); it != it_end; ++it) {
       for (auto v : it->second) {
         dependencies.insert({v, mIdx});
       }
@@ -275,28 +283,37 @@ std::set<std::set<manifest_idx_t>> ProtectionGraph::computeCycles() {
   llvm::dbgs() << "Nodes: " << lemon::countNodes(LG) << " Edges: " << lemon::countArcs(LG) << "\n";
   std::set<std::set<lemon::ListDigraph::Node>> all = a.simpleCycles(LG);
   llvm::dbgs() << "End...\n";*/
-
-  lemon::ListDigraph::NodeMap<int> components{LG};
-  lemon::stronglyConnectedComponents(LG, components);
-  std::map<int, std::set<lemon::ListDigraph::Node>> sccs{};
-  for (lemon::ListDigraph::NodeIt scNode(LG); scNode != lemon::INVALID; ++scNode) {
-    sccs[components[scNode]].insert(scNode);
-  }
-
-  for (auto&[_, scc] : sccs) {
-    if (scc.size() == 1) {
-      continue;
-    } else {
+  if (ExperimentalNetworkX) {
+    llvm::dbgs() << "USING Networkx to find basic cycles\n";
+    std::ofstream myfile;
+    myfile.open(ExperimentalNetworkXEdgeFile); //"edges.csv");
+    for (lemon::ListDigraph::ArcIt a(LG); a != lemon::INVALID; ++a) {
+      int source = LG.id(LG.source(a));
+      int target = LG.id(LG.target(a));
+      // llvm::dbgs() << "Source:" << source << " Target:" << target << "\n";
+      myfile << source << ";" << target << "\n";
+    }
+    myfile.close();
+    std::string cmd = "python dump_cycles.py " + ExperimentalNetworkXEdgeFile + " " + ExperimentalNetworkXCycleFile;
+    // edges.csv cycles.txt";
+    std::system(cmd.c_str());
+    std::ifstream input(ExperimentalNetworkXCycleFile); //"cycles.txt");
+    std::string in;
+    while (!input.eof()) {
       std::set<manifest_idx_t> cycle{};
-
-      for (auto &s : scc) {
+      std::getline(input, in);
+      std::stringstream ss(in);
+      std::string buf;
+      while (ss >> buf) {
+        int nodeId = std::stoi(buf);
+        auto s = LG.nodeFromId(nodeId);
         for (lemon::ListDigraph::OutArcIt e(LG, s); e != lemon::INVALID; ++e) {
           assert(LG.target(e) != s);
-          if (scc.find(LG.target(e)) == scc.end()) {
-            continue;
-          }
-          const edge_t &ed = (*edges)[e];
-          for (auto&[cIdx, c] : ed.constraints) {
+          // if (scc.find(LG.target(e)) == scc.end()) {
+          //  continue;
+          //}
+          const edge_t& ed = (*edges)[e];
+          for (auto& [cIdx, c] : ed.constraints) {
             if (auto mFound = MANIFESTS_CONSTRAINTS.right.find(cIdx); mFound != MANIFESTS_CONSTRAINTS.right.end()) {
               cycle.insert(mFound->second);
             }
@@ -304,21 +321,80 @@ std::set<std::set<manifest_idx_t>> ProtectionGraph::computeCycles() {
         }
         for (lemon::ListDigraph::InArcIt e(LG, s); e != lemon::INVALID; ++e) {
           assert(LG.source(e) != s);
-          if (scc.find(LG.source(e)) == scc.end()) {
-            continue;
-          }
-          const edge_t &ed = (*edges)[e];
-          for (auto&[cIdx, c] : ed.constraints) {
+          // if (scc.find(LG.source(e)) == scc.end()) {
+          ///  continue;
+          //}
+          const edge_t& ed = (*edges)[e];
+          for (auto& [cIdx, c] : ed.constraints) {
             if (auto mFound = MANIFESTS_CONSTRAINTS.right.find(cIdx); mFound != MANIFESTS_CONSTRAINTS.right.end()) {
               cycle.insert(mFound->second);
             }
           }
         }
       }
-
       if (cycle.size() > 1) {
         cycles.insert(cycle);
       }
+    }
+  }
+  if (!ExperimentalNetworkX || cycles.size() == 0) {
+
+    llvm::dbgs() << "Basic CYCLES found 0, TRYING SCC\n";
+
+    lemon::ListDigraph::NodeMap<int> components{LG};
+    lemon::stronglyConnectedComponents(LG, components);
+    std::map<int, std::set<lemon::ListDigraph::Node>> sccs{};
+    for (lemon::ListDigraph::NodeIt scNode(LG); scNode != lemon::INVALID; ++scNode) {
+      sccs[components[scNode]].insert(scNode);
+    }
+    lemon::ListDigraph::ArcMap<int> cutMap{LG};
+    int cutEdges = lemon::stronglyConnectedCutArcs(LG, cutMap);
+    llvm::dbgs() << "Total Edges:" << lemon::countArcs(LG) << " Nr. of cut edges:" << cutEdges << "\n";
+    llvm::dbgs() << "Number of SCCs:" << lemon::countStronglyConnectedComponents(LG) << "\n";
+
+    for (auto& [_, scc] : sccs) {
+      if (scc.size() == 1) {
+        continue;
+      } else {
+
+        std::set<manifest_idx_t> cycle{};
+
+        for (auto& s : scc) {
+          for (lemon::ListDigraph::OutArcIt e(LG, s); e != lemon::INVALID; ++e) {
+            assert(LG.target(e) != s);
+            if (scc.find(LG.target(e)) == scc.end()) {
+              continue;
+            }
+            const edge_t& ed = (*edges)[e];
+            for (auto& [cIdx, c] : ed.constraints) {
+              if (auto mFound = MANIFESTS_CONSTRAINTS.right.find(cIdx); mFound != MANIFESTS_CONSTRAINTS.right.end()) {
+                cycle.insert(mFound->second);
+              }
+            }
+          }
+          for (lemon::ListDigraph::InArcIt e(LG, s); e != lemon::INVALID; ++e) {
+            assert(LG.source(e) != s);
+            if (scc.find(LG.source(e)) == scc.end()) {
+              continue;
+            }
+            const edge_t& ed = (*edges)[e];
+            for (auto& [cIdx, c] : ed.constraints) {
+              if (auto mFound = MANIFESTS_CONSTRAINTS.right.find(cIdx); mFound != MANIFESTS_CONSTRAINTS.right.end()) {
+                cycle.insert(mFound->second);
+              }
+            }
+          }
+        }
+
+        if (cycle.size() > 1) {
+          cycles.insert(cycle);
+        }
+      }
+    }
+    if (cycles.size() == 0) {
+      llvm::dbgs() << "Basic CYCLES found 0, SCC FOUND 0 cycles\n";
+    } else {
+      llvm::dbgs() << "Basic CYCLES found 0, SCC FOUND " << cycles.size() << " cycles\n";
     }
   }
   cStats.timeConflictDetection += detectingProfiler.stop();
@@ -326,11 +402,11 @@ std::set<std::set<manifest_idx_t>> ProtectionGraph::computeCycles() {
   return cycles;
 }
 
-std::map<llvm::Instruction *, std::set<manifest_idx_t>> ProtectionGraph::computeExactCoverage(llvm::Module &M) {
-  std::map<llvm::Instruction *, std::set<manifest_idx_t>> mapping{};
+std::map<llvm::Instruction*, std::set<manifest_idx_t>> ProtectionGraph::computeExactCoverage(llvm::Module& M) {
+  std::map<llvm::Instruction*, std::set<manifest_idx_t>> mapping{};
 
-  for (auto&[mIdx, m] : MANIFESTS) {
-    for (auto &I : m->Coverage()) {
+  for (auto& [mIdx, m] : MANIFESTS) {
+    for (auto& I : m->Coverage()) {
       mapping[I].insert(mIdx);
     }
   }
@@ -338,40 +414,40 @@ std::map<llvm::Instruction *, std::set<manifest_idx_t>> ProtectionGraph::compute
   return mapping;
 }
 
-std::set<std::set<manifest_idx_t>> ProtectionGraph::computeConnectivity(const std::map<llvm::Instruction *,
-                                                                                       std::set<manifest_idx_t>> &mapping) {
+std::set<std::set<manifest_idx_t>>
+ProtectionGraph::computeConnectivity(const std::map<llvm::Instruction*, std::set<manifest_idx_t>>& mapping) {
   std::set<std::set<manifest_idx_t>> result{};
-  for (auto&[I, mapped] : mapping) {
+  for (auto& [I, mapped] : mapping) {
     result.insert(mapped);
   }
 
   return result;
 }
 
-std::set<std::set<manifest_idx_t>> ProtectionGraph::computeBlockConnectivity(llvm::Module &M) {
-  std::map<llvm::BasicBlock *, std::set<manifest_idx_t>> mapping{};
+std::set<std::set<manifest_idx_t>> ProtectionGraph::computeBlockConnectivity(llvm::Module& M) {
+  std::map<llvm::BasicBlock*, std::set<manifest_idx_t>> mapping{};
 
-  for (auto&[mIdx, m] : MANIFESTS) {
+  for (auto& [mIdx, m] : MANIFESTS) {
     auto blocks = m->BlockCoverage();
-    for (auto &BB : blocks) {
+    for (auto& BB : blocks) {
       mapping[BB].insert(mIdx);
     }
   }
 
   std::set<std::set<manifest_idx_t>> result{};
-  for (auto&[BB, mapped] : mapping) {
+  for (auto& [BB, mapped] : mapping) {
     result.insert(mapped);
   }
 
   return result;
 }
 
-size_t maxHotnessOfInstructions(const std::set<llvm::Instruction *> &instr,
-                                const std::unordered_map<llvm::BasicBlock *, uint64_t> &BFI) {
-  std::set<llvm::BasicBlock *> blocks = Coverage::InstructionsToBasicBlocks(instr);
+size_t maxHotnessOfInstructions(const std::set<llvm::Instruction*>& instr,
+                                const std::unordered_map<llvm::BasicBlock*, uint64_t>& BFI) {
+  std::set<llvm::BasicBlock*> blocks = Coverage::InstructionsToBasicBlocks(instr);
 
   size_t maxHotness = 0;
-  for (auto *B : blocks) {
+  for (auto* B : blocks) {
     size_t newHotness = BFI.at(B);
     if (newHotness > maxHotness) {
       maxHotness = newHotness;
@@ -380,13 +456,13 @@ size_t maxHotnessOfInstructions(const std::set<llvm::Instruction *> &instr,
   return maxHotness;
 }
 
-size_t manifestHotness(Manifest *m, const std::unordered_map<llvm::BasicBlock *, uint64_t> &BFI) {
-  std::set<llvm::Instruction *> instr = Coverage::ValuesToInstructions(m->UndoValues());
+size_t manifestHotness(Manifest* m, const std::unordered_map<llvm::BasicBlock*, uint64_t>& BFI) {
+  std::set<llvm::Instruction*> instr = Coverage::ValuesToInstructions(m->UndoValues());
   return maxHotnessOfInstructions(instr, BFI);
 }
 
-size_t manifestHotnessProtectee(Manifest *m, const std::unordered_map<llvm::BasicBlock *, uint64_t> &BFI) {
-  std::set<llvm::Instruction *> instr = m->Coverage();
+size_t manifestHotnessProtectee(Manifest* m, const std::unordered_map<llvm::BasicBlock*, uint64_t>& BFI) {
+  std::set<llvm::Instruction*> instr = m->Coverage();
   return maxHotnessOfInstructions(instr, BFI);
 }
 
@@ -409,7 +485,7 @@ void ProtectionGraph::removeManifest(manifest_idx_t m) {
     }
     processed.insert(current);
     if (DependencyUndo.right.find(current) != DependencyUndo.right.end()) {
-      for (auto[it, it_end] = DependencyUndo.right.equal_range(current); it != it_end; ++it) {
+      for (auto [it, it_end] = DependencyUndo.right.equal_range(current); it != it_end; ++it) {
         for (auto v : it->second) {
           s.push(v);
         }
@@ -424,8 +500,8 @@ void ProtectionGraph::removeManifest(manifest_idx_t m) {
   }
 }
 
-std::set<Manifest *> ProtectionGraph::randomConflictHandling(llvm::Module &M) {
-  std::set<Manifest *> accepted{};
+std::set<Manifest*> ProtectionGraph::randomConflictHandling(llvm::Module& M) {
+  std::set<Manifest*> accepted{};
   int cycleCount = 0;
   int conflictCount = 0;
   Profiler resolvingProfiler{};
@@ -436,7 +512,7 @@ std::set<Manifest *> ProtectionGraph::randomConflictHandling(llvm::Module &M) {
   auto RNG = std::mt19937{std::random_device{}()};
   do {
     accepted.clear();
-    for (auto&[mIdx, m] : MANIFESTS) {
+    for (auto& [mIdx, m] : MANIFESTS) {
       accepted.insert(m);
     }
 
@@ -454,13 +530,13 @@ std::set<Manifest *> ProtectionGraph::randomConflictHandling(llvm::Module &M) {
     resolvingProfiler.reset();
     std::set<manifest_idx_t> flatConflicts{};
 
-    for (auto &c : cycles) {
+    for (auto& c : cycles) {
       ++cycleCount;
-      for (auto &idx : c) {
+      for (auto& idx : c) {
         flatConflicts.insert(idx);
       }
     }
-    for (auto &c : conflicts) {
+    for (auto& c : conflicts) {
       flatConflicts.insert(c.first);
       flatConflicts.insert(c.second);
       ++conflictCount;
@@ -479,13 +555,11 @@ std::set<Manifest *> ProtectionGraph::randomConflictHandling(llvm::Module &M) {
   return accepted;
 }
 
-std::vector<std::pair<manifest_idx_t,
-                      std::pair<uint64_t,
-                                std::vector<manifest_idx_t>>>> calculateNOfs(std::unordered_map<manifest_idx_t,
-                                                                                                Manifest *> manifests) {
+std::vector<std::pair<manifest_idx_t, std::pair<uint64_t, std::vector<manifest_idx_t>>>>
+calculateNOfs(std::unordered_map<manifest_idx_t, Manifest*> manifests) {
   std::vector<std::pair<manifest_idx_t, std::pair<uint64_t, std::vector<manifest_idx_t>>>> result{};
 
-  for (auto[idx, m] : manifests) {
+  for (auto [idx, m] : manifests) {
     for (auto c : m->constraints) {
       if (auto nOf = dyn_cast<NOf>(c.get())) {
         auto nOfManifests = nOf->getManifests();
@@ -505,16 +579,16 @@ std::vector<std::pair<manifest_idx_t,
   return result;
 }
 
-std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
-                                                          const std::unordered_map<llvm::BasicBlock *, uint64_t> &BFI,
-                                                          size_t totalInstructions) {
+std::set<Manifest*> ProtectionGraph::ilpConflictHandling(llvm::Module& M,
+                                                         const std::unordered_map<llvm::BasicBlock*, uint64_t>& BFI,
+                                                         size_t totalInstructions) {
   // TODO: cStats.stats is not set at this point ----
   size_t TotalInstructions = cStats.stats.numberOfAllInstructions;
   llvm::dbgs() << "Total instruction:" << totalInstructions << "\n";
   llvm::dbgs() << "ILPImplicitBound:" << ILPImplicitBound << "\n";
-  //llvm::dbgs() << "PercentageImplicitBound:" << ILPPercentageImplicitBound << "\n";
-  //size_t implicitCoverageToInstruction = totalInstructions * ((double) ILPPercentageImplicitBound / 100.00);
-  //llvm::dbgs() << "Requested Implicit coverage of (instruction) " << implicitCoverageToInstruction << "\n";
+  // llvm::dbgs() << "PercentageImplicitBound:" << ILPPercentageImplicitBound << "\n";
+  // size_t implicitCoverageToInstruction = totalInstructions * ((double) ILPPercentageImplicitBound / 100.00);
+  // llvm::dbgs() << "Requested Implicit coverage of (instruction) " << implicitCoverageToInstruction << "\n";
 
   Profiler detectingProfiler{};
   auto conflicts = vertexConflicts();
@@ -532,13 +606,13 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
   std::map<manifest_idx_t, ManifestStats> eStats{};
 
   std::map<manifest_idx_t, ManifestStats> mStats{};
-  std::map<manifest_idx_t, std::set<llvm::Instruction *>> coverageCache{};
+  std::map<manifest_idx_t, std::set<llvm::Instruction*>> coverageCache{};
   std::pair<size_t, size_t> explicitCBounds{SIZE_MAX, 0};
   std::pair<size_t, size_t> implicitCBounds{SIZE_MAX, 0};
   std::pair<size_t, size_t> hotnessBounds{SIZE_MAX, 0};
   std::pair<size_t, size_t> hotnessProtecteeBounds{SIZE_MAX, 0};
 
-  for (auto&[mIdx, m] : MANIFESTS) {
+  for (auto& [mIdx, m] : MANIFESTS) {
     auto cov = m->Coverage();
     coverageCache.insert({mIdx, cov});
     mStats[mIdx].explicitC = cov.size();
@@ -557,22 +631,22 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
   std::map<manifest_idx_t /*protected manifest*/, std::pair<std::set<manifest_idx_t> /*edges*/, unsigned long>>
       duplicateEdgesOnManifest{};
   metric::Stats s{};
-  //std::vector<std::tuple<manifest_idx_t /*edge_index*/, std::pair<manifest_idx_t, manifest_idx_t> /*m1 -> m2*/,
+  // std::vector<std::tuple<manifest_idx_t /*edge_index*/, std::pair<manifest_idx_t, manifest_idx_t> /*m1 -> m2*/,
   //                       unsigned long /*coverage*/>>
   auto implicitCov = s.implictInstructionsPerEdge(ManifestProtection, MANIFESTS, &duplicateEdgesOnManifest);
 
   std::unordered_map<manifest_idx_t, std::set<manifest_idx_t>> implicitManifestEdges{};
-  for (auto[e, mPair, c] : implicitCov) {
+  for (auto [e, mPair, c] : implicitCov) {
     implicitManifestEdges[mPair.second].insert(mPair.first);
   }
 
-  for (auto[edgeIndex, manifestPair, coverage] : implicitCov) {
+  for (auto [edgeIndex, manifestPair, coverage] : implicitCov) {
     eStats[edgeIndex].implicitC = coverage;
     implicitCBounds.first = std::min(implicitCBounds.first, coverage);
     implicitCBounds.second = std::max(implicitCBounds.second, coverage);
   }
 
-  for (auto&[idx, s] : mStats) {
+  for (auto& [idx, s] : mStats) {
     s.normalize(explicitCBounds, implicitCBounds, hotnessBounds, hotnessProtecteeBounds);
   }
 
@@ -583,6 +657,8 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
   auto costFunction = [](ManifestStats s) -> double {
     return 1.0 * s.normalizedHotness + (1.0 - s.normalizedHotnessProtectee);
   };
+  // start with no cycle stripping
+  double stripCycles = 0.000f;
   do {
     ILPSolver solver{};
     solver.init(ILPObjective, ILPOverheadBound, ILPExplicitBound, ILPImplicitBound, 0, 0);
@@ -590,26 +666,26 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
     solver.addManifests(MANIFESTS, mStats);
     solver.addDependencies(dependencies);
     solver.addConflicts(conflicts);
-    solver.addCycles(cycles);
+    solver.addCycles(cycles, stripCycles);
     solver.addConnectivity(connectivities);
     solver.addBlockConnectivity(blockConnectivities);
     solver.addExplicitCoverages(exactCoverage);
-    //solver.addImplicitCoverage(implicitCov, duplicateEdgesOnManifest);
+    // solver.addImplicitCoverage(implicitCov, duplicateEdgesOnManifest);
     solver.addNewImplicitCoverage(exactCoverage, implicitManifestEdges);
     solver.addNOfDependencies(nOfs);
 
     // Must come after explicit coverage is set
     solver.addUndoDependencies(MANIFESTS);
-    auto[acceptedIndices, acceptedEdges] = solver.run();
+    auto [acceptedIndices, acceptedEdges] = solver.run();
     solver.destroy();
 
-    std::set<Manifest *> accepted{};
-    for (auto &mIdx : acceptedIndices) {
+    std::set<Manifest*> accepted{};
+    for (auto& mIdx : acceptedIndices) {
       accepted.insert(MANIFESTS.at(mIdx));
     }
-    //for (auto &eIdx : acceptedEdges) {
+    // for (auto &eIdx : acceptedEdges) {
     //// TODO: calculate implicit coverage based on the accepted edges
-    //llvm::dbgs() << "accepted edge" << eIdx << "\n";
+    // llvm::dbgs() << "accepted edge" << eIdx << "\n";
     //}
 
     ProtectionGraph pg{};
@@ -618,8 +694,15 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
     pg.connectShadowNodes();
     auto newCycles = pg.computeCycles();
     if (!newCycles.empty()) {
-      for (auto &c : newCycles) {
+      for (auto& c : newCycles) {
         cycles.insert(c);
+      }
+      llvm::dbgs() << "Setting new strip cycle rate:" << stripCycles << "\n";
+      stripCycles += (double)0.001;
+      llvm::dbgs() << "Setting new strip cycle rate:" << stripCycles << "\n";
+      if (stripCycles > 1.0) {
+        stripCycles = 1.0;
+        llvm::dbgs() << "Bigger than 1 Setting new strip cycle rate:" << stripCycles << "\n";
       }
     } else {
       cStats.cycles = cycles.size();
@@ -630,14 +713,14 @@ std::set<Manifest *> ProtectionGraph::ilpConflictHandling(llvm::Module &M,
   } while (true);
 }
 
-std::vector<Manifest *> ProtectionGraph::topologicalSortManifests(const std::set<Manifest *> &manifests) {
-  std::set<Manifest *> all{manifests.begin(), manifests.end()};
-  std::set<Manifest *> seen{};
+std::vector<Manifest*> ProtectionGraph::topologicalSortManifests(const std::set<Manifest*>& manifests) {
+  std::set<Manifest*> all{manifests.begin(), manifests.end()};
+  std::set<Manifest*> seen{};
 
   for (lemon::ListDigraph::NodeIt n(LG); n != lemon::INVALID; ++n) {
     for (lemon::ListDigraph::InArcIt ei(LG, n); ei != lemon::INVALID; ++ei) {
-      const edge_t &e = (*edges)[ei];
-      for (auto&[cIdx, c] : e.constraints) {
+      const edge_t& e = (*edges)[ei];
+      for (auto& [cIdx, c] : e.constraints) {
         auto it = MANIFESTS_CONSTRAINTS.right.find(cIdx);
         if (it == MANIFESTS_CONSTRAINTS.right.end()) {
           continue;
@@ -648,7 +731,7 @@ std::vector<Manifest *> ProtectionGraph::topologicalSortManifests(const std::set
     }
   }
 
-  std::vector<Manifest *> result{};
+  std::vector<Manifest*> result{};
   std::set_difference(all.begin(), all.end(), seen.begin(), seen.end(), std::back_inserter(result));
 
   seen.clear();
@@ -662,16 +745,16 @@ std::vector<Manifest *> ProtectionGraph::topologicalSortManifests(const std::set
     sorted[order[n]] = n;
   }
 
-  for (lemon::ListDigraph::Node &n : sorted) {
+  for (lemon::ListDigraph::Node& n : sorted) {
     for (lemon::ListDigraph::InArcIt ei(LG, n); ei != lemon::INVALID; ++ei) {
-      const edge_t &e = (*edges)[ei];
+      const edge_t& e = (*edges)[ei];
       edge_idx_t idx = e.index;
-      for (auto&[cIdx, c] : e.constraints) {
+      for (auto& [cIdx, c] : e.constraints) {
         auto mFound = MANIFESTS_CONSTRAINTS.right.find(cIdx);
         if (mFound == MANIFESTS_CONSTRAINTS.right.end()) {
           continue;
         }
-        Manifest *manifest = MANIFESTS.at(mFound->second);
+        Manifest* manifest = MANIFESTS.at(mFound->second);
 
         if (seen.find(manifest) != seen.end()) {
           continue;
@@ -685,13 +768,13 @@ std::vector<Manifest *> ProtectionGraph::topologicalSortManifests(const std::set
   return result;
 }
 
-void ProtectionGraph::addHierarchy(llvm::Module &M) {
-  for (auto &&F : M) {
+void ProtectionGraph::addHierarchy(llvm::Module& M) {
+  for (auto&& F : M) {
     auto fNode = add_vertex(&F, false);
-    for (auto &&BB : F) {
+    for (auto&& BB : F) {
       auto bbNode = add_vertex(&BB, false);
       add_edge(bbNode, fNode, {{ConstraintIdx++, std::make_shared<Dependency>("hierarchy", &BB, &F)}});
-      for (auto &&I : BB) {
+      for (auto&& I : BB) {
         auto iNode = add_vertex(&I, false);
         add_edge(iNode, bbNode, {{ConstraintIdx++, std::make_shared<Dependency>("hierarchy", &I, &BB)}});
       }
@@ -700,17 +783,17 @@ void ProtectionGraph::addHierarchy(llvm::Module &M) {
 }
 
 void ProtectionGraph::connectShadowNodes() {
-  for (const auto&[value, sIdx] : vertexShadowCache) {
+  for (const auto& [value, sIdx] : vertexShadowCache) {
     add_edge(sIdx, add_vertex(value, false));
-    if (auto *F = llvm::dyn_cast<llvm::Function>(value)) {
-      for (auto &&BB : *F) {
+    if (auto* F = llvm::dyn_cast<llvm::Function>(value)) {
+      for (auto&& BB : *F) {
         add_edge(sIdx, add_vertex(&BB, false));
-        for (auto &&I : BB) {
+        for (auto&& I : BB) {
           add_edge(sIdx, add_vertex(&I, false));
         }
       }
-    } else if (auto *BB = llvm::dyn_cast<llvm::BasicBlock>(value)) {
-      for (auto &&I : *BB) {
+    } else if (auto* BB = llvm::dyn_cast<llvm::BasicBlock>(value)) {
+      for (auto&& I : *BB) {
         add_edge(sIdx, add_vertex(&I, false));
       }
     }
@@ -725,20 +808,20 @@ void ProtectionGraph::destroy() {
 
 void ProtectionGraph::computeManifestDependencies() {
   // Find all the llvm::Values that where added by a manifest
-  composition::util::bimap<manifest_idx_t, llvm::Value *> undo{};
-  for (auto&[idx, m] : MANIFESTS) {
-    for (llvm::Value *it : m->UndoValues()) {
+  composition::util::bimap<manifest_idx_t, llvm::Value*> undo{};
+  for (auto& [idx, m] : MANIFESTS) {
+    for (llvm::Value* it : m->UndoValues()) {
       undo.insert({idx, it});
     }
   }
 
   // Construct the protection relationship between manifests
   // Loop over the manifests
-  for (auto&[idx, m] : MANIFESTS) {
+  for (auto& [idx, m] : MANIFESTS) {
     // Take the coverage of the manifests
     for (auto I : m->Coverage()) {
       // Check if the covered llvm::Value is a guard of a different manifest
-      for (auto[it, it_end] = undo.right.equal_range(I); it != it_end; ++it) {
+      for (auto [it, it_end] = undo.right.equal_range(I); it != it_end; ++it) {
         for (auto v : it->second) {
           if (v != idx) {
             // Then add an edge between both manifests
@@ -752,8 +835,8 @@ void ProtectionGraph::computeManifestDependencies() {
   // For each manifest M find its dependent manifests.
   // A dependent manifest must be removed if M is removed.
   // First find the users
-  std::unordered_map<manifest_idx_t, std::unordered_set<llvm::Value *>> manifestUsers{};
-  for (auto&[idx, values] : undo.left) {
+  std::unordered_map<manifest_idx_t, std::unordered_set<llvm::Value*>> manifestUsers{};
+  for (auto& [idx, values] : undo.left) {
     for (auto u : values) {
       for (auto it = u->user_begin(), it_end = u->user_end(); it != it_end; ++it) {
         manifestUsers[idx].insert(*it);
@@ -762,9 +845,9 @@ void ProtectionGraph::computeManifestDependencies() {
   }
 
   // Then construct the dependency
-  for (auto&[m, users] : manifestUsers) {
+  for (auto& [m, users] : manifestUsers) {
     for (auto u : users) {
-      for (auto[it, it_end] = undo.right.equal_range(u); it != it_end; ++it) {
+      for (auto [it, it_end] = undo.right.equal_range(u); it != it_end; ++it) {
         for (auto v : it->second) {
           if (m != v) {
             DependencyUndo.insert({v, m});

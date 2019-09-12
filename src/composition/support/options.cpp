@@ -40,4 +40,10 @@ llvm::cl::opt<double>
 llvm::cl::opt<bool> ExperimentalSCIPSolver("cf-experimental-scip", llvm::cl::Hidden, llvm::cl::desc("Use SCIP solver to solve the problem in a hacky way!"));
 
 
+llvm::cl::opt<bool> ExperimentalNetworkX("cf-experimental-networkx", llvm::cl::Hidden, llvm::cl::desc("Use python NetworkX to find cycles in the protection graph."));
+
+llvm::cl::opt<std::string> ExperimentalNetworkXEdgeFile("cf-experimental-networkx-edgefile", llvm::cl::Hidden);
+llvm::cl::opt<std::string> ExperimentalNetworkXCycleFile("cf-experimental-networkx-cyclefile", llvm::cl::Hidden);
+
+
 } // namespace composition::support

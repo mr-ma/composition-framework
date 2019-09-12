@@ -30,6 +30,9 @@ extern llvm::cl::opt<std::string> ILPObjective;
 
 
 extern llvm::cl::opt<bool> ExperimentalSCIPSolver;
+extern llvm::cl::opt<bool> ExperimentalNetworkX;
+extern llvm::cl::opt<std::string> ExperimentalNetworkXEdgeFile;
+extern llvm::cl::opt<std::string> ExperimentalNetworkXCycleFile;
 
 } // namespace composition::support
 #endif // COMPOSITION_FRAMEWORK_SUPPORT_OPTIONS_HPP
