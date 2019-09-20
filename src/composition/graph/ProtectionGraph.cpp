@@ -272,7 +272,7 @@ std::set<std::pair<manifest_idx_t, manifest_idx_t>> ProtectionGraph::computeDepe
 std::set<std::set<manifest_idx_t>> ProtectionGraph::computeCycles() {
   Profiler detectingProfiler{};
 
-  if (lemon::dag(LG)) {
+  if ( lemon::dag(LG)) {
     return {};
   }
 
@@ -294,7 +294,7 @@ std::set<std::set<manifest_idx_t>> ProtectionGraph::computeCycles() {
       myfile << source << ";" << target << "\n";
     }
     myfile.close();
-    std::string cmd = "python dump_cycles.py " + ExperimentalNetworkXEdgeFile + " " + ExperimentalNetworkXCycleFile;
+    std::string cmd = "python3 dump_cycles.py " + ExperimentalNetworkXEdgeFile + " " + ExperimentalNetworkXCycleFile;
     // edges.csv cycles.txt";
     std::system(cmd.c_str());
     std::ifstream input(ExperimentalNetworkXCycleFile); //"cycles.txt");
@@ -592,6 +592,7 @@ std::set<Manifest*> ProtectionGraph::ilpConflictHandling(llvm::Module& M,
 
   Profiler detectingProfiler{};
   auto conflicts = vertexConflicts();
+  llvm::dbgs()<<"Conflicts detected:"<<conflicts.size()<<"\n";
   auto dependencies = computeDependencies();
   cStats.timeConflictDetection += detectingProfiler.stop();
   auto cycles = computeCycles();
@@ -698,7 +699,7 @@ std::set<Manifest*> ProtectionGraph::ilpConflictHandling(llvm::Module& M,
         cycles.insert(c);
       }
       llvm::dbgs() << "Setting new strip cycle rate:" << stripCycles << "\n";
-      stripCycles += (double)0.001;
+      stripCycles += (double)0.01;
       llvm::dbgs() << "Setting new strip cycle rate:" << stripCycles << "\n";
       if (stripCycles > 1.0) {
         stripCycles = 1.0;

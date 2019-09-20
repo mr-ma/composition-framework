@@ -75,16 +75,16 @@ void ILPSolver::addCycles(const std::set<std::set<manifest_idx_t>> &cycles,doubl
 
 void ILPSolver::addConnectivity(const std::set<std::set<manifest_idx_t>> &connectivities) {
   // Add connectivity
-  for (auto &&c : connectivities) {
+  /*for (auto &&c : connectivities) {
     connectivity(c, ILPConnectivityBound);
-  }
+  }*/
 }
 
 void ILPSolver::addBlockConnectivity(const std::set<std::set<manifest_idx_t>> &blockConnectivities) {
   // Add  blockConnectivity
-  for (auto &&c : blockConnectivities) {
+  /*for (auto &&c : blockConnectivities) {
     blockConnectivity(c, ILPBlockConnectivityBound);
-  }
+  }*/
 }
 
 void ILPSolver::addExplicitCoverages(const std::map<llvm::Instruction *, std::set<manifest_idx_t>> &coverage) {
@@ -127,8 +127,10 @@ std::pair<std::set<manifest_idx_t>, std::set<manifest_idx_t>> ILPSolver::run() {
     //USE SCIP solver
     std::string problemPath = composition::support::ILPProblem.getValue();
     llvm::dbgs()<<"Solution fileName:"<<solFilePath.c_str()<<"\n";
-    std::string cmd = "/home/sip/SCIPOptSuite-6.0.2-Linux/bin/scip -c \"read "+problemPath+" optimize write solution "+solFilePath+" quit\"";
+    //std::string cmd = "/home/sip/SCIPOptSuite-6.0.2-Linux/bin/scip -c \"read "+problemPath+" optimize write solution "+solFilePath+" quit\"";
+    std::string cmd = "/opt/gurobi811/linux64/bin/gurobi_cl ResultFile="+solFilePath+" "+problemPath;
     //std::string cmd = "cbc "+problemPath+" solve solu "+solFilePath;
+    llvm::dbgs()<<cmd<<"\n";
     std::system(cmd.c_str());
     //load the solution into lp problem object
     useSCIPResults = true; 
@@ -168,13 +170,15 @@ std::pair<std::set<manifest_idx_t>, std::set<manifest_idx_t>> ILPSolver::run() {
     llvm::dbgs()<<"Using SCIPRESULTS...\n";
     std::ifstream input(solFilePath);
     std::string in;
-    std::regex pattern("m(\\d+).*?\\d+.*?\\(obj\\:(\\d+)\\)");
+    //std::regex pattern("m(\\d+).*?\\d+.*?\\(obj\\:(\\d+)\\)");
     //std::regex pattern(".*?m(\\d+).*?");
+    std::regex pattern("m(\\d+)\\s+(1)");
     std::smatch match;
     llvm::dbgs()<<"Accepted manifests:\n";
     while (!input.eof()) {
       std::getline(input, in);
       if (std::regex_search(in, match, pattern)){
+	llvm::dbgs()<<match[0]<<" taking... "<<match[1]<<"\n";
 	manifest_idx_t mIdx =(manifest_idx_t) std::stoull(match[1]);	
 	llvm::dbgs()<<mIdx<<", ";
 	acceptedManifests.insert(mIdx);

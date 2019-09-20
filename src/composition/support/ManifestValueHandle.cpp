@@ -9,7 +9,7 @@ using composition::util::getPassName;
 using llvm::dbgs;
 
 void ManifestValueHandle::deleted() {
-  dbgs() << "Value deleted from: " << getPassName() << "\n";
+  //dbgs() << "Value deleted from: " << getPassName() << "\n";
   this->RemoveFromUseList();
   this->clearValPtr();
 }
