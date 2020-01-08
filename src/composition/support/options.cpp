@@ -2,7 +2,7 @@
 
 namespace composition::support {
 Stats cStats{};
-llvm::cl::opt<bool> DumpGraphs("cf-dump-graphs", llvm::cl::Hidden, llvm::cl::desc("Graph files are written to disk"));
+llvm::cl::opt<std::string> DumpGraphs("cf-dump-graphs", llvm::cl::Hidden, llvm::cl::desc("Graph files are written to disk"));
 llvm::cl::opt<bool> AddCFG("cf-add-cfg", llvm::cl::Hidden, llvm::cl::desc("Adds CFG edges to graphs"));
 llvm::cl::opt<std::string> WeightConfig("cf-weights", llvm::cl::Hidden,
                                         llvm::cl::desc("Weights to influence the metrics used to decide if "

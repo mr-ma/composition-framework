@@ -135,14 +135,59 @@ public:
     auto coords = lemon::ListDigraph::NodeMap<lemon::dim2::Point<int>>(LG);
     auto sizes = lemon::ListDigraph::NodeMap<int>(LG);
     int i = 0;
+    /*FILE *verticesfile, *relfile;
+    verticesfile = fopen("vertices.csv", "w");
     for (lemon::ListDigraph::NodeIt n(LG); n != lemon::INVALID; ++n) {
-      texts[n] = (*vertices)[n].name;
+      vertex_t vertex = (*vertices)[n];
+      texts[n] = vertex.name;
       coords[n] = lemon::dim2::Point<int>(i % 2, i / 2);
       sizes[n] = 1;
+      fprintf(verticesfile, "%s;%s;%s;\n", std::to_string(LG.id(n)).c_str(),vertex.name.c_str(),vertex.getTypeText());
       ++i;
     }
+    fclose(verticesfile);
+    relfile = fopen("rel.csv", "w");
+    for (lemon::ListDigraph::ArcIt a(LG); a != lemon::INVALID; ++a){
+      vertex_t source = (*vertices)[LG.source(a)];
+      vertex_t target = (*vertices)[LG.target(a)];
+      //llvm::dbgs()<<"source:"<<source.name<<" "<<source.type<<" destination:"<<target.name<<" "<<target.getTypeText()<<"\n";
+      fprintf(relfile, "%s;%s;\n", std::to_string(LG.id(LG.source(a))).c_str(),std::to_string(LG.id(LG.target(a))).c_str());
+    }
+    fclose(relfile);*/
+    FILE *manifestfile, *manifestrelfile;
+    std::stringstream sr;
+    sr<<name<<"manifests.csv";
+    manifestfile = fopen(sr.str().c_str(), "w");
+    //lemon::ListDigraph G{};
+    for (auto[idx, m] : MANIFESTS) {
+      if(m==nullptr) { 
+        continue;
+      }
+      std::string functionName=m->GetHostingFunction();
+      //auto n = G.addNode();
+      //llvm::dbgs()<<"******DUMPING MANIFEST******"<<idx<<"\n";
+      fprintf(manifestfile, "%s;%s;%s;%s;%s\n", std::to_string((uint64_t)idx).c_str(),m->name.c_str(),functionName.c_str(),std::to_string(m->Coverage().size()).c_str(),std::to_string(m->BlockCoverage().size()).c_str());
+      //m->dump();
+      //indices[n] = idx;
+      //nodes.insert({idx, n});
+    }
+    fclose(manifestfile);
+    //llvm::dbgs()<<"***DUMPING RELATIONS***\n";
+    std::stringstream ss;
+    ss<<name<<"manifestsrel.csv";
+    manifestrelfile = fopen(ss.str().c_str(),"w");
+    for (const auto &it : ManifestProtection.left) {
+      for (auto v : it.second) {
+        //llvm::dbgs() <<"manifest relation:" << it.first << " - " << v << "\n";
+	fprintf(manifestrelfile, "%s;%s;\n",std::to_string((uint64_t)v).c_str(),std::to_string((uint64_t)it.first).c_str());
+        //G.addArc(nodes.at(it.first), nodes.at(v));
+      }
+    }
+    fclose(manifestrelfile);
 
-    auto widths = lemon::ListDigraph::ArcMap<double>(LG);
+
+
+    /*auto widths = lemon::ListDigraph::ArcMap<double>(LG);
     for (lemon::ListDigraph::ArcIt e(LG); e != lemon::INVALID; ++e) {
       widths[e] = 0.5;
     }
@@ -150,7 +195,7 @@ public:
     lemon::graphToEps(LG, name + ".eps")
         .nodeSizes(sizes)
         .negateY()
-            //.absoluteNodeSizes()
+        .absoluteNodeSizes()
         .coords(coords)
         .nodeTexts(texts)
         .nodeTextSize(0.05)
@@ -158,7 +203,7 @@ public:
         .arrowWidth(0.1)
         .edgeWidths(widths)
         .absoluteEdgeWidths()
-        .run();
+        .run();*/
   }
 
   /**

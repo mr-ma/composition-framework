@@ -50,6 +50,24 @@ llvm::raw_ostream &operator<<(llvm::raw_ostream &out, const manifest_idx_t &i) {
   return out;
 }
 
+std::string Manifest::GetHostingFunction(){
+  for (const auto &V : undoValues) {
+    if (llvm::isa<llvm::Constant>(&*V)) {
+      // Constants 
+      continue;
+    }
+    llvm::Value *v_copy = (&*V);
+    if (auto *F = llvm::dyn_cast<llvm::Function>(v_copy)) {
+      return F->getName();
+    } else if (auto *B = llvm::dyn_cast<llvm::BasicBlock>(v_copy)){
+      return B->getParent()->getName();
+    } else if (auto *I = llvm::dyn_cast<llvm::Instruction>(v_copy)) {
+      return I->getFunction()->getName();
+    }
+  }
+  return std::string("");
+}
+
 void Manifest::Undo() {
   dbgs() << "Undoing " << undoValues.size() << " values\n";
   for (const auto &V : undoValues) {

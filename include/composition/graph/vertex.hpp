@@ -7,7 +7,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
-
+#include "llvm/Support/Debug.h"
 namespace composition::graph {
 // vertex_idx_t type.
 enum vertex_idx_t : uintptr_t;
@@ -19,8 +19,9 @@ bool operator<(vertex_idx_t lhs, vertex_idx_t rhs);
  * Type of the vertex in a graph
  */
 enum class vertex_type { UNKNOWN, FUNCTION, BASICBLOCK, INSTRUCTION, VALUE };
+static const char * EnumStrings[] = { "UNKNOWN", "FUNCTION", "BASICBLOCK", "INSTRUCTION", "VALUE" };
 std::ostream &operator<<(std::ostream &os, const vertex_type &obj);
-
+llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const vertex_type &obj);
 /**
  * Describes a vertex in the graph
  */
@@ -59,10 +60,15 @@ struct vertex_t {
                     constraints = {}) noexcept;
 
   std::ostream &operator<<(std::ostream &os) noexcept;
+  llvm::raw_ostream &operator<<(llvm::raw_ostream &os) noexcept;
 
   bool operator==(const vertex_t &rhs) noexcept;
 
   bool operator!=(const vertex_t &rhs) noexcept;
+
+  const char* getTypeText(){
+    return EnumStrings[(int)this->type];
+  }
 };
 
 /**
@@ -71,6 +77,7 @@ struct vertex_t {
  * @return the `vertex_type`, UNKNOWN if it cannot be determined.
  */
 vertex_type llvmToVertexType(const llvm::Value *v);
+
 
 /**
  * Tries to convert the given `llvm::Value` to a string representation

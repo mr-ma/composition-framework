@@ -9,7 +9,7 @@ namespace composition::support {
  * List of global variables which can be used from anywhere in the framework
  */
 extern Stats cStats;
-extern llvm::cl::opt<bool> DumpGraphs;
+extern llvm::cl::opt<std::string> DumpGraphs;
 extern llvm::cl::opt<bool> AddCFG;
 extern llvm::cl::opt<std::string> WeightConfig;
 extern llvm::cl::opt<std::string> DumpStats;

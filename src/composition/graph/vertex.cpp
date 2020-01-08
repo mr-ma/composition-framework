@@ -34,7 +34,17 @@ std::ostream &operator<<(std::ostream &os, const vertex_type &obj) {
   os << static_cast<std::underlying_type<vertex_type>::type>(obj);
   return os;
 }
-
+llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const vertex_type &obj){
+  os << static_cast<std::underlying_type<vertex_type>::type>(obj);
+  return os;
+}
+llvm::raw_ostream &vertex_t::operator<<(llvm::raw_ostream &os) noexcept {
+  os << this->index << "," << this->name << "," << this->type << ",";
+  for (const auto &c : this->constraints) {
+    llvm::dbgs() << c.second->getInfo() << " ";
+  }
+  return os;
+}
 std::ostream &vertex_t::operator<<(std::ostream &os) noexcept {
   os << this->index << "," << this->name << "," << this->type << ",";
   for (const auto &c : this->constraints) {

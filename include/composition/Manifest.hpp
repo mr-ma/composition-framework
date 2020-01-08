@@ -96,6 +96,8 @@ public:
   virtual std::set<llvm::BasicBlock *> BlockCoverage();
 
   virtual std::set<llvm::Value *> UndoValues() const;
+  
+  std::string GetHostingFunction();
 
   /**
    * Called if the manifest stays in the program
