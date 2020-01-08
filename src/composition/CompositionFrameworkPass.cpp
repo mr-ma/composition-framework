@@ -168,9 +168,9 @@ void addCallGraph(std::unique_ptr<graph::ProtectionGraph> &g, llvm::Module &M) {
 }
 
 void printGraphs(std::unique_ptr<graph::ProtectionGraph> &g, const std::string &name) {
-  if (DumpGraphs) {
+  if (!DumpGraphs.empty()) {
     dbgs() << "Writing graphs\n";
-    g->Print(name);
+    g->Print(DumpGraphs);
   }
 }
 
@@ -206,11 +206,14 @@ bool CompositionFrameworkPass::analysisPass(llvm::Module &M) {
   cStats.proposedManifests = mSet.size();
   Graph = buildGraphFromManifests(mSet);
   addCallGraph(Graph, M);
-  Graph->addHierarchy(M);
+  //Graph->addHierarchy(M);
   Graph->connectShadowNodes();
   cStats.vertices = Graph->countVertices();
   cStats.edges = Graph->countEdges();
-  printGraphs(Graph, "graph_raw");
+  Graph->computeManifestDependencies();
+  //cStats.stats.setManifests(mSet);
+
+  //printGraphs(Graph, "graph_raw");
 
   return false;
 }
@@ -261,7 +264,7 @@ bool CompositionFrameworkPass::graphPass(llvm::Module &M) {
       ManifestRegistry::Remove(m);
     }
   }
-
+  dbgs() << "Selected "<<accepted.size()<<"/"<<registered.size()<<"\n";
   Graph->destroy();
   Graph = buildGraphFromManifests(accepted);
   Graph->addHierarchy(M);
@@ -269,6 +272,7 @@ bool CompositionFrameworkPass::graphPass(llvm::Module &M) {
   Graph->computeManifestDependencies();
   cStats.stats.setManifests(accepted);
 
+  printGraphs(Graph, "graph_raw");
   return false;
 }
 
